@@ -1,11 +1,11 @@
 # Implementation Plan - Implement Touch Screen Controls for Slideshow Navigation
 
-## Phase 1: File Traversal Refactor (Bidirectional Support)
+## Phase 1: File Traversal Refactor (Bidirectional Support) [checkpoint: e91aaaf]
 
 - [x] Task: Design and Implement Bidirectional File Cache [7aa600c]
     - [x] Write unit tests for file cache (index tracking, next/prev bounds handling)
     - [x] Implement a file list caching mechanism to support forward and backward traversal on the SD card
-- [ ] Task: Conductor - User Manual Verification 'Phase 1: File Traversal Refactor' (Protocol in workflow.md)
+- [x] Task: Conductor - User Manual Verification 'Phase 1: File Traversal Refactor' (Protocol in workflow.md) [e91aaaf]
 
 ## Phase 2: Non-Blocking Slideshow Delay Refactor
 
