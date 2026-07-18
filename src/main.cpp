@@ -8,6 +8,7 @@
 #include "slideshow_timer.h"
 #include "touch_manager.h"
 #include "touch_handler.h"
+#include "lvgl_manager.h"
 
 // Initialize the TFT object. 
 // Note: Pins and drivers are automatically handled by platformio.ini build_flags!
@@ -64,8 +65,9 @@ void showSDError() {
 /**
  * @brief Reads the JPEG header, determines the optimal hardware scale 
  * factor (1, 2, 4, or 8), calculates centering offsets, and renders it.
+ * @return true if drawing succeeded, false otherwise.
  */
-void renderScaledJpg(const char* filename) {
+bool renderScaledJpg(const char* filename) {
   uint16_t img_w = 0, img_h = 0;
 
   Serial.printf("\n--- Rendering: %s ---\n", filename);
@@ -115,6 +117,7 @@ void renderScaledJpg(const char* filename) {
     uint16_t drawResult = TJpgDec.drawSdJpg(x_offset, y_offset, filename);
     if(drawResult != 0) {
       Serial.printf("Error during draw: JRESULT %d\n", drawResult);
+      return false;
     } else {
       if (showFilename) {
         tft.setTextColor(CTP_TEXT, CTP_BASE);
@@ -123,6 +126,7 @@ void renderScaledJpg(const char* filename) {
         const char* displayName = namePtr ? namePtr + 1 : filename;
         tft.drawString(displayName, tft.width() / 2, tft.height() - 10, 2);
       }
+      return true;
     }
     
   } else {
@@ -133,10 +137,7 @@ void renderScaledJpg(const char* filename) {
     if (result == 3) Serial.println("-> JDR_MEM1: Not enough RAM");
     if (result == 5) Serial.println("-> JDR_FMT1: Invalid JPEG format (Is it a progressive JPEG?)");
     
-    tft.fillScreen(CTP_BASE);
-    tft.setTextColor(CTP_RED, CTP_BASE);
-    tft.setTextDatum(MC_DATUM);
-    tft.drawString("Image Read Error", tft.width() / 2, tft.height() / 2, 4);
+    return false;
   }
 }
 
@@ -175,6 +176,9 @@ void setup() {
   tft.begin();
   tft.setRotation(1); // Landscape orientation
 
+  // Initialize LVGL
+  LVGLManager::init(tft.width(), tft.height());
+
   // Initialize backlight control
 #if defined(TFT_BL) && (TFT_BL >= 0)
   pinMode(TFT_BL, OUTPUT);
@@ -206,8 +210,28 @@ void setup() {
     while(true) delay(1000); // Halt execution
   }
 
-  // Render the first image and start the timer
-  renderScaledJpg(fileCache.getCurrent().c_str());
+  // Find and render the first valid image
+  bool success = false;
+  size_t attempts = 0;
+  size_t maxAttempts = fileCache.size();
+  while (!success && attempts < maxAttempts) {
+    success = renderScaledJpg(fileCache.getCurrent().c_str());
+    if (!success) {
+      Serial.printf("[System] First image failed to render. Skipping...\n");
+      fileCache.getNext();
+      attempts++;
+    }
+  }
+
+  if (!success) {
+    Serial.println("Error: All images in cache failed to render on startup.");
+    tft.fillScreen(CTP_BASE);
+    tft.setTextColor(CTP_RED, CTP_BASE);
+    tft.setTextDatum(MC_DATUM);
+    tft.drawString("All Images Failed", tft.width() / 2, tft.height() / 2, 4);
+    while(true) delay(1000); // Halt execution
+  }
+
   slideshowTimer.start(millis());
 }
 
@@ -218,6 +242,52 @@ std::string getNextImageFile() {
     return fileCache.getCurrent();
   }
   return fileCache.getNext();
+}
+
+/**
+ * @brief Attempts to display the next image, skipping any corrupt/invalid ones.
+ */
+void showNextImage() {
+  bool success = false;
+  size_t attempts = 0;
+  size_t maxAttempts = fileCache.size();
+  while (!success && attempts < maxAttempts) {
+    std::string nextFile = getNextImageFile();
+    success = renderScaledJpg(nextFile.c_str());
+    if (!success) {
+      Serial.printf("[System] Image failed to render. Skipping to next...\n");
+      attempts++;
+    }
+  }
+  if (!success) {
+    tft.fillScreen(CTP_BASE);
+    tft.setTextColor(CTP_RED, CTP_BASE);
+    tft.setTextDatum(MC_DATUM);
+    tft.drawString("All Images Failed", tft.width() / 2, tft.height() / 2, 4);
+  }
+}
+
+/**
+ * @brief Attempts to display the previous image, skipping any corrupt/invalid ones.
+ */
+void showPreviousImage() {
+  bool success = false;
+  size_t attempts = 0;
+  size_t maxAttempts = fileCache.size();
+  while (!success && attempts < maxAttempts) {
+    std::string prevFile = fileCache.getPrevious();
+    success = renderScaledJpg(prevFile.c_str());
+    if (!success) {
+      Serial.printf("[System] Image failed to render. Skipping to previous...\n");
+      attempts++;
+    }
+  }
+  if (!success) {
+    tft.fillScreen(CTP_BASE);
+    tft.setTextColor(CTP_RED, CTP_BASE);
+    tft.setTextDatum(MC_DATUM);
+    tft.drawString("All Images Failed", tft.width() / 2, tft.height() / 2, 4);
+  }
 }
 
 void loop() {
@@ -237,13 +307,11 @@ void loop() {
   if (zone != TouchZone::NONE) {
     if (zone == TouchZone::MID_LEFT) {
       Serial.println("[Touch] Mid-Left tapped - Previous Image");
-      std::string prevFile = fileCache.getPrevious();
-      renderScaledJpg(prevFile.c_str());
+      showPreviousImage();
       slideshowTimer.reset(millis());
     } else if (zone == TouchZone::MID_RIGHT) {
       Serial.println("[Touch] Mid-Right tapped - Next Image");
-      std::string nextFile = getNextImageFile();
-      renderScaledJpg(nextFile.c_str());
+      showNextImage();
       slideshowTimer.reset(millis());
     } else if (zone == TouchZone::MID_CENTER) {
       bool isPaused = !slideshowTimer.isPaused();
@@ -285,10 +353,10 @@ void loop() {
   }
 
   if (slideshowTimer.isElapsed(millis())) {
-    std::string nextFile = getNextImageFile();
-    renderScaledJpg(nextFile.c_str());
+    showNextImage();
     slideshowTimer.reset(millis());
   }
 
+  LVGLManager::handle();
   delay(50);
 }
