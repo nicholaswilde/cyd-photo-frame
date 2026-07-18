@@ -14,12 +14,12 @@
     - [x] Refactor blocking `delay(10000)` in `main.cpp` to check a loop interval every 50ms
 - [x] Task: Conductor - User Manual Verification 'Phase 2: Non-Blocking Slideshow Delay Refactor' (Protocol in workflow.md) [27ebfae]
 
-## Phase 3: Touch Driver Integration and Setup
+## Phase 3: Touch Driver Integration and Setup [checkpoint: 3a32b3f]
 
 - [x] Task: Touch Screen Hardware Setup [1c34c0f]
     - [x] Define conditional compile paths for XPT2046 and CST820/GT911 touch libraries
     - [x] Configure touch pins and initialize the drivers in setup
-- [ ] Task: Conductor - User Manual Verification 'Phase 3: Touch Driver Integration and Setup' (Protocol in workflow.md)
+- [x] Task: Conductor - User Manual Verification 'Phase 3: Touch Driver Integration and Setup' (Protocol in workflow.md) [3a32b3f]
 
 ## Phase 4: Slide Navigation & Interaction Handler
 
