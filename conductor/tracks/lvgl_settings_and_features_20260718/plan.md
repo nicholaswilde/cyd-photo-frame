@@ -45,9 +45,9 @@
 ## Phase 4: Visual Polishing & Transitions
 - [x] Task: Write host-native unit tests for backlight fade states f2d4b7d
   - [x] Verify fade transition timing calculations and step interpolation
-- [ ] Task: Implement Fade-to-Black transitions
-  - [ ] Add non-blocking smooth dimming transition before next image decode
-  - [ ] Fade back up to target brightness after draw is finished
+- [x] Task: Implement Fade-to-Black transitions 260a18a
+  - [x] Add non-blocking smooth dimming transition before next image decode
+  - [x] Fade back up to target brightness after draw is finished
 - [ ] Task: Run final static analysis and Quality Gate checks
   - [ ] Run pio check and verify no errors remain
 - [ ] Task: Phase Verification & Checkpoint (Refer to workflow.md)
