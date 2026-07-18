@@ -8,6 +8,7 @@
 #include <TFT_eSPI.h>
 #include "touch_manager.h"
 #include "slideshow_timer.h"
+#include "app_state.h"
 
 extern TFT_eSPI tft;
 
@@ -26,6 +27,11 @@ static void my_disp_flush(lv_disp_drv_t *disp_drv, const lv_area_t *area, lv_col
 }
 
 static void my_touchpad_read(lv_indev_drv_t *indev_driver, lv_indev_data_t *data) {
+    if (currentState != STATE_SETTINGS) {
+        data->state = LV_INDEV_STATE_REL;
+        return;
+    }
+
     int touchX = 0, touchY = 0;
     bool touched = TouchManager::isTouched();
     if (!touched) {

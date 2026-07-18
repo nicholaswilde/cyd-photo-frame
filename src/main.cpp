@@ -23,10 +23,7 @@ bool isRandomMode = false;
 bool isAutoBrightness = false;
 bool isInactivitySleep = false;
 
-enum AppState {
-  STATE_SLIDESHOW,
-  STATE_SETTINGS
-};
+#include "app_state.h"
 AppState currentState = STATE_SLIDESHOW;
 
 // SD Card Chip Select for CYD
@@ -322,6 +319,11 @@ void loop() {
   int rawX = 0, rawY = 0;
   if (touched) {
     TouchManager::getTouchPoint(rawX, rawY);
+    static unsigned long lastTouchPrintTime = 0;
+    if (millis() - lastTouchPrintTime > 250) { // Limit print frequency to 250ms
+      Serial.printf("[Touch] Raw Touch: X=%d, Y=%d\n", rawX, rawY);
+      lastTouchPrintTime = millis();
+    }
   }
 
   TouchZone zone = touchHandler.processTouch(touched, rawX, rawY, millis());
