@@ -17,13 +17,13 @@
 ## Phase 2: Secret Gesture & Settings UI Layout
 - [x] Task: Implement host-native unit tests for gesture detection and state changes b66e641
   - [x] Write tests verifying that a long-press triggers the settings state transition
-- [~] Task: Implement Secret Long-Press Gesture
+- [x] Task: Implement Secret Long-Press Gesture 7e1fe68
   - [x] Add coordinates and duration tracking to touch processing in touch_handler b66e641
-  - [ ] Handle state transitions (STATE_SLIDESHOW <-> STATE_SETTINGS) in src/main.cpp
-- [ ] Task: Build LVGL Settings Page UI
-  - [ ] Initialize settings screen using Catppuccin theme colors
-  - [ ] Add a scrollable page containing a slider for Brightness, switches for Random Mode and Filename Display, a slider for Slideshow Delay, and a switch for Inactivity Sleep
-  - [ ] Implement EXIT/Save button to close Settings UI and return to slideshow
+  - [x] Handle state transitions (STATE_SLIDESHOW <-> STATE_SETTINGS) in src/main.cpp
+- [x] Task: Build LVGL Settings Page UI 7e1fe68
+  - [x] Initialize settings screen using Catppuccin theme colors
+  - [x] Add a scrollable page containing a slider for Brightness, switches for Random Mode and Filename Display, a slider for Slideshow Delay, and a switch for Inactivity Sleep
+  - [x] Implement EXIT/Save button to close Settings UI and return to slideshow
 - [ ] Task: Phase Verification & Checkpoint (Refer to workflow.md)
 
 ## Phase 3: Hardware Integrations & Features
