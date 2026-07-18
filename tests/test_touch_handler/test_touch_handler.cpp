@@ -29,17 +29,23 @@ void test_touch_handler_mapping_resistive(void) {
 void test_touch_handler_zones(void) {
     TouchHandler handler(320, 240);
     
-    // Left Zone (0 - 96 pixels)
-    TEST_ASSERT_EQUAL(TouchZone::LEFT, handler.processTouch(true, 500, 2000, 1000));
+    // Middle Left Zone (raw 500, 2000 maps to pixel X=26, Y=120)
+    TEST_ASSERT_EQUAL(TouchZone::MID_LEFT, handler.processTouch(true, 500, 2000, 1000));
     
-    // Center Zone (96 - 224 pixels)
+    // Middle Center Zone (raw 2000, 2000 maps to pixel X=160, Y=120)
     // Debounce should prevent trigger at same time
     TEST_ASSERT_EQUAL(TouchZone::NONE, handler.processTouch(true, 2000, 2000, 1000));
     // After debounce interval
-    TEST_ASSERT_EQUAL(TouchZone::CENTER, handler.processTouch(true, 2000, 2000, 1400));
+    TEST_ASSERT_EQUAL(TouchZone::MID_CENTER, handler.processTouch(true, 2000, 2000, 1400));
     
-    // Right Zone (224 - 320 pixels)
-    TEST_ASSERT_EQUAL(TouchZone::RIGHT, handler.processTouch(true, 3500, 2000, 1800));
+    // Middle Right Zone (raw 3500, 2000 maps to pixel X=293, Y=120)
+    TEST_ASSERT_EQUAL(TouchZone::MID_RIGHT, handler.processTouch(true, 3500, 2000, 1800));
+    
+    // Top Left Zone (raw 500, 500 maps to pixel X=26, Y=20 - which is top 1/4)
+    TEST_ASSERT_EQUAL(TouchZone::TOP_LEFT, handler.processTouch(true, 500, 500, 2200));
+    
+    // Bottom Center Zone (raw 2000, 3500 maps to pixel X=160, Y=220 - which is bottom 1/4)
+    TEST_ASSERT_EQUAL(TouchZone::BOTTOM_CENTER, handler.processTouch(true, 2000, 3500, 2600));
 }
 
 void test_touch_handler_no_touch(void) {

@@ -34,3 +34,11 @@ bool SlideshowTimer::isPaused() const {
 void SlideshowTimer::setPaused(bool paused) {
     m_paused = paused;
 }
+
+void SlideshowTimer::setInterval(unsigned long intervalMs) {
+    m_intervalMs = intervalMs;
+}
+
+unsigned long SlideshowTimer::getInterval() const {
+    return m_intervalMs;
+}

@@ -28,12 +28,26 @@ TouchZone TouchHandler::processTouch(bool isTouched, int rawX, int rawY, unsigne
     
     m_lastTapTimeMs = currentTimeMs;
     
-    if (pixelX < (m_displayWidth * 3) / 10) {
-        return TouchZone::LEFT;
-    } else if (pixelX >= (m_displayWidth * 7) / 10) {
-        return TouchZone::RIGHT;
+    // Determine row (vertical splitting: top 1/4, bottom 1/4, middle 1/2)
+    bool isTopRow = (pixelY < m_displayHeight / 4);
+    bool isBottomRow = (pixelY >= (3 * m_displayHeight) / 4);
+    
+    // Determine column (horizontal splitting: 3 equal columns)
+    bool isLeftCol = (pixelX < m_displayWidth / 3);
+    bool isRightCol = (pixelX >= (2 * m_displayWidth) / 3);
+    
+    if (isTopRow) {
+        if (isLeftCol) return TouchZone::TOP_LEFT;
+        if (isRightCol) return TouchZone::TOP_RIGHT;
+        return TouchZone::TOP_CENTER;
+    } else if (isBottomRow) {
+        if (isLeftCol) return TouchZone::BOTTOM_LEFT;
+        if (isRightCol) return TouchZone::BOTTOM_RIGHT;
+        return TouchZone::BOTTOM_CENTER;
     } else {
-        return TouchZone::CENTER;
+        if (isLeftCol) return TouchZone::MID_LEFT;
+        if (isRightCol) return TouchZone::MID_RIGHT;
+        return TouchZone::MID_CENTER;
     }
 }
 

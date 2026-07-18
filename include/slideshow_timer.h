@@ -11,6 +11,8 @@ public:
     void reset(unsigned long currentTimeMs);
     bool isPaused() const;
     void setPaused(bool paused);
+    void setInterval(unsigned long intervalMs);
+    unsigned long getInterval() const;
 
 private:
     unsigned long m_intervalMs;
