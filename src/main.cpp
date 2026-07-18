@@ -5,11 +5,14 @@
 #include <TFT_eSPI.h>
 #include <TJpg_Decoder.h>
 #include "sd_card_manager.h"
+#include "file_cache.h"
+#include "slideshow_timer.h"
 
 // Initialize the TFT object. 
 // Note: Pins and drivers are automatically handled by platformio.ini build_flags!
 TFT_eSPI tft = TFT_eSPI();
-File rootDir;
+FileCache fileCache(64);
+SlideshowTimer slideshowTimer(10000);
 
 // SD Card Chip Select for CYD
 // const uint8_t SD_CS_PIN = 5;
@@ -123,11 +126,36 @@ void renderScaledJpg(const char* filename) {
   }
 }
 
+void populateCache() {
+  fileCache.clear();
+  File root = SD.open("/");
+  if (!root) {
+    Serial.println("Error: Failed to open root directory.");
+    return;
+  }
+  File file = root.openNextFile();
+  while (file) {
+    if (!file.isDirectory()) {
+      String filePath = String(file.path());
+      String fileNameLower = filePath;
+      fileNameLower.toLowerCase();
+      if (fileNameLower.endsWith(".jpg") || fileNameLower.endsWith(".jpeg")) {
+        if (!fileCache.addFile(filePath.c_str())) {
+          Serial.println("[Cache] Full.");
+          file.close();
+          break;
+        }
+      }
+    }
+    file.close();
+    file = root.openNextFile();
+  }
+  root.close();
+}
+
 void setup() {
   Serial.begin(115200);
   Serial.println("[System] Booting ESP32 CYD Photo Frame...");
-
-  // bool sdPresent = SdCardManager::begin();
 
   // Initialize TFT
   tft.begin();
@@ -144,45 +172,33 @@ void setup() {
   }
   Serial.println("SD Card mounted successfully.");
 
-  // Open the root directory for the slideshow loop
-  rootDir = SD.open("/");
-  if (!rootDir) {
-    Serial.println("Error: Failed to open root directory.");
+  // Populate cache
+  populateCache();
+  if (fileCache.isEmpty()) {
+    Serial.println("Error: No images found on SD card.");
     tft.fillScreen(CTP_BASE);
     tft.setTextColor(CTP_RED, CTP_BASE);
     tft.setTextDatum(MC_DATUM);
-    tft.drawString("SD Read Error", tft.width() / 2, tft.height() / 2, 4);
+    tft.drawString("No Images Found", tft.width() / 2, tft.height() / 2, 4);
     while(true) delay(1000); // Halt execution
   }
+
+  // Render the first image and start the timer
+  renderScaledJpg(fileCache.getCurrent().c_str());
+  slideshowTimer.start(millis());
 }
 
 void loop() {
-  if (!rootDir) return;
-
-  File file = rootDir.openNextFile();
-
-  // If we hit the end of the directory, rewind to the beginning
-  if (!file) {
-    Serial.println("--- End of slideshow, rewinding ---");
-    rootDir.rewindDirectory();
-    return; // Return to top of loop to grab the first file again
+  if (fileCache.isEmpty()) {
+    delay(1000);
+    return;
   }
 
-  // Skip directories, we only want files
-  if (!file.isDirectory()) {
-    String filePath = String(file.path());
-    String fileNameLower = filePath;
-    fileNameLower.toLowerCase(); // Make extension checking case-insensitive
-
-    if (fileNameLower.endsWith(".jpg") || fileNameLower.endsWith(".jpeg")) {
-      
-      // Render the image using the function we built
-      renderScaledJpg(filePath.c_str());
-      
-      // Display the image for 10 seconds before moving to the next
-      delay(10000); 
-    }
+  if (slideshowTimer.isElapsed(millis())) {
+    std::string nextFile = fileCache.getNext();
+    renderScaledJpg(nextFile.c_str());
+    slideshowTimer.reset(millis());
   }
-  
-  file.close();
+
+  delay(50);
 }

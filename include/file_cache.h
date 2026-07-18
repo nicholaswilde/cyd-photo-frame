@@ -6,7 +6,7 @@
 
 class FileCache {
 public:
-    FileCache(size_t maxCapacity = 64);
+    explicit FileCache(size_t maxCapacity = 64);
 
     bool addFile(const std::string& path);
     void clear();
