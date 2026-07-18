@@ -32,10 +32,12 @@ void TouchManager::begin() {
 }
 
 bool TouchManager::isTouched() {
+    touchSPI.begin(XPT2046_CLK, XPT2046_MISO, XPT2046_MOSI, XPT2046_CS);
     return touch.touched();
 }
 
 bool TouchManager::getTouchPoint(int& x, int& y) {
+    touchSPI.begin(XPT2046_CLK, XPT2046_MISO, XPT2046_MOSI, XPT2046_CS);
     if (!touch.touched()) {
         return false;
     }

@@ -73,6 +73,9 @@ void showSDError() {
  * @return true if drawing succeeded, false otherwise.
  */
 bool renderScaledJpg(const char* filename) {
+#if defined(SD_SCK_PIN) && defined(SD_MISO_PIN) && defined(SD_MOSI_PIN) && defined(SD_CS_PIN)
+  SPI.begin(SD_SCK_PIN, SD_MISO_PIN, SD_MOSI_PIN, SD_CS_PIN);
+#endif
   uint16_t img_w = 0, img_h = 0;
 
   Serial.printf("\n--- Rendering: %s ---\n", filename);
@@ -147,6 +150,9 @@ bool renderScaledJpg(const char* filename) {
 }
 
 void populateCache() {
+#if defined(SD_SCK_PIN) && defined(SD_MISO_PIN) && defined(SD_MOSI_PIN) && defined(SD_CS_PIN)
+  SPI.begin(SD_SCK_PIN, SD_MISO_PIN, SD_MOSI_PIN, SD_CS_PIN);
+#endif
   fileCache.clear();
   File root = SD.open("/");
   if (!root) {
@@ -212,6 +218,9 @@ void setup() {
 
   // Initialize SD Card
   Serial.println("Mounting SD Card...");
+#if defined(SD_SCK_PIN) && defined(SD_MISO_PIN) && defined(SD_MOSI_PIN) && defined(SD_CS_PIN)
+  SPI.begin(SD_SCK_PIN, SD_MISO_PIN, SD_MOSI_PIN, SD_CS_PIN);
+#endif
   if (!SD.begin(SD_CS_PIN)) {
     showSDError(); // Blocks execution here if failed
   }
