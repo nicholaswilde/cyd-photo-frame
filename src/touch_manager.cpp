@@ -22,7 +22,7 @@ void setMockTouch(bool touched, int x, int y) {
 #include <SPI.h>
 #include <XPT2046_Touchscreen.h>
 
-static SPIClass touchSPI(VSPI);
+static SPIClass touchSPI(HSPI);
 static XPT2046_Touchscreen touch(XPT2046_CS, XPT2046_IRQ);
 
 void TouchManager::begin() {
@@ -32,12 +32,10 @@ void TouchManager::begin() {
 }
 
 bool TouchManager::isTouched() {
-    touchSPI.begin(XPT2046_CLK, XPT2046_MISO, XPT2046_MOSI, XPT2046_CS);
     return touch.touched();
 }
 
 bool TouchManager::getTouchPoint(int& x, int& y) {
-    touchSPI.begin(XPT2046_CLK, XPT2046_MISO, XPT2046_MOSI, XPT2046_CS);
     if (!touch.touched()) {
         return false;
     }
