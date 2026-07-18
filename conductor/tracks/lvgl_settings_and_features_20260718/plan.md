@@ -15,10 +15,10 @@
 - [x] Task: Phase Verification & Checkpoint (Refer to workflow.md) 40d5870
 
 ## Phase 2: Secret Gesture & Settings UI Layout
-- [ ] Task: Implement host-native unit tests for gesture detection and state changes
-  - [ ] Write tests verifying that a long-press triggers the settings state transition
-- [ ] Task: Implement Secret Long-Press Gesture
-  - [ ] Add coordinates and duration tracking to touch processing in touch_handler
+- [x] Task: Implement host-native unit tests for gesture detection and state changes b66e641
+  - [x] Write tests verifying that a long-press triggers the settings state transition
+- [~] Task: Implement Secret Long-Press Gesture
+  - [x] Add coordinates and duration tracking to touch processing in touch_handler b66e641
   - [ ] Handle state transitions (STATE_SLIDESHOW <-> STATE_SETTINGS) in src/main.cpp
 - [ ] Task: Build LVGL Settings Page UI
   - [ ] Initialize settings screen using Catppuccin theme colors
