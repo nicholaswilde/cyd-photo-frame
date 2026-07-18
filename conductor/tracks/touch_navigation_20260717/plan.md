@@ -9,9 +9,9 @@
 
 ## Phase 2: Non-Blocking Slideshow Delay Refactor
 
-- [ ] Task: Implement Non-Blocking Wait Loop
-    - [ ] Write unit tests for non-blocking timing loop with interrupt flags
-    - [ ] Refactor blocking `delay(10000)` in `main.cpp` to check a loop interval every 50ms
+- [x] Task: Implement Non-Blocking Wait Loop [ca61e69]
+    - [x] Write unit tests for non-blocking timing loop with interrupt flags
+    - [x] Refactor blocking `delay(10000)` in `main.cpp` to check a loop interval every 50ms
 - [ ] Task: Conductor - User Manual Verification 'Phase 2: Non-Blocking Slideshow Delay Refactor' (Protocol in workflow.md)
 
 ## Phase 3: Touch Driver Integration and Setup
