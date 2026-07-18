@@ -24,7 +24,7 @@
   - [x] Initialize settings screen using Catppuccin theme colors
   - [x] Add a scrollable page containing a slider for Brightness, switches for Random Mode and Filename Display, a slider for Slideshow Delay, and a switch for Inactivity Sleep
   - [x] Implement EXIT/Save button to close Settings UI and return to slideshow
-- [ ] Task: Phase Verification & Checkpoint (Refer to workflow.md)
+- [x] Task: Phase Verification & Checkpoint (Refer to workflow.md) 9f16ef2
 
 ## Phase 3: Hardware Integrations & Features
 - [ ] Task: Write host-native unit tests for Preferences persistence and LDR auto-brightness
