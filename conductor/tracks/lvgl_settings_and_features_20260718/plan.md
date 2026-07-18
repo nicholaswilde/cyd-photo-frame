@@ -1,17 +1,17 @@
 # Plan: LVGL Settings and Features
 
 ## Phase 1: Project Integration & LVGL Setup
-- [ ] Task: Configure PlatformIO and build environment
-  - [ ] Add `lvgl/lvgl@^8.3.11` dependency to platformio.ini for both cyd_28r and cyd_35c
-  - [ ] Configure target build flags and SPI/I2C overrides for LVGL compatibility
-- [ ] Task: Implement host-native mock tests for LVGL initialization
-  - [ ] Add basic unit tests under tests/ to verify display driver configuration structures
-- [ ] Task: Initialize LVGL and implement Drivers
-  - [ ] Create include/lv_conf.h based on the v8 template
-  - [ ] Create display flush callback (bind LVGL to TFT_eSPI)
-  - [ ] Create input read callback (bind LVGL to TouchManager)
-- [ ] Task: Integrate LVGL Task Handler in Main Loop
-  - [ ] Update src/main.cpp to call lv_tick_inc() and lv_timer_handler() periodically
+- [x] Task: Configure PlatformIO and build environment a512705
+  - [x] Add `lvgl/lvgl@^8.3.11` dependency to platformio.ini for both cyd_28r and cyd_35c
+  - [x] Configure target build flags and SPI/I2C overrides for LVGL compatibility
+- [x] Task: Implement host-native mock tests for LVGL initialization a512705
+  - [x] Add basic unit tests under tests/ to verify display driver configuration structures
+- [x] Task: Initialize LVGL and implement Drivers a512705
+  - [x] Create include/lv_conf.h based on the v8 template
+  - [x] Create display flush callback (bind LVGL to TFT_eSPI)
+  - [x] Create input read callback (bind LVGL to TouchManager)
+- [x] Task: Integrate LVGL Task Handler in Main Loop a512705
+  - [x] Update src/main.cpp to call lv_tick_inc() and lv_timer_handler() periodically
 - [ ] Task: Phase Verification & Checkpoint (Refer to workflow.md)
 
 ## Phase 2: Secret Gesture & Settings UI Layout
