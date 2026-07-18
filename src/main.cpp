@@ -8,12 +8,14 @@
 #include "file_cache.h"
 #include "slideshow_timer.h"
 #include "touch_manager.h"
+#include "touch_handler.h"
 
 // Initialize the TFT object. 
 // Note: Pins and drivers are automatically handled by platformio.ini build_flags!
 TFT_eSPI tft = TFT_eSPI();
 FileCache fileCache(64);
 SlideshowTimer slideshowTimer(10000);
+TouchHandler touchHandler(TFT_HEIGHT, TFT_WIDTH);
 
 // SD Card Chip Select for CYD
 // const uint8_t SD_CS_PIN = 5;
@@ -196,6 +198,35 @@ void loop() {
   if (fileCache.isEmpty()) {
     delay(1000);
     return;
+  }
+
+  // Check for touch input
+  bool touched = TouchManager::isTouched();
+  int rawX = 0, rawY = 0;
+  if (touched) {
+    TouchManager::getTouchPoint(rawX, rawY);
+  }
+
+  TouchZone zone = touchHandler.processTouch(touched, rawX, rawY, millis());
+  if (zone != TouchZone::NONE) {
+    if (zone == TouchZone::LEFT) {
+      Serial.println("[Touch] Left tapped - Previous Image");
+      std::string prevFile = fileCache.getPrevious();
+      renderScaledJpg(prevFile.c_str());
+      slideshowTimer.reset(millis());
+    } else if (zone == TouchZone::RIGHT) {
+      Serial.println("[Touch] Right tapped - Next Image");
+      std::string nextFile = fileCache.getNext();
+      renderScaledJpg(nextFile.c_str());
+      slideshowTimer.reset(millis());
+    } else if (zone == TouchZone::CENTER) {
+      bool isPaused = !slideshowTimer.isPaused();
+      slideshowTimer.setPaused(isPaused);
+      Serial.printf("[Touch] Center tapped - %s Slideshow\n", isPaused ? "Paused" : "Resumed");
+      if (!isPaused) {
+        slideshowTimer.reset(millis());
+      }
+    }
   }
 
   if (slideshowTimer.isElapsed(millis())) {
