@@ -13,10 +13,9 @@ static int mapRangeClipped(int x, int in_min, int in_max, int out_max) {
 
 TouchZone TouchHandler::processTouch(bool isTouched, int rawX, int rawY, unsigned long currentTimeMs) {
     if (!isTouched) {
-        return TouchZone::NONE;
-    }
-    
-    if (currentTimeMs - m_lastTapTimeMs < m_debounceMs) {
+        m_wasTouched = false;
+        m_touchStartZone = TouchZone::NONE;
+        m_longPressTriggered = false;
         return TouchZone::NONE;
     }
     
@@ -26,8 +25,6 @@ TouchZone TouchHandler::processTouch(bool isTouched, int rawX, int rawY, unsigne
     bool isCapacitive = (rawX <= m_displayWidth * 2 && rawY <= m_displayHeight * 2);
     mapCoordinates(rawX, rawY, pixelX, pixelY, isCapacitive);
     
-    m_lastTapTimeMs = currentTimeMs;
-    
     // Determine row (vertical splitting: top 1/4, bottom 1/4, middle 1/2)
     bool isTopRow = (pixelY < m_displayHeight / 4);
     bool isBottomRow = (pixelY >= (3 * m_displayHeight) / 4);
@@ -36,18 +33,41 @@ TouchZone TouchHandler::processTouch(bool isTouched, int rawX, int rawY, unsigne
     bool isLeftCol = (pixelX < m_displayWidth / 3);
     bool isRightCol = (pixelX >= (2 * m_displayWidth) / 3);
     
+    TouchZone currentZone = TouchZone::NONE;
     if (isTopRow) {
-        if (isLeftCol) return TouchZone::TOP_LEFT;
-        if (isRightCol) return TouchZone::TOP_RIGHT;
-        return TouchZone::TOP_CENTER;
+        if (isLeftCol) currentZone = TouchZone::TOP_LEFT;
+        else if (isRightCol) currentZone = TouchZone::TOP_RIGHT;
+        else currentZone = TouchZone::TOP_CENTER;
     } else if (isBottomRow) {
-        if (isLeftCol) return TouchZone::BOTTOM_LEFT;
-        if (isRightCol) return TouchZone::BOTTOM_RIGHT;
-        return TouchZone::BOTTOM_CENTER;
+        if (isLeftCol) currentZone = TouchZone::BOTTOM_LEFT;
+        else if (isRightCol) currentZone = TouchZone::BOTTOM_RIGHT;
+        else currentZone = TouchZone::BOTTOM_CENTER;
     } else {
-        if (isLeftCol) return TouchZone::MID_LEFT;
-        if (isRightCol) return TouchZone::MID_RIGHT;
-        return TouchZone::MID_CENTER;
+        if (isLeftCol) currentZone = TouchZone::MID_LEFT;
+        else if (isRightCol) currentZone = TouchZone::MID_RIGHT;
+        else currentZone = TouchZone::MID_CENTER;
+    }
+    
+    if (!m_wasTouched || currentZone != m_touchStartZone) {
+        if (currentTimeMs - m_lastTapTimeMs < m_debounceMs) {
+            return TouchZone::NONE;
+        }
+        m_wasTouched = true;
+        m_touchStartTimeMs = currentTimeMs;
+        m_touchStartZone = currentZone;
+        m_longPressTriggered = false;
+        m_lastTapTimeMs = currentTimeMs;
+        return currentZone;
+    } else {
+        if (currentZone == m_touchStartZone && m_touchStartZone == TouchZone::MID_CENTER) {
+            if (!m_longPressTriggered) {
+                if (currentTimeMs - m_touchStartTimeMs >= 1500) {
+                    m_longPressTriggered = true;
+                    return TouchZone::LONG_PRESS_MID_CENTER;
+                }
+            }
+        }
+        return TouchZone::NONE;
     }
 }
 

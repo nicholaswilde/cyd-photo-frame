@@ -53,11 +53,34 @@ void test_touch_handler_no_touch(void) {
     TEST_ASSERT_EQUAL(TouchZone::NONE, handler.processTouch(false, 2000, 2000, 1000));
 }
 
+void test_touch_handler_long_press(void) {
+    TouchHandler handler(320, 240);
+    
+    // Start touch at T=1000ms
+    TEST_ASSERT_EQUAL(TouchZone::MID_CENTER, handler.processTouch(true, 2000, 2000, 1000));
+    
+    // Hold touch at T=1500ms (500ms elapsed) - should return NONE
+    TEST_ASSERT_EQUAL(TouchZone::NONE, handler.processTouch(true, 2000, 2000, 1500));
+    
+    // Hold touch at T=2490ms (1490ms elapsed) - should return NONE
+    TEST_ASSERT_EQUAL(TouchZone::NONE, handler.processTouch(true, 2000, 2000, 2490));
+    
+    // Hold touch at T=2500ms (1500ms elapsed) - should return LONG_PRESS_MID_CENTER
+    TEST_ASSERT_EQUAL(TouchZone::LONG_PRESS_MID_CENTER, handler.processTouch(true, 2000, 2000, 2500));
+    
+    // Continue holding at T=2600ms - should return NONE (already triggered)
+    TEST_ASSERT_EQUAL(TouchZone::NONE, handler.processTouch(true, 2000, 2000, 2600));
+    
+    // Release touch at T=3000ms
+    TEST_ASSERT_EQUAL(TouchZone::NONE, handler.processTouch(false, 2000, 2000, 3000));
+}
+
 int main(int argc, char **argv) {
     UNITY_BEGIN();
     RUN_TEST(test_touch_handler_mapping_capacitive);
     RUN_TEST(test_touch_handler_mapping_resistive);
     RUN_TEST(test_touch_handler_zones);
     RUN_TEST(test_touch_handler_no_touch);
+    RUN_TEST(test_touch_handler_long_press);
     return UNITY_END();
 }

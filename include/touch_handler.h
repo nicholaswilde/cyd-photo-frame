@@ -11,7 +11,8 @@ enum class TouchZone {
     MID_RIGHT,
     BOTTOM_LEFT,
     BOTTOM_CENTER,
-    BOTTOM_RIGHT
+    BOTTOM_RIGHT,
+    LONG_PRESS_MID_CENTER
 };
 
 class TouchHandler {
@@ -26,6 +27,11 @@ private:
     int m_displayHeight;
     unsigned long m_debounceMs;
     unsigned long m_lastTapTimeMs;
+    
+    bool m_wasTouched = false;
+    unsigned long m_touchStartTimeMs = 0;
+    TouchZone m_touchStartZone = TouchZone::NONE;
+    bool m_longPressTriggered = false;
 };
 
 #endif // TOUCH_HANDLER_H
