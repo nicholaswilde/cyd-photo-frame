@@ -16,4 +16,5 @@ A lightweight, robust digital photo frame firmware for ESP32 Cheap Yellow Device
 - **Dynamic Image Scaling**: Compute scaling factors (1/1, 1/2, 1/4, 1/8) based on image aspect ratio relative to the active display dimensions.
 - **Centering & Padding**: Calculate X and Y offsets dynamically to center the scaled image on the display, filling the background with a clean color (Catppuccin Mocha base).
 - **Infinite Slideshow Loop**: Seamlessly cycle through files, automatically rewinding to the beginning when reaching the end of the directory.
+- **Touch Controls**: Tap Left zone (0%-30% width) for previous image, Right zone (70%-100% width) for next image, and Center zone (30%-70% width) to pause/resume slideshow.
 - **Error Handling**: Graceful error UI indicating SD card connection states or corrupt/unsupported formats.
