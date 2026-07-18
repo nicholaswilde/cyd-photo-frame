@@ -7,12 +7,12 @@
     - [x] Implement a file list caching mechanism to support forward and backward traversal on the SD card
 - [x] Task: Conductor - User Manual Verification 'Phase 1: File Traversal Refactor' (Protocol in workflow.md) [e91aaaf]
 
-## Phase 2: Non-Blocking Slideshow Delay Refactor
+## Phase 2: Non-Blocking Slideshow Delay Refactor [checkpoint: 27ebfae]
 
 - [x] Task: Implement Non-Blocking Wait Loop [ca61e69]
     - [x] Write unit tests for non-blocking timing loop with interrupt flags
     - [x] Refactor blocking `delay(10000)` in `main.cpp` to check a loop interval every 50ms
-- [ ] Task: Conductor - User Manual Verification 'Phase 2: Non-Blocking Slideshow Delay Refactor' (Protocol in workflow.md)
+- [x] Task: Conductor - User Manual Verification 'Phase 2: Non-Blocking Slideshow Delay Refactor' (Protocol in workflow.md) [27ebfae]
 
 ## Phase 3: Touch Driver Integration and Setup
 
