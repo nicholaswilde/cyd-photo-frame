@@ -227,7 +227,8 @@ void LVGLManager::showSettings() {
     lv_obj_set_style_text_color(lbl_bright, lv_color_make(205, 214, 244), 0);
 
     lv_obj_t * slider_bright = lv_slider_create(row_bright);
-    lv_obj_set_size(slider_bright, 100, 10);
+    lv_obj_set_size(slider_bright, 80, 10);
+    lv_obj_set_style_pad_right(row_bright, 15, 0);
     lv_slider_set_range(slider_bright, 25, 255);
     lv_slider_set_value(slider_bright, currentBrightness, LV_ANIM_OFF);
     lv_obj_add_event_cb(slider_bright, brightness_slider_event_cb, LV_EVENT_VALUE_CHANGED, NULL);
