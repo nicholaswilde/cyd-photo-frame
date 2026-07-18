@@ -2,9 +2,9 @@
 
 ## Phase 1: File Traversal Refactor (Bidirectional Support)
 
-- [ ] Task: Design and Implement Bidirectional File Cache
-    - [ ] Write unit tests for file cache (index tracking, next/prev bounds handling)
-    - [ ] Implement a file list caching mechanism to support forward and backward traversal on the SD card
+- [x] Task: Design and Implement Bidirectional File Cache [7aa600c]
+    - [x] Write unit tests for file cache (index tracking, next/prev bounds handling)
+    - [x] Implement a file list caching mechanism to support forward and backward traversal on the SD card
 - [ ] Task: Conductor - User Manual Verification 'Phase 1: File Traversal Refactor' (Protocol in workflow.md)
 
 ## Phase 2: Non-Blocking Slideshow Delay Refactor
