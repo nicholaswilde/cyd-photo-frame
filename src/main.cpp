@@ -9,6 +9,7 @@
 #include "touch_manager.h"
 #include "touch_handler.h"
 #include "lvgl_manager.h"
+#include "hardware_logic.h"
 
 // Initialize the TFT object. 
 // Note: Pins and drivers are automatically handled by platformio.ini build_flags!
@@ -173,12 +174,22 @@ void populateCache() {
   root.close();
 }
 
+void saveConfig() {
+  Preferences prefs;
+  prefs.begin("settings", false);
+  HardwareLogic::saveSettings(prefs, currentBrightness, isAutoBrightness, slideshowTimer.getInterval(), isRandomMode, showFilename, isInactivitySleep);
+  prefs.end();
+  Serial.println("[System] Settings saved to NVS.");
+}
+
 void exitSettings() {
   currentState = STATE_SLIDESHOW;
   slideshowTimer.setPaused(false);
   slideshowTimer.reset(millis());
   Serial.println("[System] Exiting settings menu. Resuming slideshow.");
   
+  saveConfig();
+
   // Re-draw current photo to clear settings screen artifacts
   LVGLManager::hideSettings();
   tft.fillScreen(CTP_BASE);
@@ -188,6 +199,18 @@ void exitSettings() {
 void setup() {
   Serial.begin(115200);
   Serial.println("[System] Booting ESP32 CYD Photo Frame...");
+
+  // Load settings from NVS
+  {
+    Preferences prefs;
+    prefs.begin("settings", false);
+    unsigned long loadedDelay = slideshowTimer.getInterval();
+    HardwareLogic::loadSettings(prefs, currentBrightness, isAutoBrightness, loadedDelay, isRandomMode, showFilename, isInactivitySleep);
+    slideshowTimer.setInterval(loadedDelay);
+    prefs.end();
+    Serial.printf("[System] Settings loaded from NVS. Brightness: %d, Auto: %d, Delay: %lu ms, Random: %d, ShowFN: %d, Sleep: %d\n",
+                  currentBrightness, isAutoBrightness, loadedDelay, isRandomMode, showFilename, isInactivitySleep);
+  }
 
   // Initialize TFT
   tft.begin();
@@ -356,29 +379,35 @@ void loop() {
         analogWrite(TFT_BL, currentBrightness);
 #endif
         Serial.printf("[Touch] Top-Left tapped - Brightness increased to %d\n", currentBrightness);
+        saveConfig();
       } else if (zone == TouchZone::BOTTOM_LEFT) {
         currentBrightness = max(currentBrightness - 25, 25);
 #if defined(TFT_BL) && (TFT_BL >= 0)
         analogWrite(TFT_BL, currentBrightness);
 #endif
         Serial.printf("[Touch] Bottom-Left tapped - Brightness decreased to %d\n", currentBrightness);
+        saveConfig();
       } else if (zone == TouchZone::TOP_CENTER) {
         showFilename = !showFilename;
         Serial.printf("[Touch] Top-Center tapped - Filename display: %s\n", showFilename ? "ON" : "OFF");
+        saveConfig();
         renderScaledJpg(fileCache.getCurrent().c_str());
       } else if (zone == TouchZone::BOTTOM_CENTER) {
         isRandomMode = !isRandomMode;
         Serial.printf("[Touch] Bottom-Center tapped - Random mode: %s\n", isRandomMode ? "ON" : "OFF");
+        saveConfig();
       } else if (zone == TouchZone::TOP_RIGHT) {
         unsigned long currentDelay = slideshowTimer.getInterval();
         currentDelay = min(currentDelay + 1000, 60000UL);
         slideshowTimer.setInterval(currentDelay);
         Serial.printf("[Touch] Top-Right tapped - Delay increased to %lu ms\n", currentDelay);
+        saveConfig();
       } else if (zone == TouchZone::BOTTOM_RIGHT) {
         unsigned long currentDelay = slideshowTimer.getInterval();
         currentDelay = max(currentDelay - 1000, 2000UL);
         slideshowTimer.setInterval(currentDelay);
         Serial.printf("[Touch] Bottom-Right tapped - Delay decreased to %lu ms\n", currentDelay);
+        saveConfig();
       }
     }
 
