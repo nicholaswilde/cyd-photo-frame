@@ -33,9 +33,9 @@
 - [x] Task: Implement Settings Persistence 4dea98b
   - [x] Add Preferences.h calls to read configurations on boot
   - [x] Write values to NVS when settings widgets are adjusted
-- [ ] Task: Implement LDR light-sensor Auto-Brightness
-  - [ ] Add LDR GPIO 34 analog reading loop
-  - [ ] Map sensor readings to backlight duty cycle, automatically updating the hardware
+- [x] Task: Implement LDR light-sensor Auto-Brightness 643ddfb
+  - [x] Add LDR GPIO 34 analog reading loop
+  - [x] Map sensor readings to backlight duty cycle, automatically updating the hardware
 - [ ] Task: Implement Inactivity and Darkness Sleep Scheduler
   - [ ] Track last touch time; shut off display backlight if 5 minutes pass with no touches (if enabled)
   - [ ] Put screen to sleep if LDR detects absolute darkness for 5 minutes
