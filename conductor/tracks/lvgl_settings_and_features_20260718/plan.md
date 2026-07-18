@@ -40,7 +40,7 @@
   - [x] Track last touch time; shut off display backlight if 5 minutes pass with no touches (if enabled)
   - [x] Put screen to sleep if LDR detects absolute darkness for 5 minutes
   - [x] Restore backlight on touch interrupts
-- [ ] Task: Phase Verification & Checkpoint (Refer to workflow.md)
+- [x] Task: Phase Verification & Checkpoint (Refer to workflow.md) 2f6cc4a
 
 ## Phase 4: Visual Polishing & Transitions
 - [ ] Task: Write host-native unit tests for backlight fade states
