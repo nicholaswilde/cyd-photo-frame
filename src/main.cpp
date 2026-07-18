@@ -7,6 +7,7 @@
 #include "sd_card_manager.h"
 #include "file_cache.h"
 #include "slideshow_timer.h"
+#include "touch_manager.h"
 
 // Initialize the TFT object. 
 // Note: Pins and drivers are automatically handled by platformio.ini build_flags!
@@ -160,6 +161,9 @@ void setup() {
   // Initialize TFT
   tft.begin();
   tft.setRotation(1); // Landscape orientation
+
+  // Initialize Touch Screen
+  TouchManager::begin();
 
   // Initialize the TJpg_Decoder
   TJpgDec.setCallback(tft_output);
