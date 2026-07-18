@@ -193,6 +193,9 @@ void setup() {
   tft.begin();
   tft.setRotation(1); // Landscape orientation
 
+  // Initialize Touch Screen
+  TouchManager::begin();
+
   // Initialize LVGL
   LVGLManager::init(tft.width(), tft.height());
   LVGLManager::setExitCallback(exitSettings);
@@ -202,9 +205,6 @@ void setup() {
   pinMode(TFT_BL, OUTPUT);
   analogWrite(TFT_BL, currentBrightness);
 #endif
-
-  // Initialize Touch Screen
-  TouchManager::begin();
 
   // Initialize the TJpg_Decoder
   TJpgDec.setCallback(tft_output);
