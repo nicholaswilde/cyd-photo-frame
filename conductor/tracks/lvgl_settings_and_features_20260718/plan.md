@@ -27,9 +27,9 @@
 - [x] Task: Phase Verification & Checkpoint (Refer to workflow.md) 9f16ef2
 
 ## Phase 3: Hardware Integrations & Features
-- [ ] Task: Write host-native unit tests for Preferences persistence and LDR auto-brightness
-  - [ ] Implement mock Preferences class and test saving/restoring configurations
-  - [ ] Test auto-brightness mapping calculations
+- [x] Task: Write host-native unit tests for Preferences persistence and LDR auto-brightness e11918f
+  - [x] Implement mock Preferences class and test saving/restoring configurations
+  - [x] Test auto-brightness mapping calculations
 - [ ] Task: Implement Settings Persistence
   - [ ] Add Preferences.h calls to read configurations on boot
   - [ ] Write values to NVS when settings widgets are adjusted
