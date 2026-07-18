@@ -27,6 +27,9 @@ bool isInactivitySleep = false;
 #include "app_state.h"
 AppState currentState = STATE_SLIDESHOW;
 
+bool isSleeping = false;
+unsigned long lastTouchTimeMs = 0;
+
 // SD Card Chip Select for CYD
 // const uint8_t SD_CS_PIN = 5;
 
@@ -212,6 +215,8 @@ void setup() {
                   currentBrightness, isAutoBrightness, loadedDelay, isRandomMode, showFilename, isInactivitySleep);
   }
 
+  lastTouchTimeMs = millis();
+
   // Initialize LDR Sensor Pin
   pinMode(34, INPUT);
 
@@ -340,17 +345,48 @@ void loop() {
     return;
   }
 
+  unsigned long now = millis();
+
+  // Read LDR for auto-brightness and darkness sleep
+  int rawLdr = analogRead(34);
+  
+  // Track absolute darkness sleep (LDR < 100)
+  static unsigned long darknessStartTimeMs = 0;
+  bool isDark = (rawLdr < 100);
+  
+  if (isDark) {
+    if (darknessStartTimeMs == 0) {
+      darknessStartTimeMs = now;
+    } else if (now - darknessStartTimeMs >= 300000UL && !isSleeping) { // 5 minutes of absolute darkness
+      isSleeping = true;
+      Serial.println("[System] Entering darkness sleep.");
+#if defined(TFT_BL) && (TFT_BL >= 0)
+      analogWrite(TFT_BL, 0);
+#endif
+    }
+  } else {
+    darknessStartTimeMs = 0;
+    // Auto-wake from darkness sleep if light returns
+    if (isSleeping && rawLdr >= 150) { // Hysteresis threshold
+      isSleeping = false;
+      lastTouchTimeMs = now;
+      Serial.println("[System] Light detected - Auto-waking from darkness sleep.");
+#if defined(TFT_BL) && (TFT_BL >= 0)
+      analogWrite(TFT_BL, currentBrightness);
+#endif
+    }
+  }
+
   // Auto Brightness LDR Polling (GPIO 34)
-  if (isAutoBrightness) {
+  if (isAutoBrightness && !isSleeping) {
     static unsigned long lastLdrReadTime = 0;
-    if (millis() - lastLdrReadTime >= 200) { // Poll every 200ms
-      int rawLdr = analogRead(34);
+    if (now - lastLdrReadTime >= 200) { // Poll every 200ms
       int targetBrightness = HardwareLogic::mapLdrToBrightness(rawLdr);
       currentBrightness = HardwareLogic::smoothBrightness(currentBrightness, targetBrightness, 0.05f);
 #if defined(TFT_BL) && (TFT_BL >= 0)
       analogWrite(TFT_BL, currentBrightness);
 #endif
-      lastLdrReadTime = millis();
+      lastLdrReadTime = now;
     }
   }
 
@@ -359,14 +395,40 @@ void loop() {
   int rawX = 0, rawY = 0;
   if (touched) {
     TouchManager::getTouchPoint(rawX, rawY);
+    lastTouchTimeMs = now; // Reset inactivity timer on physical touch
+    
     static unsigned long lastTouchPrintTime = 0;
-    if (millis() - lastTouchPrintTime > 250) { // Limit print frequency to 250ms
+    if (now - lastTouchPrintTime > 250) { // Limit print frequency to 250ms
       Serial.printf("[Touch] Raw Touch: X=%d, Y=%d\n", rawX, rawY);
-      lastTouchPrintTime = millis();
+      lastTouchPrintTime = now;
+    }
+
+    // Wake screen if it was sleeping
+    if (isSleeping) {
+      isSleeping = false;
+      Serial.println("[System] Screen woke up on touch.");
+#if defined(TFT_BL) && (TFT_BL >= 0)
+      analogWrite(TFT_BL, currentBrightness);
+#endif
+      // Clear touchHandler state and skip processing this touch to prevent accidental navigation
+      touchHandler.processTouch(false, 0, 0, now);
+      delay(200); // Debounce physical touch release
+      return;     // Skip processing tap zones for this click
     }
   }
 
-  TouchZone zone = touchHandler.processTouch(touched, rawX, rawY, millis());
+  // Inactivity Sleep (if enabled)
+  if (isInactivitySleep && !isSleeping) {
+    if (now - lastTouchTimeMs >= 300000UL) { // 5 minutes
+      isSleeping = true;
+      Serial.println("[System] Entering inactivity sleep.");
+#if defined(TFT_BL) && (TFT_BL >= 0)
+      analogWrite(TFT_BL, 0);
+#endif
+    }
+  }
+
+  TouchZone zone = touchHandler.processTouch(touched, rawX, rawY, now);
   if (currentState == STATE_SLIDESHOW) {
     if (zone != TouchZone::NONE) {
       if (zone == TouchZone::LONG_PRESS_MID_CENTER) {
@@ -378,17 +440,17 @@ void loop() {
       } else if (zone == TouchZone::MID_LEFT) {
         Serial.println("[Touch] Mid-Left tapped - Previous Image");
         showPreviousImage();
-        slideshowTimer.reset(millis());
+        slideshowTimer.reset(now);
       } else if (zone == TouchZone::MID_RIGHT) {
         Serial.println("[Touch] Mid-Right tapped - Next Image");
         showNextImage();
-        slideshowTimer.reset(millis());
+        slideshowTimer.reset(now);
       } else if (zone == TouchZone::MID_CENTER) {
         bool isPaused = !slideshowTimer.isPaused();
         slideshowTimer.setPaused(isPaused);
         Serial.printf("[Touch] Mid-Center tapped - %s Slideshow\n", isPaused ? "Paused" : "Resumed");
         if (!isPaused) {
-          slideshowTimer.reset(millis());
+          slideshowTimer.reset(now);
         }
       } else if (zone == TouchZone::TOP_LEFT) {
         currentBrightness = min(currentBrightness + 25, 255);
@@ -428,13 +490,13 @@ void loop() {
       }
     }
 
-    if (slideshowTimer.isElapsed(millis())) {
+    if (slideshowTimer.isElapsed(now)) {
       showNextImage();
-      slideshowTimer.reset(millis());
+      slideshowTimer.reset(now);
     }
   } else {
     // In STATE_SETTINGS, clear touchHandler's state machine
-    touchHandler.processTouch(false, 0, 0, millis());
+    touchHandler.processTouch(false, 0, 0, now);
   }
 
   LVGLManager::handle();
