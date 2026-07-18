@@ -1,6 +1,6 @@
 # Plan: LVGL Settings and Features
 
-## Phase 1: Project Integration & LVGL Setup
+## Phase 1: Project Integration & LVGL Setup [checkpoint: 40d5870]
 - [x] Task: Configure PlatformIO and build environment a512705
   - [x] Add `lvgl/lvgl@^8.3.11` dependency to platformio.ini for both cyd_28r and cyd_35c
   - [x] Configure target build flags and SPI/I2C overrides for LVGL compatibility
@@ -12,7 +12,7 @@
   - [x] Create input read callback (bind LVGL to TouchManager)
 - [x] Task: Integrate LVGL Task Handler in Main Loop a512705
   - [x] Update src/main.cpp to call lv_tick_inc() and lv_timer_handler() periodically
-- [ ] Task: Phase Verification & Checkpoint (Refer to workflow.md)
+- [x] Task: Phase Verification & Checkpoint (Refer to workflow.md) 40d5870
 
 ## Phase 2: Secret Gesture & Settings UI Layout
 - [ ] Task: Implement host-native unit tests for gesture detection and state changes
