@@ -43,8 +43,8 @@
 - [x] Task: Phase Verification & Checkpoint (Refer to workflow.md) 2f6cc4a
 
 ## Phase 4: Visual Polishing & Transitions
-- [ ] Task: Write host-native unit tests for backlight fade states
-  - [ ] Verify fade transition timing calculations and step interpolation
+- [x] Task: Write host-native unit tests for backlight fade states f2d4b7d
+  - [x] Verify fade transition timing calculations and step interpolation
 - [ ] Task: Implement Fade-to-Black transitions
   - [ ] Add non-blocking smooth dimming transition before next image decode
   - [ ] Fade back up to target brightness after draw is finished
