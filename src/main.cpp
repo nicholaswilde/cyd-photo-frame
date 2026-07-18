@@ -4,7 +4,6 @@
 #include <SD.h>
 #include <TFT_eSPI.h>
 #include <TJpg_Decoder.h>
-#include "sd_card_manager.h"
 #include "file_cache.h"
 #include "slideshow_timer.h"
 #include "touch_manager.h"
