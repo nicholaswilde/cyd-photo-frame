@@ -36,10 +36,10 @@
 - [x] Task: Implement LDR light-sensor Auto-Brightness 643ddfb
   - [x] Add LDR GPIO 34 analog reading loop
   - [x] Map sensor readings to backlight duty cycle, automatically updating the hardware
-- [ ] Task: Implement Inactivity and Darkness Sleep Scheduler
-  - [ ] Track last touch time; shut off display backlight if 5 minutes pass with no touches (if enabled)
-  - [ ] Put screen to sleep if LDR detects absolute darkness for 5 minutes
-  - [ ] Restore backlight on touch interrupts
+- [x] Task: Implement Inactivity and Darkness Sleep Scheduler 2f6cc4a
+  - [x] Track last touch time; shut off display backlight if 5 minutes pass with no touches (if enabled)
+  - [x] Put screen to sleep if LDR detects absolute darkness for 5 minutes
+  - [x] Restore backlight on touch interrupts
 - [ ] Task: Phase Verification & Checkpoint (Refer to workflow.md)
 
 ## Phase 4: Visual Polishing & Transitions
