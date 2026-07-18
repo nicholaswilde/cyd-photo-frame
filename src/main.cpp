@@ -10,6 +10,12 @@
 #include "touch_handler.h"
 #include "lvgl_manager.h"
 #include "hardware_logic.h"
+#include "backlight_fader.h"
+
+BacklightFader fader;
+bool transitionPending = false;
+enum TransitionDirection { DIR_NEXT, DIR_PREV };
+TransitionDirection pendingDirection = DIR_NEXT;
 
 // Initialize the TFT object. 
 // Note: Pins and drivers are automatically handled by platformio.ini build_flags!
@@ -360,9 +366,6 @@ void loop() {
     } else if (now - darknessStartTimeMs >= 300000UL && !isSleeping) { // 5 minutes of absolute darkness
       isSleeping = true;
       Serial.println("[System] Entering darkness sleep.");
-#if defined(TFT_BL) && (TFT_BL >= 0)
-      analogWrite(TFT_BL, 0);
-#endif
     }
   } else {
     darknessStartTimeMs = 0;
@@ -371,21 +374,15 @@ void loop() {
       isSleeping = false;
       lastTouchTimeMs = now;
       Serial.println("[System] Light detected - Auto-waking from darkness sleep.");
-#if defined(TFT_BL) && (TFT_BL >= 0)
-      analogWrite(TFT_BL, currentBrightness);
-#endif
     }
   }
 
   // Auto Brightness LDR Polling (GPIO 34)
-  if (isAutoBrightness && !isSleeping) {
+  if (isAutoBrightness && !isSleeping && !transitionPending) {
     static unsigned long lastLdrReadTime = 0;
     if (now - lastLdrReadTime >= 200) { // Poll every 200ms
       int targetBrightness = HardwareLogic::mapLdrToBrightness(rawLdr);
       currentBrightness = HardwareLogic::smoothBrightness(currentBrightness, targetBrightness, 0.05f);
-#if defined(TFT_BL) && (TFT_BL >= 0)
-      analogWrite(TFT_BL, currentBrightness);
-#endif
       lastLdrReadTime = now;
     }
   }
@@ -407,9 +404,6 @@ void loop() {
     if (isSleeping) {
       isSleeping = false;
       Serial.println("[System] Screen woke up on touch.");
-#if defined(TFT_BL) && (TFT_BL >= 0)
-      analogWrite(TFT_BL, currentBrightness);
-#endif
       // Clear touchHandler state and skip processing this touch to prevent accidental navigation
       touchHandler.processTouch(false, 0, 0, now);
       delay(200); // Debounce physical touch release
@@ -422,9 +416,6 @@ void loop() {
     if (now - lastTouchTimeMs >= 300000UL) { // 5 minutes
       isSleeping = true;
       Serial.println("[System] Entering inactivity sleep.");
-#if defined(TFT_BL) && (TFT_BL >= 0)
-      analogWrite(TFT_BL, 0);
-#endif
     }
   }
 
@@ -439,12 +430,20 @@ void loop() {
         LVGLManager::showSettings();
       } else if (zone == TouchZone::MID_LEFT) {
         Serial.println("[Touch] Mid-Left tapped - Previous Image");
-        showPreviousImage();
-        slideshowTimer.reset(now);
+        if (!transitionPending) {
+          transitionPending = true;
+          pendingDirection = DIR_PREV;
+          fader.startFade(currentBrightness, 0, 300);
+          slideshowTimer.setPaused(true);
+        }
       } else if (zone == TouchZone::MID_RIGHT) {
         Serial.println("[Touch] Mid-Right tapped - Next Image");
-        showNextImage();
-        slideshowTimer.reset(now);
+        if (!transitionPending) {
+          transitionPending = true;
+          pendingDirection = DIR_NEXT;
+          fader.startFade(currentBrightness, 0, 300);
+          slideshowTimer.setPaused(true);
+        }
       } else if (zone == TouchZone::MID_CENTER) {
         bool isPaused = !slideshowTimer.isPaused();
         slideshowTimer.setPaused(isPaused);
@@ -454,16 +453,10 @@ void loop() {
         }
       } else if (zone == TouchZone::TOP_LEFT) {
         currentBrightness = min(currentBrightness + 25, 255);
-#if defined(TFT_BL) && (TFT_BL >= 0)
-        analogWrite(TFT_BL, currentBrightness);
-#endif
         Serial.printf("[Touch] Top-Left tapped - Brightness increased to %d\n", currentBrightness);
         saveConfig();
       } else if (zone == TouchZone::BOTTOM_LEFT) {
         currentBrightness = max(currentBrightness - 25, 25);
-#if defined(TFT_BL) && (TFT_BL >= 0)
-        analogWrite(TFT_BL, currentBrightness);
-#endif
         Serial.printf("[Touch] Bottom-Left tapped - Brightness decreased to %d\n", currentBrightness);
         saveConfig();
       } else if (zone == TouchZone::TOP_CENTER) {
@@ -490,14 +483,44 @@ void loop() {
       }
     }
 
-    if (slideshowTimer.isElapsed(now)) {
-      showNextImage();
-      slideshowTimer.reset(now);
+    if (slideshowTimer.isElapsed(now) && !transitionPending) {
+      transitionPending = true;
+      pendingDirection = DIR_NEXT;
+      fader.startFade(currentBrightness, 0, 300);
+      slideshowTimer.setPaused(true);
     }
   } else {
     // In STATE_SETTINGS, clear touchHandler's state machine
     touchHandler.processTouch(false, 0, 0, now);
   }
+
+  // Tick the fader and obtain current interpolated brightness
+  int fadeBrightness = currentBrightness;
+  bool fadeDone = fader.update(now, fadeBrightness);
+
+  if (transitionPending && fader.getState() == BacklightFader::STATE_IDLE && fadeDone) {
+    if (fadeBrightness == 0) {
+      // Fade out complete, render next image
+      if (pendingDirection == DIR_NEXT) {
+        showNextImage();
+      } else {
+        showPreviousImage();
+      }
+      // Start fading back in
+      fader.startFade(0, currentBrightness, 300);
+    } else {
+      // Fade in complete
+      transitionPending = false;
+      slideshowTimer.setPaused(false);
+      slideshowTimer.reset(now);
+    }
+  }
+
+  // Apply final brightness to backlight pin
+  int finalBacklight = isSleeping ? 0 : fadeBrightness;
+#if defined(TFT_BL) && (TFT_BL >= 0)
+  analogWrite(TFT_BL, finalBacklight);
+#endif
 
   LVGLManager::handle();
   delay(50);
