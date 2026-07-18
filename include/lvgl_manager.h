@@ -9,6 +9,10 @@ public:
     static bool isInitialized();
     static int getWidth();
     static int getHeight();
+    
+    static void setExitCallback(void (*exit_cb)());
+    static void showSettings();
+    static void hideSettings();
 };
 
 #endif // LVGL_MANAGER_H

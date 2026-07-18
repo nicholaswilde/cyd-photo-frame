@@ -20,6 +20,14 @@ TouchHandler touchHandler(TFT_HEIGHT, TFT_WIDTH);
 int currentBrightness = 255;
 bool showFilename = true;
 bool isRandomMode = false;
+bool isAutoBrightness = false;
+bool isInactivitySleep = false;
+
+enum AppState {
+  STATE_SLIDESHOW,
+  STATE_SETTINGS
+};
+AppState currentState = STATE_SLIDESHOW;
 
 // SD Card Chip Select for CYD
 // const uint8_t SD_CS_PIN = 5;
@@ -168,6 +176,18 @@ void populateCache() {
   root.close();
 }
 
+void exitSettings() {
+  currentState = STATE_SLIDESHOW;
+  slideshowTimer.setPaused(false);
+  slideshowTimer.reset(millis());
+  Serial.println("[System] Exiting settings menu. Resuming slideshow.");
+  
+  // Re-draw current photo to clear settings screen artifacts
+  LVGLManager::hideSettings();
+  tft.fillScreen(CTP_BASE);
+  renderScaledJpg(fileCache.getCurrent().c_str());
+}
+
 void setup() {
   Serial.begin(115200);
   Serial.println("[System] Booting ESP32 CYD Photo Frame...");
@@ -178,6 +198,7 @@ void setup() {
 
   // Initialize LVGL
   LVGLManager::init(tft.width(), tft.height());
+  LVGLManager::setExitCallback(exitSettings);
 
   // Initialize backlight control
 #if defined(TFT_BL) && (TFT_BL >= 0)
@@ -304,57 +325,68 @@ void loop() {
   }
 
   TouchZone zone = touchHandler.processTouch(touched, rawX, rawY, millis());
-  if (zone != TouchZone::NONE) {
-    if (zone == TouchZone::MID_LEFT) {
-      Serial.println("[Touch] Mid-Left tapped - Previous Image");
-      showPreviousImage();
-      slideshowTimer.reset(millis());
-    } else if (zone == TouchZone::MID_RIGHT) {
-      Serial.println("[Touch] Mid-Right tapped - Next Image");
+  if (currentState == STATE_SLIDESHOW) {
+    if (zone != TouchZone::NONE) {
+      if (zone == TouchZone::LONG_PRESS_MID_CENTER) {
+        Serial.println("[Touch] Long Press Center - Entering Settings Menu");
+        currentState = STATE_SETTINGS;
+        slideshowTimer.setPaused(true);
+        tft.fillScreen(CTP_BASE);
+        LVGLManager::showSettings();
+      } else if (zone == TouchZone::MID_LEFT) {
+        Serial.println("[Touch] Mid-Left tapped - Previous Image");
+        showPreviousImage();
+        slideshowTimer.reset(millis());
+      } else if (zone == TouchZone::MID_RIGHT) {
+        Serial.println("[Touch] Mid-Right tapped - Next Image");
+        showNextImage();
+        slideshowTimer.reset(millis());
+      } else if (zone == TouchZone::MID_CENTER) {
+        bool isPaused = !slideshowTimer.isPaused();
+        slideshowTimer.setPaused(isPaused);
+        Serial.printf("[Touch] Mid-Center tapped - %s Slideshow\n", isPaused ? "Paused" : "Resumed");
+        if (!isPaused) {
+          slideshowTimer.reset(millis());
+        }
+      } else if (zone == TouchZone::TOP_LEFT) {
+        currentBrightness = min(currentBrightness + 25, 255);
+#if defined(TFT_BL) && (TFT_BL >= 0)
+        analogWrite(TFT_BL, currentBrightness);
+#endif
+        Serial.printf("[Touch] Top-Left tapped - Brightness increased to %d\n", currentBrightness);
+      } else if (zone == TouchZone::BOTTOM_LEFT) {
+        currentBrightness = max(currentBrightness - 25, 25);
+#if defined(TFT_BL) && (TFT_BL >= 0)
+        analogWrite(TFT_BL, currentBrightness);
+#endif
+        Serial.printf("[Touch] Bottom-Left tapped - Brightness decreased to %d\n", currentBrightness);
+      } else if (zone == TouchZone::TOP_CENTER) {
+        showFilename = !showFilename;
+        Serial.printf("[Touch] Top-Center tapped - Filename display: %s\n", showFilename ? "ON" : "OFF");
+        renderScaledJpg(fileCache.getCurrent().c_str());
+      } else if (zone == TouchZone::BOTTOM_CENTER) {
+        isRandomMode = !isRandomMode;
+        Serial.printf("[Touch] Bottom-Center tapped - Random mode: %s\n", isRandomMode ? "ON" : "OFF");
+      } else if (zone == TouchZone::TOP_RIGHT) {
+        unsigned long currentDelay = slideshowTimer.getInterval();
+        currentDelay = min(currentDelay + 1000, 60000UL);
+        slideshowTimer.setInterval(currentDelay);
+        Serial.printf("[Touch] Top-Right tapped - Delay increased to %lu ms\n", currentDelay);
+      } else if (zone == TouchZone::BOTTOM_RIGHT) {
+        unsigned long currentDelay = slideshowTimer.getInterval();
+        currentDelay = max(currentDelay - 1000, 2000UL);
+        slideshowTimer.setInterval(currentDelay);
+        Serial.printf("[Touch] Bottom-Right tapped - Delay decreased to %lu ms\n", currentDelay);
+      }
+    }
+
+    if (slideshowTimer.isElapsed(millis())) {
       showNextImage();
       slideshowTimer.reset(millis());
-    } else if (zone == TouchZone::MID_CENTER) {
-      bool isPaused = !slideshowTimer.isPaused();
-      slideshowTimer.setPaused(isPaused);
-      Serial.printf("[Touch] Mid-Center tapped - %s Slideshow\n", isPaused ? "Paused" : "Resumed");
-      if (!isPaused) {
-        slideshowTimer.reset(millis());
-      }
-    } else if (zone == TouchZone::TOP_LEFT) {
-      currentBrightness = min(currentBrightness + 25, 255);
-#if defined(TFT_BL) && (TFT_BL >= 0)
-      analogWrite(TFT_BL, currentBrightness);
-#endif
-      Serial.printf("[Touch] Top-Left tapped - Brightness increased to %d\n", currentBrightness);
-    } else if (zone == TouchZone::BOTTOM_LEFT) {
-      currentBrightness = max(currentBrightness - 25, 25);
-#if defined(TFT_BL) && (TFT_BL >= 0)
-      analogWrite(TFT_BL, currentBrightness);
-#endif
-      Serial.printf("[Touch] Bottom-Left tapped - Brightness decreased to %d\n", currentBrightness);
-    } else if (zone == TouchZone::TOP_CENTER) {
-      showFilename = !showFilename;
-      Serial.printf("[Touch] Top-Center tapped - Filename display: %s\n", showFilename ? "ON" : "OFF");
-      renderScaledJpg(fileCache.getCurrent().c_str());
-    } else if (zone == TouchZone::BOTTOM_CENTER) {
-      isRandomMode = !isRandomMode;
-      Serial.printf("[Touch] Bottom-Center tapped - Random mode: %s\n", isRandomMode ? "ON" : "OFF");
-    } else if (zone == TouchZone::TOP_RIGHT) {
-      unsigned long currentDelay = slideshowTimer.getInterval();
-      currentDelay = min(currentDelay + 1000, 60000UL);
-      slideshowTimer.setInterval(currentDelay);
-      Serial.printf("[Touch] Top-Right tapped - Delay increased to %lu ms\n", currentDelay);
-    } else if (zone == TouchZone::BOTTOM_RIGHT) {
-      unsigned long currentDelay = slideshowTimer.getInterval();
-      currentDelay = max(currentDelay - 1000, 2000UL);
-      slideshowTimer.setInterval(currentDelay);
-      Serial.printf("[Touch] Bottom-Right tapped - Delay decreased to %lu ms\n", currentDelay);
     }
-  }
-
-  if (slideshowTimer.isElapsed(millis())) {
-    showNextImage();
-    slideshowTimer.reset(millis());
+  } else {
+    // In STATE_SETTINGS, clear touchHandler's state machine
+    touchHandler.processTouch(false, 0, 0, millis());
   }
 
   LVGLManager::handle();
