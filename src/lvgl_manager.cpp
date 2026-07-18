@@ -62,6 +62,7 @@ static void my_touchpad_read(lv_indev_drv_t *indev_driver, lv_indev_data_t *data
 
 static void (*exitCallback)() = nullptr;
 static lv_obj_t* settings_screen = nullptr;
+static lv_obj_t* slider_bright_ptr = nullptr;
 
 extern int currentBrightness;
 extern bool showFilename;
@@ -167,6 +168,13 @@ void LVGLManager::handle() {
 #if !defined(NATIVE_TEST)
     if (initialized) {
         lv_timer_handler();
+        
+        // If settings menu is open and auto-brightness is active, keep slider in sync
+        if (settings_screen && lv_scr_act() == settings_screen && isAutoBrightness) {
+            if (slider_bright_ptr) {
+                lv_slider_set_value(slider_bright_ptr, currentBrightness, LV_ANIM_OFF);
+            }
+        }
     }
 #endif
 }
@@ -227,6 +235,7 @@ void LVGLManager::showSettings() {
     lv_obj_set_style_text_color(lbl_bright, lv_color_make(205, 214, 244), 0);
 
     lv_obj_t * slider_bright = lv_slider_create(row_bright);
+    slider_bright_ptr = slider_bright;
     lv_obj_set_size(slider_bright, 80, 10);
     lv_obj_set_style_pad_right(row_bright, 15, 0);
     lv_slider_set_range(slider_bright, 25, 255);
@@ -355,6 +364,7 @@ void LVGLManager::hideSettings() {
         lv_scr_load(lv_obj_create(NULL));
         lv_obj_del(old_scr);
         settings_screen = nullptr;
+        slider_bright_ptr = nullptr;
     }
 #endif
 }

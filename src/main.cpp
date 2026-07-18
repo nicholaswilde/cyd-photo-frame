@@ -212,6 +212,9 @@ void setup() {
                   currentBrightness, isAutoBrightness, loadedDelay, isRandomMode, showFilename, isInactivitySleep);
   }
 
+  // Initialize LDR Sensor Pin
+  pinMode(34, INPUT);
+
   // Initialize TFT
   tft.begin();
   tft.setRotation(1); // Landscape orientation
@@ -335,6 +338,20 @@ void loop() {
   if (fileCache.isEmpty()) {
     delay(1000);
     return;
+  }
+
+  // Auto Brightness LDR Polling (GPIO 34)
+  if (isAutoBrightness) {
+    static unsigned long lastLdrReadTime = 0;
+    if (millis() - lastLdrReadTime >= 200) { // Poll every 200ms
+      int rawLdr = analogRead(34);
+      int targetBrightness = HardwareLogic::mapLdrToBrightness(rawLdr);
+      currentBrightness = HardwareLogic::smoothBrightness(currentBrightness, targetBrightness, 0.05f);
+#if defined(TFT_BL) && (TFT_BL >= 0)
+      analogWrite(TFT_BL, currentBrightness);
+#endif
+      lastLdrReadTime = millis();
+    }
   }
 
   // Check for touch input
