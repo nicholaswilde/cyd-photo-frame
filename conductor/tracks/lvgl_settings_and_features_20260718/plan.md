@@ -30,9 +30,9 @@
 - [x] Task: Write host-native unit tests for Preferences persistence and LDR auto-brightness e11918f
   - [x] Implement mock Preferences class and test saving/restoring configurations
   - [x] Test auto-brightness mapping calculations
-- [ ] Task: Implement Settings Persistence
-  - [ ] Add Preferences.h calls to read configurations on boot
-  - [ ] Write values to NVS when settings widgets are adjusted
+- [x] Task: Implement Settings Persistence 4dea98b
+  - [x] Add Preferences.h calls to read configurations on boot
+  - [x] Write values to NVS when settings widgets are adjusted
 - [ ] Task: Implement LDR light-sensor Auto-Brightness
   - [ ] Add LDR GPIO 34 analog reading loop
   - [ ] Map sensor readings to backlight duty cycle, automatically updating the hardware
