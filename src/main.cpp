@@ -93,19 +93,50 @@ bool cacheFileActive = false;
  * Pushes decompressed MCU blocks (usually 16x16 pixels) to the screen.
  */
 bool tft_output(int16_t x, int16_t y, uint16_t w, uint16_t h, uint16_t* bitmap) {
-  // Stop drawing if it goes beyond the screen height
-  if (y >= tft.height()) return 0;
-  
+  // 1. Calculate clipping parameters for X
+  int16_t x_start = x;
+  int16_t w_visible = w;
+  int16_t src_x_offset = 0;
+
+  if (x_start < 0) {
+    if (x_start + (int16_t)w <= 0) return 1; // Completely off-screen left
+    src_x_offset = -x_start;
+    w_visible = w + x_start;
+    x_start = 0;
+  }
+  if (x_start >= 320) return 1; // Completely off-screen right
+  if (x_start + w_visible > 320) {
+    w_visible = 320 - x_start;
+  }
+
+  // 2. Calculate clipping parameters for Y
+  int16_t y_start = y;
+  int16_t h_visible = h;
+  int16_t src_y_offset = 0;
+
+  if (y_start < 0) {
+    if (y_start + (int16_t)h <= 0) return 1; // Completely off-screen top
+    src_y_offset = -y_start;
+    h_visible = h + y_start;
+    y_start = 0;
+  }
+  if (y_start >= 240) return 0; // Completely off-screen bottom (return 0 to abort decoding!)
+  if (y_start + h_visible > 240) {
+    h_visible = 240 - y_start;
+  }
+
+  // 3. Render or Cache
   if (!cacheFileActive) {
-    // Push the block of pixels to the TFT
-    tft.pushImage(x, y, w, h, bitmap);
+    // Normal mode: push visible region to screen
+    tft.pushImage(x_start, y_start, w_visible, h_visible, bitmap + src_y_offset * w + src_x_offset, w);
   } else {
+    // Caching mode: write visible region to cacheFile
     if (cacheFile) {
-      for (int row = 0; row < h; row++) {
-        if (y + row >= 240) break;
-        unsigned long fileOffset = ((y + row) * 320 + x) * 2;
+      for (int row = 0; row < h_visible; row++) {
+        unsigned long fileOffset = ((y_start + row) * 320 + x_start) * 2;
         cacheFile.seek(fileOffset);
-        cacheFile.write((uint8_t*)(bitmap + row * w), w * 2);
+        uint16_t* src_ptr = bitmap + (src_y_offset + row) * w + src_x_offset;
+        cacheFile.write((uint8_t*)src_ptr, w_visible * 2);
       }
     }
   }
@@ -170,8 +201,6 @@ bool generateCache(const char* jpgFilename, const char* rawFilename) {
   int16_t scaled_h = img_h / scale;
   int16_t x_offset = (320 - scaled_w) / 2;
   int16_t y_offset = (240 - scaled_h) / 2;
-  if (x_offset < 0) x_offset = 0;
-  if (y_offset < 0) y_offset = 0;
 
   cacheFileActive = true;
   uint16_t drawResult = TJpgDec.drawSdJpg(x_offset, y_offset, jpgFilename);
@@ -302,9 +331,6 @@ bool renderScaledJpg(const char* filename) {
     
     int16_t x_offset = (tft.width() - scaled_w) / 2;
     int16_t y_offset = (tft.height() - scaled_h) / 2;
-
-    if (x_offset < 0) x_offset = 0;
-    if (y_offset < 0) y_offset = 0;
 
     // Clear the screen to the Catppuccin base color
     tft.fillScreen(CTP_BASE);
