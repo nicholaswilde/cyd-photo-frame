@@ -36,6 +36,10 @@ AppState currentState = STATE_SLIDESHOW;
 bool isSleeping = false;
 unsigned long lastTouchTimeMs = 0;
 
+uint8_t current_scale_sw = 1;
+int16_t current_x_offset = 0;
+int16_t current_y_offset = 0;
+
 // SD Card Chip Select for CYD
 // const uint8_t SD_CS_PIN = 5;
 
@@ -93,49 +97,41 @@ bool cacheFileActive = false;
  * Pushes decompressed MCU blocks (usually 16x16 pixels) to the screen.
  */
 bool tft_output(int16_t x, int16_t y, uint16_t w, uint16_t h, uint16_t* bitmap) {
-  // 1. Calculate clipping parameters for X
-  int16_t x_start = x;
-  int16_t w_visible = w;
-  int16_t src_x_offset = 0;
+  uint16_t w_scaled = w / current_scale_sw;
+  uint16_t h_scaled = h / current_scale_sw;
+  if (w_scaled == 0 || h_scaled == 0) return 1;
 
-  if (x_start < 0) {
-    if (x_start + (int16_t)w <= 0) return 1; // Completely off-screen left
-    src_x_offset = -x_start;
-    w_visible = w + x_start;
-    x_start = 0;
-  }
-  if (x_start >= 320) return 1; // Completely off-screen right
-  if (x_start + w_visible > 320) {
-    w_visible = 320 - x_start;
-  }
+  int16_t dest_x = current_x_offset + x / current_scale_sw;
+  int16_t dest_y = current_y_offset + y / current_scale_sw;
 
-  // 2. Calculate clipping parameters for Y
-  int16_t y_start = y;
-  int16_t h_visible = h;
-  int16_t src_y_offset = 0;
-
-  if (y_start < 0) {
-    if (y_start + (int16_t)h <= 0) return 1; // Completely off-screen top
-    src_y_offset = -y_start;
-    h_visible = h + y_start;
-    y_start = 0;
-  }
-  if (y_start >= 240) return 0; // Completely off-screen bottom (return 0 to abort decoding!)
-  if (y_start + h_visible > 240) {
-    h_visible = 240 - y_start;
+  if (dest_y >= 240) return 0;
+  
+  uint16_t scaled_bitmap[256];
+  for (uint16_t row = 0; row < h_scaled; row++) {
+    for (uint16_t col = 0; col < w_scaled; col++) {
+      scaled_bitmap[row * w_scaled + col] = bitmap[(row * current_scale_sw) * w + (col * current_scale_sw)];
+    }
   }
 
-  // 3. Render or Cache
+  int16_t w_visible = w_scaled;
+  if (dest_x >= 320) return 1;
+  if (dest_x + w_visible > 320) {
+    w_visible = 320 - dest_x;
+  }
+  
+  int16_t h_visible = h_scaled;
+  if (dest_y + h_visible > 240) {
+    h_visible = 240 - dest_y;
+  }
+
   if (!cacheFileActive) {
-    // Normal mode: push visible region to screen
-    tft.pushImage(x_start, y_start, w_visible, h_visible, bitmap + src_y_offset * w + src_x_offset, w);
+    tft.pushImage(dest_x, dest_y, w_visible, h_visible, scaled_bitmap, w_scaled);
   } else {
-    // Caching mode: write visible region to cacheFile
     if (cacheFile) {
       for (int row = 0; row < h_visible; row++) {
-        unsigned long fileOffset = ((y_start + row) * 320 + x_start) * 2;
+        unsigned long fileOffset = ((dest_y + row) * 320 + dest_x) * 2;
         cacheFile.seek(fileOffset);
-        uint16_t* src_ptr = bitmap + (src_y_offset + row) * w + src_x_offset;
+        uint16_t* src_ptr = scaled_bitmap + row * w_scaled;
         cacheFile.write((uint8_t*)src_ptr, w_visible * 2);
       }
     }
@@ -186,24 +182,39 @@ bool generateCache(const char* jpgFilename, const char* rawFilename) {
   float ratio_h = (float)img_h / 240.0f;
   float max_ratio = max(ratio_w, ratio_h);
 
-  uint8_t scale = 1;
-  if (max_ratio >= 8.0f) {
-    scale = 8;
-  } else if (max_ratio >= 4.0f) {
-    scale = 4;
-  } else if (max_ratio >= 2.0f) {
-    scale = 2;
+  uint8_t scale_hw = 1;
+  uint8_t scale_sw = 1;
+
+  if (max_ratio <= 1.0f) {
+    scale_hw = 1;
+    scale_sw = 1;
+  } else if (max_ratio <= 2.0f) {
+    scale_hw = 2;
+    scale_sw = 1;
+  } else if (max_ratio <= 4.0f) {
+    scale_hw = 4;
+    scale_sw = 1;
+  } else if (max_ratio <= 8.0f) {
+    scale_hw = 8;
+    scale_sw = 1;
+  } else {
+    scale_hw = 8;
+    scale_sw = (uint8_t)ceil(max_ratio / 8.0f);
   }
 
-  TJpgDec.setJpgScale(scale);
+  TJpgDec.setJpgScale(scale_hw);
 
-  int16_t scaled_w = img_w / scale;
-  int16_t scaled_h = img_h / scale;
+  int16_t scaled_w = img_w / (scale_hw * scale_sw);
+  int16_t scaled_h = img_h / (scale_hw * scale_sw);
   int16_t x_offset = (320 - scaled_w) / 2;
   int16_t y_offset = (240 - scaled_h) / 2;
 
+  current_scale_sw = scale_sw;
+  current_x_offset = x_offset;
+  current_y_offset = y_offset;
+
   cacheFileActive = true;
-  uint16_t drawResult = TJpgDec.drawSdJpg(x_offset, y_offset, jpgFilename);
+  uint16_t drawResult = TJpgDec.drawSdJpg(0, 0, jpgFilename);
   cacheFileActive = false;
 
   cacheFile.close();
@@ -300,43 +311,49 @@ bool renderScaledJpg(const char* filename) {
   // 1. Read the JPEG header (Returns 0 on success)
   uint16_t result = TJpgDec.getSdJpgSize(&img_w, &img_h, filename);
   
-  if (result == 0) { // 0 equals JDR_OK
-    
-    // 2. Calculate the scaling ratio needed to fit the screen
+  if (result == 0) {
     float ratio_w = (float)img_w / tft.width();
     float ratio_h = (float)img_h / tft.height();
-    
-    // Use the largest ratio to ensure the whole image fits on screen
     float max_ratio = max(ratio_w, ratio_h);
 
-    // 3. Determine the optimal TJpgDec scale factor
-    uint8_t scale = 1;
-    if (max_ratio >= 8.0) {
-      scale = 8;
-    } else if (max_ratio >= 4.0) {
-      scale = 4;
-    } else if (max_ratio >= 2.0) {
-      scale = 2;
+    uint8_t scale_hw = 1;
+    uint8_t scale_sw = 1;
+
+    if (max_ratio <= 1.0f) {
+      scale_hw = 1;
+      scale_sw = 1;
+    } else if (max_ratio <= 2.0f) {
+      scale_hw = 2;
+      scale_sw = 1;
+    } else if (max_ratio <= 4.0f) {
+      scale_hw = 4;
+      scale_sw = 1;
+    } else if (max_ratio <= 8.0f) {
+      scale_hw = 8;
+      scale_sw = 1;
+    } else {
+      scale_hw = 8;
+      scale_sw = (uint8_t)ceil(max_ratio / 8.0f);
     }
 
-    Serial.printf("Original Size: %dx%d | Screen Size: %dx%d | Scale Factor: 1/%d\n", 
-                  img_w, img_h, tft.width(), tft.height(), scale);
+    Serial.printf("Original Size: %dx%d | Screen Size: %dx%d | HW Scale: 1/%d | SW Scale: 1/%d\n", 
+                  img_w, img_h, tft.width(), tft.height(), scale_hw, scale_sw);
 
-    // Apply the scaling factor to the hardware decoder
-    TJpgDec.setJpgScale(scale);
+    TJpgDec.setJpgScale(scale_hw);
 
-    // 4. Calculate X and Y offsets to center the image
-    int16_t scaled_w = img_w / scale;
-    int16_t scaled_h = img_h / scale;
+    int16_t scaled_w = img_w / (scale_hw * scale_sw);
+    int16_t scaled_h = img_h / (scale_hw * scale_sw);
     
     int16_t x_offset = (tft.width() - scaled_w) / 2;
     int16_t y_offset = (tft.height() - scaled_h) / 2;
 
-    // Clear the screen to the Catppuccin base color
+    current_scale_sw = scale_sw;
+    current_x_offset = x_offset;
+    current_y_offset = y_offset;
+
     tft.fillScreen(CTP_BASE);
 
-    // 5. Draw the image
-    uint16_t drawResult = TJpgDec.drawSdJpg(x_offset, y_offset, filename);
+    uint16_t drawResult = TJpgDec.drawSdJpg(0, 0, filename);
     if (drawResult != 0 && drawResult != 1) {
       Serial.printf("Error during draw: JRESULT %d\n", drawResult);
       return false;
