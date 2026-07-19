@@ -62,18 +62,25 @@ bool renderRawImage(const char* filename) {
     return false;
   }
   
+  // Allocate buffer on the heap to avoid stack overflow
   const size_t bufferSize = 320 * 16;
-  uint16_t buffer[bufferSize];
+  uint16_t* buffer = (uint16_t*)malloc(bufferSize * sizeof(uint16_t));
+  if (!buffer) {
+    Serial.println("Failed to allocate buffer for raw image rendering!");
+    rawFile.close();
+    return false;
+  }
   
   tft.startWrite();
   tft.setAddrWindow(0, 0, 320, 240);
   
   while (rawFile.available()) {
-    int readCount = rawFile.read((uint8_t*)buffer, bufferSize * 2);
+    int readCount = rawFile.read((uint8_t*)buffer, bufferSize * sizeof(uint16_t));
     if (readCount <= 0) break;
-    tft.pushPixels(buffer, readCount / 2);
+    tft.pushPixels(buffer, readCount / sizeof(uint16_t));
   }
   tft.endWrite();
+  free(buffer);
   rawFile.close();
   return true;
 }
@@ -113,14 +120,26 @@ bool generateCache(const char* jpgFilename, const char* rawFilename) {
     return false;
   }
 
-  // Pre-allocate and fill with background color
+  // Pre-allocate and fill with background color using a dynamic heap buffer to prevent stack overflow
   const size_t chunkSize = 320 * 16;
-  uint16_t chunk[chunkSize];
-  for (int i = 0; i < chunkSize; i++) {
-    chunk[i] = CTP_BASE;
-  }
-  for (int i = 0; i < 240; i += 16) {
-    cacheFile.write((uint8_t*)chunk, chunkSize * 2);
+  uint16_t* chunk = (uint16_t*)malloc(chunkSize * sizeof(uint16_t));
+  if (chunk) {
+    for (size_t i = 0; i < chunkSize; i++) {
+      chunk[i] = CTP_BASE;
+    }
+    for (int i = 0; i < 240; i += 16) {
+      cacheFile.write((uint8_t*)chunk, chunkSize * sizeof(uint16_t));
+    }
+    free(chunk);
+  } else {
+    // Stack fallback using small 320 element row buffer (only 640 bytes, stack-safe)
+    uint16_t rowBuffer[320];
+    for (int i = 0; i < 320; i++) {
+      rowBuffer[i] = CTP_BASE;
+    }
+    for (int i = 0; i < 240; i++) {
+      cacheFile.write((uint8_t*)rowBuffer, 320 * sizeof(uint16_t));
+    }
   }
 
   uint16_t img_w = 0, img_h = 0;
