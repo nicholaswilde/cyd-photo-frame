@@ -36,7 +36,7 @@ AppState currentState = STATE_SLIDESHOW;
 bool isSleeping = false;
 unsigned long lastTouchTimeMs = 0;
 
-uint8_t current_scale_sw = 1;
+float current_scale_sw = 1.0f;
 int16_t current_x_offset = 0;
 int16_t current_y_offset = 0;
 
@@ -97,12 +97,19 @@ bool cacheFileActive = false;
  * Pushes decompressed MCU blocks (usually 16x16 pixels) to the screen.
  */
 bool tft_output(int16_t x, int16_t y, uint16_t w, uint16_t h, uint16_t* bitmap) {
-  uint16_t w_scaled = w / current_scale_sw;
-  uint16_t h_scaled = h / current_scale_sw;
+  // Calculate block bounds in scaled coordinate system (using rounding to prevent gaps)
+  uint16_t x_start_scaled = (uint16_t)round((float)x / current_scale_sw);
+  uint16_t x_end_scaled = (uint16_t)round((float)(x + w) / current_scale_sw);
+  uint16_t w_scaled = x_end_scaled - x_start_scaled;
+
+  uint16_t y_start_scaled = (uint16_t)round((float)y / current_scale_sw);
+  uint16_t y_end_scaled = (uint16_t)round((float)(y + h) / current_scale_sw);
+  uint16_t h_scaled = y_end_scaled - y_start_scaled;
+
   if (w_scaled == 0 || h_scaled == 0) return 1;
 
-  int16_t dest_x = current_x_offset + x / current_scale_sw;
-  int16_t dest_y = current_y_offset + y / current_scale_sw;
+  int16_t dest_x = current_x_offset + x_start_scaled;
+  int16_t dest_y = current_y_offset + y_start_scaled;
 
   if (dest_y >= 240) return 0;
   
@@ -118,7 +125,7 @@ bool tft_output(int16_t x, int16_t y, uint16_t w, uint16_t h, uint16_t* bitmap) 
   }
 
   // Bypass software scaling completely if scale is 1
-  if (current_scale_sw == 1) {
+  if (current_scale_sw == 1.0f) {
     if (!cacheFileActive) {
       tft.pushImage(dest_x, dest_y, w_visible, h_visible, bitmap, w);
     } else {
@@ -134,8 +141,7 @@ bool tft_output(int16_t x, int16_t y, uint16_t w, uint16_t h, uint16_t* bitmap) 
   }
 
   // Software scale is > 1. Copy and downsample to scaled_bitmap.
-  // Maximum possible scaled block size is (16/2)*(16/2) = 64 pixels.
-  // We allocate 256 elements which is extremely safe.
+  // Maximum possible scaled block size is (16/1)*(16/1) = 256 pixels.
   uint16_t scaled_bitmap[256];
   
   // Safe bounds guard
@@ -143,8 +149,16 @@ bool tft_output(int16_t x, int16_t y, uint16_t w, uint16_t h, uint16_t* bitmap) 
   uint16_t safe_h_scaled = h_scaled > 16 ? 16 : h_scaled;
 
   for (uint16_t row = 0; row < safe_h_scaled; row++) {
+    int16_t src_y = (int16_t)floor(((float)(y_start_scaled + row) + 0.5f) * current_scale_sw) - y;
+    if (src_y < 0) src_y = 0;
+    if (src_y >= h) src_y = h - 1;
+    
     for (uint16_t col = 0; col < safe_w_scaled; col++) {
-      scaled_bitmap[row * safe_w_scaled + col] = bitmap[(row * current_scale_sw) * w + (col * current_scale_sw)];
+      int16_t src_x = (int16_t)floor(((float)(x_start_scaled + col) + 0.5f) * current_scale_sw) - x;
+      if (src_x < 0) src_x = 0;
+      if (src_x >= w) src_x = w - 1;
+      
+      scaled_bitmap[row * safe_w_scaled + col] = bitmap[src_y * w + src_x];
     }
   }
 
@@ -207,29 +221,28 @@ bool generateCache(const char* jpgFilename, const char* rawFilename) {
   float max_ratio = max(ratio_w, ratio_h);
 
   uint8_t scale_hw = 1;
-  uint8_t scale_sw = 1;
+  float scale_sw = 1.0f;
 
-  if (max_ratio <= 1.0f) {
+  if (max_ratio < 2.0f) {
     scale_hw = 1;
-    scale_sw = 1;
-  } else if (max_ratio <= 2.0f) {
+  } else if (max_ratio < 4.0f) {
     scale_hw = 2;
-    scale_sw = 1;
-  } else if (max_ratio <= 4.0f) {
+  } else if (max_ratio < 8.0f) {
     scale_hw = 4;
-    scale_sw = 1;
-  } else if (max_ratio <= 8.0f) {
-    scale_hw = 8;
-    scale_sw = 1;
   } else {
     scale_hw = 8;
-    scale_sw = (uint8_t)ceil(max_ratio / 8.0f);
+  }
+
+  if (max_ratio > (float)scale_hw) {
+    scale_sw = max_ratio / (float)scale_hw;
+  } else {
+    scale_sw = 1.0f;
   }
 
   TJpgDec.setJpgScale(scale_hw);
 
-  int16_t scaled_w = img_w / (scale_hw * scale_sw);
-  int16_t scaled_h = img_h / (scale_hw * scale_sw);
+  int16_t scaled_w = (int16_t)round((float)img_w / ((float)scale_hw * scale_sw));
+  int16_t scaled_h = (int16_t)round((float)img_h / ((float)scale_hw * scale_sw));
   int16_t x_offset = (320 - scaled_w) / 2;
   int16_t y_offset = (240 - scaled_h) / 2;
 
@@ -355,32 +368,31 @@ bool renderScaledJpg(const char* filename) {
     float max_ratio = max(ratio_w, ratio_h);
 
     uint8_t scale_hw = 1;
-    uint8_t scale_sw = 1;
+    float scale_sw = 1.0f;
 
-    if (max_ratio <= 1.0f) {
+    if (max_ratio < 2.0f) {
       scale_hw = 1;
-      scale_sw = 1;
-    } else if (max_ratio <= 2.0f) {
+    } else if (max_ratio < 4.0f) {
       scale_hw = 2;
-      scale_sw = 1;
-    } else if (max_ratio <= 4.0f) {
+    } else if (max_ratio < 8.0f) {
       scale_hw = 4;
-      scale_sw = 1;
-    } else if (max_ratio <= 8.0f) {
-      scale_hw = 8;
-      scale_sw = 1;
     } else {
       scale_hw = 8;
-      scale_sw = (uint8_t)ceil(max_ratio / 8.0f);
     }
 
-    Serial.printf("Original Size: %dx%d | Screen Size: %dx%d | HW Scale: 1/%d | SW Scale: 1/%d\n", 
+    if (max_ratio > (float)scale_hw) {
+      scale_sw = max_ratio / (float)scale_hw;
+    } else {
+      scale_sw = 1.0f;
+    }
+
+    Serial.printf("Original Size: %dx%d | Screen Size: %dx%d | HW Scale: 1/%d | SW Scale: 1/%.2f\n", 
                   img_w, img_h, tft.width(), tft.height(), scale_hw, scale_sw);
 
     TJpgDec.setJpgScale(scale_hw);
 
-    int16_t scaled_w = img_w / (scale_hw * scale_sw);
-    int16_t scaled_h = img_h / (scale_hw * scale_sw);
+    int16_t scaled_w = (int16_t)round((float)img_w / ((float)scale_hw * scale_sw));
+    int16_t scaled_h = (int16_t)round((float)img_h / ((float)scale_hw * scale_sw));
     
     int16_t x_offset = (tft.width() - scaled_w) / 2;
     int16_t y_offset = (tft.height() - scaled_h) / 2;
