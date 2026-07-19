@@ -43,7 +43,7 @@ void loadSettings(Preferences& prefs,
     showFilename = prefs.getBool("showfn", showFilename);
     inactivitySleep = prefs.getBool("inacts", inactivitySleep);
     themeFlavor = (int)prefs.getUInt("theme", (uint32_t)themeFlavor);
-    screenOrientation = (int)prefs.getInt("screen_rot", screenOrientation);
+    screenOrientation = (int)prefs.getUInt("screen_rot", (uint32_t)screenOrientation);
     ledBrightness = (int)prefs.getUChar("led_bright", (uint8_t)ledBrightness);
 }
 
@@ -64,7 +64,7 @@ void saveSettings(Preferences& prefs,
     prefs.putBool("showfn", showFilename);
     prefs.putBool("inacts", inactivitySleep);
     prefs.putUInt("theme", (uint32_t)themeFlavor);
-    prefs.putInt("screen_rot", screenOrientation);
+    prefs.putUInt("screen_rot", (uint32_t)screenOrientation);
     prefs.putUChar("led_bright", (uint8_t)ledBrightness);
 }
 
