@@ -461,12 +461,18 @@ void drawProgress(size_t current, size_t total, const char* filename) {
 void showSDError() {
   tft.fillScreen(CTP_BASE);
   
-  tft.setTextColor(CTP_RED, CTP_BASE);
-  tft.setTextDatum(MC_DATUM); // Middle center
-  tft.drawString("NO SD CARD", tft.width() / 2, (tft.height() / 2) - 20, 4);
-  
+  // Project Title (consistent with calculation/optimization screens)
   tft.setTextColor(CTP_TEXT, CTP_BASE);
-  tft.drawString("Insert card and reboot", tft.width() / 2, (tft.height() / 2) + 20, 2);
+  tft.setTextDatum(MC_DATUM);
+  tft.drawString("CYD Photo Frame", tft.width() / 2, 40, 4);
+  
+  // Resized and colored error label (matches Optimizing Photos position and size)
+  tft.setTextColor(CTP_RED, CTP_BASE);
+  tft.drawString("NO SD CARD", tft.width() / 2, 75, 2);
+  
+  // Instruction sub-label (matches file name position and size)
+  tft.setTextColor(CTP_TEXT, CTP_BASE);
+  tft.drawString("Insert card and reboot", tft.width() / 2, 105, 2);
   
   Serial.println("Error: SD Card Mount Failed.");
   // Halt execution
