@@ -622,9 +622,29 @@ void setup() {
   TJpgDec.setCallback(tft_output);
   TJpgDec.setSwapBytes(true);
 
-  // Initialize SD Card
+  // Initialize SD Card with fallback frequencies
   Serial.println("Mounting SD Card...");
-  if (!SD.begin(SD_CS_PIN, SPI, 20000000UL, "/sd", 5, true)) {
+  bool sdSuccess = false;
+  uint32_t frequencies[] = {20000000UL, 10000000UL, 4000000UL};
+  
+#if defined(SD_SCK_PIN) && defined(SD_MISO_PIN) && defined(SD_MOSI_PIN) && defined(SD_CS_PIN)
+  SPI.begin(SD_SCK_PIN, SD_MISO_PIN, SD_MOSI_PIN, SD_CS_PIN);
+#endif
+
+  for (uint32_t freq : frequencies) {
+    for (int retry = 1; retry <= 2; retry++) {
+      if (SD.begin(SD_CS_PIN, SPI, freq, "/sd", 5, true)) {
+        sdSuccess = true;
+        Serial.printf("[SD] Mounted successfully at %lu MHz.\n", freq / 1000000UL);
+        break;
+      }
+      Serial.printf("[SD] Mount failed at %lu MHz (attempt %d). Retrying...\n", freq / 1000000UL, retry);
+      delay(100);
+    }
+    if (sdSuccess) break;
+  }
+
+  if (!sdSuccess) {
     showSDError(); // Blocks execution here if failed
   }
   Serial.println("SD Card mounted successfully.");
