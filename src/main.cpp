@@ -179,7 +179,7 @@ bool generateCache(const char* jpgFilename, const char* rawFilename) {
 
   cacheFile.close();
 
-  if (drawResult != 0) {
+  if (drawResult != 0 && drawResult != 1) {
     Serial.printf("Error during caching decode: %d\n", drawResult);
     SD.remove(rawFilename);
     return false;
@@ -311,7 +311,7 @@ bool renderScaledJpg(const char* filename) {
 
     // 5. Draw the image
     uint16_t drawResult = TJpgDec.drawSdJpg(x_offset, y_offset, filename);
-    if(drawResult != 0) {
+    if (drawResult != 0 && drawResult != 1) {
       Serial.printf("Error during draw: JRESULT %d\n", drawResult);
       return false;
     } else {
