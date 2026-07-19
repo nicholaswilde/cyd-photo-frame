@@ -49,9 +49,25 @@ tasks:
     cmds:
       - pio run
   prepare:
-    desc: "Prepare and optimize images for the photo frame. Usage: task prepare -- -i <input_dir> -o <output_dir> [options]"
+    desc: "Prepare and optimize images for the photo frame. Usage: task prepare -- -i <input_dir> -o <output_dir> [--orientation landscape|portrait|both] [--fill]"
     cmds:
-      - python3 scripts/prepare_images.py {{.CLI_ARGS}}
+      - uv run scripts/prepare_images.py {{.CLI_ARGS}}
+
+  prepare:landscape:
+    desc: "Optimise images for landscape mode (320x240). Usage: task prepare:landscape -- -i <input_dir> -o <output_dir>"
+    cmds:
+      - uv run scripts/prepare_images.py --orientation landscape {{.CLI_ARGS}}
+
+  prepare:portrait:
+    desc: "Optimise images for portrait mode (240x320). Usage: task prepare:portrait -- -i <input_dir> -o <output_dir>"
+    cmds:
+      - uv run scripts/prepare_images.py --orientation portrait {{.CLI_ARGS}}
+
+  prepare:both:
+    desc: "Optimise images for both orientations. Usage: task prepare:both -- -i <input_dir> -o <output_dir>"
+    cmds:
+      - uv run scripts/prepare_images.py --orientation both {{.CLI_ARGS}}
+
   default:
     cmds:
       - task -l

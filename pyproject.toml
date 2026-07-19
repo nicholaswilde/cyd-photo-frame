@@ -1,0 +1,15 @@
+[project]
+name = "cyd-photo-frame"
+version = "0.1.0"
+description = "Image preparation tools for the CYD Photo Frame"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "Pillow>=11.0.0",
+]
+
+[project.scripts]
+prepare-images = "scripts.prepare_images:main"
+
+[dependency-groups]
+dev = []
