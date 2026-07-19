@@ -78,7 +78,7 @@ bool renderRawImage(const char* filename) {
   }
   
   // Allocate buffer on the heap to avoid stack overflow
-  const size_t bufferSize = 320 * 16;
+  const size_t bufferSize = tft.width() * 16;
   uint16_t* buffer = (uint16_t*)malloc(bufferSize * sizeof(uint16_t));
   if (!buffer) {
     Serial.println("Failed to allocate buffer for raw image rendering!");
@@ -87,7 +87,7 @@ bool renderRawImage(const char* filename) {
   }
   
   tft.startWrite();
-  tft.setAddrWindow(0, 0, 320, 240);
+  tft.setAddrWindow(0, 0, tft.width(), tft.height());
   
   while (rawFile.available()) {
     int readCount = rawFile.read((uint8_t*)buffer, bufferSize * sizeof(uint16_t));
@@ -144,17 +144,17 @@ bool tft_output(int16_t x, int16_t y, uint16_t w, uint16_t h, uint16_t* bitmap) 
   int16_t dest_x = current_x_offset + x_start_scaled;
   int16_t dest_y = current_y_offset + y_start_scaled;
 
-  if (dest_y >= 240) return 0;
+  if (dest_y >= tft.height()) return 0;
   
   int16_t w_visible = w_scaled;
-  if (dest_x >= 320) return 1;
-  if (dest_x + w_visible > 320) {
-    w_visible = 320 - dest_x;
+  if (dest_x >= tft.width()) return 1;
+  if (dest_x + w_visible > tft.width()) {
+    w_visible = tft.width() - dest_x;
   }
   
   int16_t h_visible = h_scaled;
-  if (dest_y + h_visible > 240) {
-    h_visible = 240 - dest_y;
+  if (dest_y + h_visible > tft.height()) {
+    h_visible = tft.height() - dest_y;
   }
 
   // Bypass software scaling completely if scale is 1
@@ -164,7 +164,7 @@ bool tft_output(int16_t x, int16_t y, uint16_t w, uint16_t h, uint16_t* bitmap) 
     } else {
       if (cacheFile) {
         for (int row = 0; row < h_visible; row++) {
-          unsigned long fileOffset = ((dest_y + row) * 320 + dest_x) * 2;
+          unsigned long fileOffset = ((dest_y + row) * tft.width() + dest_x) * 2;
           cacheFile.seek(fileOffset);
           cacheFile.write((uint8_t*)(bitmap + row * w), w_visible * 2);
         }
@@ -200,7 +200,7 @@ bool tft_output(int16_t x, int16_t y, uint16_t w, uint16_t h, uint16_t* bitmap) 
   } else {
     if (cacheFile) {
       for (int row = 0; row < h_visible; row++) {
-        unsigned long fileOffset = ((dest_y + row) * 320 + dest_x) * 2;
+        unsigned long fileOffset = ((dest_y + row) * tft.width() + dest_x) * 2;
         cacheFile.seek(fileOffset);
         uint16_t* src_ptr = scaled_bitmap + row * safe_w_scaled;
         cacheFile.write((uint8_t*)src_ptr, w_visible * 2);
@@ -223,28 +223,21 @@ bool generateCache(const char* jpgFilename, const char* rawFilename) {
   }
 
   // Pre-allocate and fill with background color using a dynamic heap buffer to prevent stack overflow
-  const size_t chunkSize = 320 * 16;
-  uint16_t* chunk = (uint16_t*)malloc(chunkSize * sizeof(uint16_t));
-  if (chunk) {
-    uint16_t swapped_base = (CTP_BASE >> 8) | (CTP_BASE << 8);
-    for (size_t i = 0; i < chunkSize; i++) {
-      chunk[i] = swapped_base;
-    }
-    for (int i = 0; i < 240; i += 16) {
-      cacheFile.write((uint8_t*)chunk, chunkSize * sizeof(uint16_t));
-    }
-    free(chunk);
-  } else {
-    // Stack fallback using small 320 element row buffer (only 640 bytes, stack-safe)
-    uint16_t rowBuffer[320];
-    uint16_t swapped_base = (CTP_BASE >> 8) | (CTP_BASE << 8);
-    for (int i = 0; i < 320; i++) {
-      rowBuffer[i] = swapped_base;
-    }
-    for (int i = 0; i < 240; i++) {
-      cacheFile.write((uint8_t*)rowBuffer, 320 * sizeof(uint16_t));
-    }
+  const size_t rowSize = tft.width();
+  uint16_t* rowBuffer = (uint16_t*)malloc(rowSize * sizeof(uint16_t));
+  if (!rowBuffer) {
+    Serial.println("Failed to allocate preallocation row buffer!");
+    cacheFile.close();
+    return false;
   }
+  uint16_t swapped_base = (CTP_BASE >> 8) | (CTP_BASE << 8);
+  for (size_t i = 0; i < rowSize; i++) {
+    rowBuffer[i] = swapped_base;
+  }
+  for (int i = 0; i < tft.height(); i++) {
+    cacheFile.write((uint8_t*)rowBuffer, rowSize * sizeof(uint16_t));
+  }
+  free(rowBuffer);
 
   uint16_t img_w = 0, img_h = 0;
   uint16_t result = TJpgDec.getSdJpgSize(&img_w, &img_h, jpgFilename);
@@ -257,8 +250,8 @@ bool generateCache(const char* jpgFilename, const char* rawFilename) {
     return false;
   }
 
-  float ratio_w = (float)img_w / 320.0f;
-  float ratio_h = (float)img_h / 240.0f;
+  float ratio_w = (float)img_w / (float)tft.width();
+  float ratio_h = (float)img_h / (float)tft.height();
   float max_ratio = max(ratio_w, ratio_h);
 
   uint8_t scale_hw = 1;
@@ -284,8 +277,8 @@ bool generateCache(const char* jpgFilename, const char* rawFilename) {
 
   int16_t scaled_w = (int16_t)round((float)img_w / ((float)scale_hw * scale_sw));
   int16_t scaled_h = (int16_t)round((float)img_h / ((float)scale_hw * scale_sw));
-  int16_t x_offset = (320 - scaled_w) / 2;
-  int16_t y_offset = (240 - scaled_h) / 2;
+  int16_t x_offset = (tft.width() - scaled_w) / 2;
+  int16_t y_offset = (tft.height() - scaled_h) / 2;
 
   current_scale_sw = scale_sw;
   current_x_offset = x_offset;
@@ -388,7 +381,7 @@ void restrictCacheToExisting() {
     if (SD.exists(cachePath.c_str())) {
       File checkFile = SD.open(cachePath.c_str(), FILE_READ);
       if (checkFile) {
-        if (checkFile.size() == 153600) {
+        if (checkFile.size() == (size_t)(tft.width() * tft.height() * 2)) {
           cacheValid = true;
         }
         checkFile.close();
@@ -503,12 +496,12 @@ void drawFilenameBanner(const char* filename) {
   const char* displayName = namePtr ? namePtr + 1 : filename;
   
   // Draw solid Catppuccin Mantle background banner
-  tft.fillRect(0, 240 - 24, 320, 24, CTP_MANTLE);
+  tft.fillRect(0, tft.height() - 24, tft.width(), 24, CTP_MANTLE);
   
   // Draw text centered in the banner
   tft.setTextColor(CTP_TEXT, CTP_MANTLE);
   tft.setTextDatum(MC_DATUM);
-  tft.drawString(displayName, 160, 228, 2);
+  tft.drawString(displayName, tft.width() / 2, tft.height() - 12, 2);
 }
 
 /**
@@ -522,7 +515,7 @@ bool renderScaledJpg(const char* filename) {
     bool cacheValid = false;
     File checkFile = SD.open(cachePath.c_str(), FILE_READ);
     if (checkFile) {
-      if (checkFile.size() == 153600) {
+      if (checkFile.size() == (size_t)(tft.width() * tft.height() * 2)) {
         cacheValid = true;
       }
       checkFile.close();
@@ -875,7 +868,7 @@ void setup() {
     if (SD.exists(cachePath.c_str())) {
       File checkFile = SD.open(cachePath.c_str(), FILE_READ);
       if (checkFile) {
-        if (checkFile.size() == 153600) {
+        if (checkFile.size() == (size_t)(tft.width() * tft.height() * 2)) {
           cacheValid = true;
         }
         checkFile.close();
