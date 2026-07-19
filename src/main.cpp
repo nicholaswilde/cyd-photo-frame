@@ -185,10 +185,11 @@ bool tft_output(int16_t x, int16_t y, uint16_t w, uint16_t h, uint16_t* bitmap) 
 }
 
 bool generateCache(const char* jpgFilename, const char* rawFilename) {
-  SD.remove(rawFilename); // Clean start
-  cacheFile = SD.open(rawFilename, FILE_WRITE);
+  std::string tempFilename = std::string(rawFilename) + ".tmp";
+  SD.remove(tempFilename.c_str()); // Clean start
+  cacheFile = SD.open(tempFilename.c_str(), FILE_WRITE);
   if (!cacheFile) {
-    Serial.printf("Failed to create cache file: %s\n", rawFilename);
+    Serial.printf("Failed to create cache file: %s\n", tempFilename.c_str());
     return false;
   }
 
@@ -267,7 +268,15 @@ bool generateCache(const char* jpgFilename, const char* rawFilename) {
 
   if (drawResult != 0 && drawResult != 1) {
     Serial.printf("Error during caching decode: %d\n", drawResult);
-    SD.remove(rawFilename);
+    SD.remove(tempFilename.c_str());
+    return false;
+  }
+
+  // Rename temp file to final destination
+  SD.remove(rawFilename); // Remove old cached file if it exists
+  if (!SD.rename(tempFilename.c_str(), rawFilename)) {
+    Serial.printf("Failed to rename cached file: %s -> %s\n", tempFilename.c_str(), rawFilename);
+    SD.remove(tempFilename.c_str());
     return false;
   }
 
@@ -634,6 +643,22 @@ void setup() {
   // Ensure cache directory exists
   if (!SD.exists("/cache")) {
     SD.mkdir("/cache");
+  }
+
+  // Clean up any leftover temporary files from aborted runs
+  File cacheDir = SD.open("/cache");
+  if (cacheDir) {
+    File file = cacheDir.openNextFile();
+    while (file) {
+      String path = file.path();
+      file.close();
+      if (path.endsWith(".tmp")) {
+        Serial.printf("[System] Cleaning up orphaned temp file: %s\n", path.c_str());
+        SD.remove(path.c_str());
+      }
+      file = cacheDir.openNextFile();
+    }
+    cacheDir.close();
   }
 
   // Clear cache if theme changed to regenerate background borders in the new flavor
