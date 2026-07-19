@@ -20,7 +20,7 @@ TransitionDirection pendingDirection = DIR_NEXT;
 // Initialize the TFT object. 
 // Note: Pins and drivers are automatically handled by platformio.ini build_flags!
 TFT_eSPI tft = TFT_eSPI();
-FileCache fileCache(64);
+FileCache fileCache(1024);
 SlideshowTimer slideshowTimer(10000);
 TouchHandler touchHandler(TFT_HEIGHT, TFT_WIDTH);
 
@@ -801,7 +801,7 @@ void loop() {
   static unsigned long darknessStartTimeMs = 0;
   bool isDark = (rawLdr < 100);
   
-  if (isDark) {
+  if (isInactivitySleep && isDark) {
     if (darknessStartTimeMs == 0) {
       darknessStartTimeMs = now;
     } else if (now - darknessStartTimeMs >= 300000UL && !isSleeping) { // 5 minutes of absolute darkness
