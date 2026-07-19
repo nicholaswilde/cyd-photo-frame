@@ -4,6 +4,7 @@
 #include "catppuccin.h"
 
 extern int currentThemeFlavor;
+extern int currentOrientation;
 
 #if !defined(NATIVE_TEST)
 #include <Arduino.h>
@@ -54,12 +55,22 @@ static void my_touchpad_read(lv_indev_drv_t *indev_driver, lv_indev_data_t *data
             pixelX = touchX;
             pixelY = touchY;
         } else {
-            pixelX = (long)(touchX - 200) * disp_w / (3800 - 200);
-            pixelY = (long)(touchY - 200) * disp_h / (3800 - 200);
-            if (pixelX < 0) pixelX = 0;
-            if (pixelX > disp_w) pixelX = disp_w;
-            if (pixelY < 0) pixelY = 0;
-            if (pixelY > disp_h) pixelY = disp_h;
+            int w_land = disp_w > disp_h ? disp_w : disp_h;
+            int h_land = disp_w < disp_h ? disp_w : disp_h;
+            int lx = (long)(touchX - 200) * w_land / (3800 - 200);
+            int ly = (long)(touchY - 200) * h_land / (3800 - 200);
+            if (lx < 0) lx = 0;
+            if (lx > w_land) lx = w_land;
+            if (ly < 0) ly = 0;
+            if (ly > h_land) ly = h_land;
+            
+            if (currentOrientation == 2) { // Portrait
+                pixelX = ly;
+                pixelY = w_land - lx;
+            } else { // Landscape
+                pixelX = lx;
+                pixelY = ly;
+            }
         }
         data->state = LV_INDEV_STATE_PR;
         data->point.x = pixelX;
@@ -132,6 +143,11 @@ static void delay_dropdown_event_cb(lv_event_t * e) {
 static void theme_dropdown_event_cb(lv_event_t * e) {
     lv_obj_t * dropdown = lv_event_get_target(e);
     currentThemeFlavor = (int)lv_dropdown_get_selected(dropdown) + 1;
+}
+
+static void orientation_dropdown_event_cb(lv_event_t * e) {
+    lv_obj_t * dropdown = lv_event_get_target(e);
+    currentOrientation = (int)lv_dropdown_get_selected(dropdown) + 1;
 }
 
 static void exit_button_event_cb(lv_event_t * e) {
@@ -370,7 +386,25 @@ void LVGLManager::showSettings() {
     lv_dropdown_set_selected(dd_theme, currentThemeFlavor - 1);
     lv_obj_add_event_cb(dd_theme, theme_dropdown_event_cb, LV_EVENT_VALUE_CHANGED, NULL);
 
-    // 8. Save & Exit Button
+    // 8. Screen Orientation Dropdown
+    lv_obj_t * row_orient = lv_obj_create(list);
+    lv_obj_set_size(row_orient, LV_PCT(100), 40);
+    lv_obj_set_flex_flow(row_orient, LV_FLEX_FLOW_ROW);
+    lv_obj_set_flex_align(row_orient, LV_FLEX_ALIGN_SPACE_BETWEEN, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+    lv_obj_set_style_bg_color(row_orient, get_lv_color(getCatppuccinFlavor(currentThemeFlavor).mantle), 0);
+    lv_obj_set_style_border_width(row_orient, 0, 0);
+    lv_obj_set_style_pad_all(row_orient, 5, 0);
+
+    lv_obj_t * lbl_orient = lv_label_create(row_orient);
+    lv_label_set_text(lbl_orient, "Orientation");
+    lv_obj_set_style_text_color(lbl_orient, get_lv_color(getCatppuccinFlavor(currentThemeFlavor).text), 0);
+
+    lv_obj_t * dd_orient = lv_dropdown_create(row_orient);
+    lv_dropdown_set_options(dd_orient, "Landscape\nPortrait");
+    lv_dropdown_set_selected(dd_orient, currentOrientation - 1);
+    lv_obj_add_event_cb(dd_orient, orientation_dropdown_event_cb, LV_EVENT_VALUE_CHANGED, NULL);
+
+    // 9. Save & Exit Button
     lv_obj_t * btn_exit = lv_btn_create(settings_screen);
     lv_obj_set_size(btn_exit, 100, 30);
     lv_obj_align(btn_exit, LV_ALIGN_BOTTOM_MID, 0, -5);

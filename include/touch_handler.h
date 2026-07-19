@@ -21,12 +21,14 @@ public:
     
     TouchZone processTouch(bool isTouched, int rawX, int rawY, unsigned long currentTimeMs);
     void mapCoordinates(int rawX, int rawY, int& pixelX, int& pixelY, bool isCapacitive);
+    void setOrientation(int orientation) { m_orientation = orientation; }
 
 private:
     int m_displayWidth;
     int m_displayHeight;
     unsigned long m_debounceMs;
     unsigned long m_lastTapTimeMs;
+    int m_orientation = 1;
     
     bool m_wasTouched = false;
     unsigned long m_touchStartTimeMs = 0;

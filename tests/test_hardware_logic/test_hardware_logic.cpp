@@ -48,9 +48,10 @@ void test_preferences_persistence(void) {
     bool showFilename = true;
     bool inactivitySleep = false;
     int themeFlavor = 1; // CATPPUCCIN_MOCHA
+    int screenOrientation = 1; // Landscape
     
     // Save settings
-    HardwareLogic::saveSettings(prefs, brightness, autoBright, delay, randomMode, showFilename, inactivitySleep, themeFlavor);
+    HardwareLogic::saveSettings(prefs, brightness, autoBright, delay, randomMode, showFilename, inactivitySleep, themeFlavor, screenOrientation);
     
     // Modify local variables to verify they load correctly
     int testBrightness = 0;
@@ -60,9 +61,10 @@ void test_preferences_persistence(void) {
     bool testShowFilename = false;
     bool testInactivitySleep = true;
     int testThemeFlavor = 0;
+    int testScreenOrientation = 0;
     
     // Load settings
-    HardwareLogic::loadSettings(prefs, testBrightness, testAutoBright, testDelay, testRandomMode, testShowFilename, testInactivitySleep, testThemeFlavor);
+    HardwareLogic::loadSettings(prefs, testBrightness, testAutoBright, testDelay, testRandomMode, testShowFilename, testInactivitySleep, testThemeFlavor, testScreenOrientation);
     
     // Verify loaded values match saved values
     TEST_ASSERT_EQUAL_INT(brightness, testBrightness);
@@ -72,6 +74,7 @@ void test_preferences_persistence(void) {
     TEST_ASSERT_EQUAL(showFilename, testShowFilename);
     TEST_ASSERT_EQUAL(inactivitySleep, testInactivitySleep);
     TEST_ASSERT_EQUAL_INT(themeFlavor, testThemeFlavor);
+    TEST_ASSERT_EQUAL_INT(screenOrientation, testScreenOrientation);
     
     // Verify default fallback works when loading non-existent settings
     Preferences freshPrefs;
@@ -84,13 +87,15 @@ void test_preferences_persistence(void) {
     bool fallbackShowFn = true;
     bool fallbackSleep = false;
     int fallbackTheme = 1;
+    int fallbackOrientation = 2;
     
-    HardwareLogic::loadSettings(freshPrefs, fallbackBrightness, fallbackAutoBright, fallbackDelay, fallbackRandom, fallbackShowFn, fallbackSleep, fallbackTheme);
+    HardwareLogic::loadSettings(freshPrefs, fallbackBrightness, fallbackAutoBright, fallbackDelay, fallbackRandom, fallbackShowFn, fallbackSleep, fallbackTheme, fallbackOrientation);
     
     TEST_ASSERT_EQUAL_INT(200, fallbackBrightness);
     TEST_ASSERT_EQUAL(true, fallbackAutoBright);
     TEST_ASSERT_EQUAL_UINT32(10000, fallbackDelay);
     TEST_ASSERT_EQUAL_INT(1, fallbackTheme);
+    TEST_ASSERT_EQUAL_INT(2, fallbackOrientation);
 }
 
 int main(int argc, char **argv) {

@@ -30,6 +30,7 @@ bool isRandomMode = false;
 bool isAutoBrightness = false;
 bool isInactivitySleep = false;
 bool optimizationCancelled = false;
+int currentOrientation = 1; // 1 = Landscape, 2 = Portrait
 
 bool isCancelButtonTouched(int touchX, int touchY);
 
@@ -339,17 +340,33 @@ static int mapRangeClippedMain(int val, int in_min, int in_max, int out_max) {
   return (int)out;
 }
 
-bool isCancelButtonTouched(int rawX, int rawY) {
-  int pixelX = 0;
-  int pixelY = 0;
+void mapTouchPoint(int rawX, int rawY, int& pixelX, int& pixelY) {
   bool isCapacitive = (rawX <= tft.width() * 2 && rawY <= tft.height() * 2);
   if (isCapacitive) {
     pixelX = rawX;
     pixelY = rawY;
-  } else {
-    pixelX = mapRangeClippedMain(rawX, 200, 3800, tft.width());
-    pixelY = mapRangeClippedMain(rawY, 200, 3800, tft.height());
+    return;
   }
+  // Resistive mapping:
+  int w_land = max(tft.width(), tft.height());
+  int h_land = min(tft.width(), tft.height());
+  
+  int lx = mapRangeClippedMain(rawX, 200, 3800, w_land);
+  int ly = mapRangeClippedMain(rawY, 200, 3800, h_land);
+  
+  if (currentOrientation == 2) { // Portrait
+    pixelX = ly;
+    pixelY = w_land - lx;
+  } else { // Landscape (1)
+    pixelX = lx;
+    pixelY = ly;
+  }
+}
+
+bool isCancelButtonTouched(int rawX, int rawY) {
+  int pixelX = 0;
+  int pixelY = 0;
+  mapTouchPoint(rawX, rawY, pixelX, pixelY);
 
   Serial.printf("[Touch Debug] Mapped Coordinates: PixelX=%d, PixelY=%d\n", pixelX, pixelY);
 
@@ -407,7 +424,7 @@ void drawCalculating() {
 
   int barX = 40;
   int barY = 130;
-  int barW = 240;
+  int barW = tft.width() - 80;
   int barH = 20;
 
   tft.fillRect(barX, barY, barW, barH, CTP_SURFACE0);
@@ -442,7 +459,7 @@ void drawProgress(size_t current, size_t total, const char* filename) {
 
   int barX = 40;
   int barY = 130;
-  int barW = 240;
+  int barW = tft.width() - 80;
   int barH = 20;
   int border = 2;
 
@@ -631,7 +648,7 @@ void populateCache() {
 void saveConfig() {
   Preferences prefs;
   prefs.begin("settings", false);
-  HardwareLogic::saveSettings(prefs, currentBrightness, isAutoBrightness, slideshowTimer.getInterval(), isRandomMode, showFilename, isInactivitySleep, currentThemeFlavor);
+  HardwareLogic::saveSettings(prefs, currentBrightness, isAutoBrightness, slideshowTimer.getInterval(), isRandomMode, showFilename, isInactivitySleep, currentThemeFlavor, currentOrientation);
   prefs.end();
   Serial.println("[System] Settings saved to NVS.");
 }
@@ -643,18 +660,20 @@ void triggerExitSettings() {
 
 void exitSettings() {
   int cachedTheme = 0;
+  int cachedOrientation = 1;
   {
     Preferences prefs;
     prefs.begin("settings", false);
     cachedTheme = (int)prefs.getUInt("cached_theme", 0);
+    cachedOrientation = (int)prefs.getInt("cached_rot", 1);
     prefs.end();
   }
 
   saveConfig();
 
 #if !defined(NATIVE_TEST)
-  if (currentThemeFlavor != cachedTheme) {
-    Serial.println("[System] Theme flavor changed. Rebooting to regenerate cache...");
+  if (currentThemeFlavor != cachedTheme || currentOrientation != cachedOrientation) {
+    Serial.println("[System] Theme flavor or orientation changed. Rebooting to update display and regenerate cache...");
     delay(500);
     ESP.restart();
   }
@@ -697,16 +716,18 @@ void setup() {
 
   // Load settings from NVS
   int cachedTheme = 0;
+  int cachedOrientation = 1;
   {
     Preferences prefs;
     prefs.begin("settings", false);
     unsigned long loadedDelay = slideshowTimer.getInterval();
-    HardwareLogic::loadSettings(prefs, currentBrightness, isAutoBrightness, loadedDelay, isRandomMode, showFilename, isInactivitySleep, currentThemeFlavor);
+    HardwareLogic::loadSettings(prefs, currentBrightness, isAutoBrightness, loadedDelay, isRandomMode, showFilename, isInactivitySleep, currentThemeFlavor, currentOrientation);
     slideshowTimer.setInterval(loadedDelay);
     cachedTheme = (int)prefs.getUInt("cached_theme", 0);
+    cachedOrientation = (int)prefs.getInt("cached_rot", 1);
     prefs.end();
-    Serial.printf("[System] Settings loaded from NVS. Brightness: %d, Auto: %d, Delay: %lu ms, Random: %d, ShowFN: %d, Sleep: %d, Theme: %d, CachedTheme: %d\n",
-                  currentBrightness, isAutoBrightness, loadedDelay, isRandomMode, showFilename, isInactivitySleep, currentThemeFlavor, cachedTheme);
+    Serial.printf("[System] Settings loaded from NVS. Brightness: %d, Auto: %d, Delay: %lu ms, Random: %d, ShowFN: %d, Sleep: %d, Theme: %d, CachedTheme: %d, Orientation: %d, CachedOrientation: %d\n",
+                  currentBrightness, isAutoBrightness, loadedDelay, isRandomMode, showFilename, isInactivitySleep, currentThemeFlavor, cachedTheme, currentOrientation, cachedOrientation);
   }
 
   lastTouchTimeMs = millis();
@@ -716,10 +737,11 @@ void setup() {
 
   // Initialize TFT
   tft.begin();
-  tft.setRotation(1); // Landscape orientation
+  tft.setRotation(currentOrientation);
 
   // Initialize Touch Screen
   TouchManager::begin();
+  touchHandler.setOrientation(currentOrientation);
 
   // Initialize LVGL
   LVGLManager::init(tft.width(), tft.height());
@@ -797,27 +819,31 @@ void setup() {
     cacheDir.close();
   }
 
-  // Clear cache if theme changed to regenerate background borders in the new flavor
-  if (currentThemeFlavor != cachedTheme) {
-    Serial.println("[System] Theme flavor changed. Clearing cache to regenerate borders...");
+  // Clear cache if theme or orientation changed to regenerate cache files with correct borders/dimensions
+  if (currentThemeFlavor != cachedTheme || currentOrientation != cachedOrientation) {
+    Serial.println("[System] Theme flavor or orientation changed. Clearing cache...");
     File cacheDir = SD.open("/cache");
     if (cacheDir) {
       File file = cacheDir.openNextFile();
       while (file) {
         String path = file.path();
         file.close();
-        SD.remove(path.c_str());
+        if (SD.exists(path.c_str())) {
+          SD.remove(path.c_str());
+        }
         file = cacheDir.openNextFile();
       }
       cacheDir.close();
     }
     
-    // Save new cached theme flavor in NVS
+    // Save new cached values in NVS
     Preferences prefs;
     prefs.begin("settings", false);
     prefs.putUInt("cached_theme", (uint32_t)currentThemeFlavor);
+    prefs.putInt("cached_rot", currentOrientation);
     prefs.end();
     cachedTheme = currentThemeFlavor; // Sync local variable
+    cachedOrientation = currentOrientation; // Sync local variable
   }
 
   // Scan for files that need optimization/caching
