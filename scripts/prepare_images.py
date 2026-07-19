@@ -10,16 +10,24 @@ except ImportError:
     print("Install it using: pip install Pillow")
     sys.exit(1)
 
+# ---------------------------------------------------------------------------
+# Resolution presets keyed by orientation
+# (width, height) for landscape and portrait modes
+# ---------------------------------------------------------------------------
+LANDSCAPE_SIZE = (320, 240)
+PORTRAIT_SIZE  = (240, 320)
+
+
 def process_image(src_path, dest_path, width, height, crop_to_fill):
     try:
         with Image.open(src_path) as img:
             # Handle orientation from EXIF
             img = ImageOps.exif_transpose(img)
-            
+
             # Convert to RGB mode (discard alpha channel/transparency from PNGs/WebPs)
             if img.mode != 'RGB':
                 img = img.convert('RGB')
-            
+
             # Resize
             if crop_to_fill:
                 # Crop to fill (maintain aspect ratio, crop excess)
@@ -39,13 +47,75 @@ def process_image(src_path, dest_path, width, height, crop_to_fill):
         print(f"Failed to process {src_path}: {e}")
         return False
 
+
+def run_batch(files, input_dir, output_dir, width, height, crop_to_fill, label):
+    """Process a list of image files into output_dir at the given resolution."""
+    os.makedirs(output_dir, exist_ok=True)
+
+    print(f"\n[{label}] {width}x{height} | Mode: {'Fill' if crop_to_fill else 'Fit'} | Output: {output_dir}")
+    print(f"Processing {len(files)} image(s)...")
+
+    success_count = 0
+    total_saved_bytes = 0
+    total_orig_bytes = 0
+
+    for filename in files:
+        src_path = os.path.join(input_dir, filename)
+        dest_filename = os.path.splitext(filename)[0] + ".jpg"
+        dest_path = os.path.join(output_dir, dest_filename)
+
+        orig_size = os.path.getsize(src_path)
+        total_orig_bytes += orig_size
+
+        if process_image(src_path, dest_path, width, height, crop_to_fill):
+            new_size = os.path.getsize(dest_path)
+            total_saved_bytes += (orig_size - new_size)
+            success_count += 1
+            print(f"  [OK] {filename} -> {dest_filename} ({new_size / 1024:.1f} KB)")
+
+    print(f"\n--- {label} Summary ---")
+    print(f"Successfully processed: {success_count}/{len(files)} images.")
+    if success_count > 0 and total_orig_bytes > 0:
+        saved_mb = total_saved_bytes / (1024 * 1024)
+        orig_mb  = total_orig_bytes  / (1024 * 1024)
+        new_mb   = (total_orig_bytes - total_saved_bytes) / (1024 * 1024)
+        print(f"Original size:  {orig_mb:.2f} MB")
+        print(f"Optimized size: {new_mb:.2f} MB")
+        print(f"Saved:          {saved_mb:.2f} MB ({total_saved_bytes / total_orig_bytes * 100:.1f}% reduction)")
+
+    return success_count
+
+
 def main():
-    parser = argparse.ArgumentParser(description="Prepare images for the CYD Photo Frame.")
-    parser.add_argument("--input", "-i", required=True, help="Path to the directory containing source images.")
-    parser.add_argument("--output", "-o", required=True, help="Path to the output directory (e.g. SD card mount point).")
-    parser.add_argument("--width", type=int, default=320, help="Target screen width (default: 320 for CYD-28R, use 480 for CYD-35C).")
-    parser.add_argument("--height", type=int, default=240, help="Target screen height (default: 240 for CYD-28R, use 320 for CYD-35C).")
-    parser.add_argument("--fill", action="store_true", help="Crop images to fill the screen completely (default: fit with black bars).")
+    parser = argparse.ArgumentParser(
+        description="Prepare images for the CYD Photo Frame.",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Orientation modes:
+  landscape  – Optimise for landscape display (320x240 by default).
+               Images are written directly to --output.
+  portrait   – Optimise for portrait display  (240x320 by default).
+               Images are written directly to --output.
+  both       – Produce both sets. Landscape images go to --output/landscape/
+               and portrait images go to --output/portrait/.
+
+When using --width / --height together with --orientation landscape or portrait,
+the explicit dimensions override the defaults for that orientation.
+        """
+    )
+    parser.add_argument("--input",  "-i", required=True,
+                        help="Path to the directory containing source images.")
+    parser.add_argument("--output", "-o", required=True,
+                        help="Path to the output directory (e.g. SD card mount point).")
+    parser.add_argument("--orientation", choices=["landscape", "portrait", "both"],
+                        default="landscape",
+                        help="Target orientation: landscape, portrait, or both (default: landscape).")
+    parser.add_argument("--width",  type=int, default=None,
+                        help="Override target width  (default: 320 for landscape, 240 for portrait).")
+    parser.add_argument("--height", type=int, default=None,
+                        help="Override target height (default: 240 for landscape, 320 for portrait).")
+    parser.add_argument("--fill", action="store_true",
+                        help="Crop images to fill the screen completely (default: fit with black bars).")
 
     args = parser.parse_args()
 
@@ -53,44 +123,38 @@ def main():
         print(f"Error: Input directory '{args.input}' does not exist.")
         sys.exit(1)
 
-    os.makedirs(args.output, exist_ok=True)
-
     supported_extensions = ('.jpg', '.jpeg', '.png', '.webp', '.bmp', '.gif', '.heic', '.tiff')
-    
-    files = [f for f in os.listdir(args.input) if os.path.splitext(f)[1].lower() in supported_extensions]
+    files = [f for f in os.listdir(args.input)
+             if os.path.splitext(f)[1].lower() in supported_extensions]
     if not files:
         print(f"No supported images found in '{args.input}'.")
         sys.exit(0)
 
-    print(f"Processing {len(files)} images to {args.width}x{args.height} (Mode: {'Fill' if args.fill else 'Fit'})...")
-    
-    success_count = 0
-    total_saved_bytes = 0
-    total_orig_bytes = 0
+    # Build list of (label, width, height, output_dir) jobs to run
+    jobs = []
 
-    for filename in files:
-        src_path = os.path.join(args.input, filename)
-        dest_filename = os.path.splitext(filename)[0] + ".jpg"
-        dest_path = os.path.join(args.output, dest_filename)
+    if args.orientation == "both":
+        if args.width or args.height:
+            print("Warning: --width / --height are ignored when --orientation=both.")
+        jobs.append(("Landscape", LANDSCAPE_SIZE[0], LANDSCAPE_SIZE[1],
+                      os.path.join(args.output, "landscape")))
+        jobs.append(("Portrait",  PORTRAIT_SIZE[0],  PORTRAIT_SIZE[1],
+                      os.path.join(args.output, "portrait")))
+    else:
+        default_w, default_h = (LANDSCAPE_SIZE if args.orientation == "landscape"
+                                 else PORTRAIT_SIZE)
+        w = args.width  if args.width  is not None else default_w
+        h = args.height if args.height is not None else default_h
+        jobs.append((args.orientation.capitalize(), w, h, args.output))
 
-        orig_size = os.path.getsize(src_path)
-        total_orig_bytes += orig_size
+    total_success = 0
+    for label, w, h, out_dir in jobs:
+        total_success += run_batch(files, args.input, out_dir, w, h, args.fill, label)
 
-        if process_image(src_path, dest_path, args.width, args.height, args.fill):
-            new_size = os.path.getsize(dest_path)
-            total_saved_bytes += (orig_size - new_size)
-            success_count += 1
-            print(f"  [OK] {filename} -> {dest_filename} ({new_size / 1024:.1f} KB)")
+    if len(jobs) > 1:
+        print(f"\n{'='*40}")
+        print(f"All done. Total images processed: {total_success}/{len(files) * len(jobs)}")
 
-    print("\n--- Summary ---")
-    print(f"Successfully processed: {success_count}/{len(files)} images.")
-    if success_count > 0:
-        saved_mb = total_saved_bytes / (1024 * 1024)
-        orig_mb = total_orig_bytes / (1024 * 1024)
-        new_mb = (total_orig_bytes - total_saved_bytes) / (1024 * 1024)
-        print(f"Original size: {orig_mb:.2f} MB")
-        print(f"Optimized size: {new_mb:.2f} MB")
-        print(f"Saved: {saved_mb:.2f} MB ({total_saved_bytes / total_orig_bytes * 100:.1f}% reduction)")
 
 if __name__ == "__main__":
     main()

@@ -35,9 +35,10 @@ The screen is divided into several touch zones to control behavior without visib
 2. Put your `.jpg` images directly into the root directory of the SD card.
 3. Plug the card into the CYD SD slot. On boot, the ESP32 will auto-detect any new JPEGs, scale them to fit the screen keeping their aspect ratios, and cache them inside the `/cache/` directory.
 
-> [!IMPORTANT]
-> **Display Orientation & Cache Regeneration:**
-> Raw cached files are pre-rendered and optimized specifically for the current display resolution and aspect ratio (Landscape vs. Portrait). If you change the display orientation option in the settings menu, the device will automatically format/clear the `/cache/` directory and reboot itself to rebuild the cache with the correct layout. 
+> [!NOTE]
+> **Display Orientation & Caching:**
+> The device now supports four orientations (Landscape, Portrait, Landscape Rev, Portrait Rev).
+> Cached images are stored per resolution (e.g., `_320x240.raw` for landscape modes and `_240x320.raw` for portrait modes), so switching between orientations no longer requires clearing the cache. Only a theme change clears the cache. 
 
 
 ## :usb: Serial Commands (Clearing Cache)
@@ -48,7 +49,49 @@ If the CYD is plugged into your computer via USB:
 3. Type **`clear`** or **`clear_cache`** and press **`Enter`**.
 4. The ESP32 will format/empty the `/cache/` directory on the SD card and automatically reboot itself to regenerate the caching borders.
 
+## :framed_picture: Preparing Images
+
+A helper script (`scripts/prepare_images.py`) is included to resize and optimise images before copying them to the SD card.
+
+### Requirements
+```bash
+pip install Pillow
+```
+
+### Usage
+```bash
+# Landscape (320×240) — default
+python scripts/prepare_images.py -i ~/Photos -o /mnt/sdcard
+
+# Portrait (240×320)
+python scripts/prepare_images.py -i ~/Photos -o /mnt/sdcard --orientation portrait
+
+# Both orientations at once
+# Landscape images -> /mnt/sdcard/landscape/
+# Portrait images  -> /mnt/sdcard/portrait/
+python scripts/prepare_images.py -i ~/Photos -o /mnt/sdcard --orientation both
+
+# Crop to fill instead of letterboxing
+python scripts/prepare_images.py -i ~/Photos -o /mnt/sdcard --orientation both --fill
+
+# Override dimensions manually (e.g. CYD-35C landscape)
+python scripts/prepare_images.py -i ~/Photos -o /mnt/sdcard --width 480 --height 320
+```
+
+| Flag | Default | Description |
+|---|---|---|
+| `--input` / `-i` | *(required)* | Source directory of images |
+| `--output` / `-o` | *(required)* | Destination directory (or SD card mount) |
+| `--orientation` | `landscape` | `landscape`, `portrait`, or `both` |
+| `--width` | 320 / 240 | Override target width (ignored when `--orientation both`) |
+| `--height` | 240 / 320 | Override target height (ignored when `--orientation both`) |
+| `--fill` | off | Crop to fill instead of fitting with black bars |
+
+> [!TIP]
+> When using `--orientation both`, images are written into `landscape/` and `portrait/` subdirectories so you can copy only the set that matches your device's orientation setting.
+
 ## :computer: Development
+
 
 ### Compiling & Flashing
 To compile and upload the project to the CYD:
