@@ -274,6 +274,30 @@ bool generateCache(const char* jpgFilename, const char* rawFilename) {
   return true;
 }
 
+void drawCalculating() {
+  tft.fillScreen(CTP_BASE);
+
+  tft.setTextColor(CTP_TEXT, CTP_BASE);
+  tft.setTextDatum(MC_DATUM);
+  tft.drawString("CYD Photo Frame", tft.width() / 2, 40, 4);
+
+  tft.setTextColor(CTP_TEXT, CTP_BASE);
+  tft.drawString("Optimizing Photos...", tft.width() / 2, 75, 2);
+
+  tft.setTextColor(0x7BEF, CTP_BASE);
+  tft.drawString("Analyzing SD Card...", tft.width() / 2, 105, 2);
+
+  tft.setTextColor(CTP_TEXT, CTP_BASE);
+  tft.drawString("Calculating...", tft.width() / 2, 175, 2);
+
+  int barX = 40;
+  int barY = 130;
+  int barW = 240;
+  int barH = 20;
+
+  tft.fillRect(barX, barY, barW, barH, CTP_SURFACE0);
+}
+
 void drawProgress(size_t current, size_t total, const char* filename) {
   if (current == 0) {
     tft.fillScreen(CTP_BASE);
@@ -286,12 +310,17 @@ void drawProgress(size_t current, size_t total, const char* filename) {
   tft.setTextColor(CTP_TEXT, CTP_BASE);
   tft.drawString("Optimizing Photos...", tft.width() / 2, 75, 2);
 
+  // Clear the filename area to prevent text overlap
+  tft.fillRect(0, 95, tft.width(), 20, CTP_BASE);
   tft.setTextColor(0x7BEF, CTP_BASE);
   tft.drawString(filename, tft.width() / 2, 105, 2);
 
   int percentage = (total == 0) ? 0 : (current * 100) / total;
   char percentStr[32];
   sprintf(percentStr, "%d%% (%zu/%zu)", percentage, current, total);
+  
+  // Clear the percentage text area to prevent text overlap
+  tft.fillRect(0, 165, tft.width(), 20, CTP_BASE);
   tft.setTextColor(CTP_TEXT, CTP_BASE);
   tft.drawString(percentStr, tft.width() / 2, 175, 2);
 
@@ -576,6 +605,9 @@ void setup() {
   pinMode(TFT_BL, OUTPUT);
   analogWrite(TFT_BL, currentBrightness);
 #endif
+
+  // Show calculating screen as soon as backlight is on
+  drawCalculating();
 
   // Initialize the TJpg_Decoder
   TJpgDec.setCallback(tft_output);
