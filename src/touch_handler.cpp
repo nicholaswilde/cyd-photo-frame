@@ -82,12 +82,27 @@ void TouchHandler::mapCoordinates(int rawX, int rawY, int& pixelX, int& pixelY, 
         int lx = mapRangeClipped(rawX, 200, 3800, w_land);
         int ly = mapRangeClipped(rawY, 200, 3800, h_land);
         
-        if (m_orientation == 2) { // Portrait
-            pixelX = ly;
-            pixelY = w_land - lx;
-        } else { // Landscape
-            pixelX = lx;
-            pixelY = ly;
+        switch (m_orientation) {
+            case 0: // Portrait Rev
+                pixelX = h_land - ly;
+                pixelY = lx;
+                break;
+            case 1: // Landscape
+                pixelX = lx;
+                pixelY = ly;
+                break;
+            case 2: // Portrait
+                pixelX = ly;
+                pixelY = w_land - lx;
+                break;
+            case 3: // Landscape Rev
+                pixelX = w_land - lx;
+                pixelY = h_land - ly;
+                break;
+            default:
+                pixelX = lx;
+                pixelY = ly;
+                break;
         }
     }
 }

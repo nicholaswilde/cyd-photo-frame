@@ -64,12 +64,27 @@ static void my_touchpad_read(lv_indev_drv_t *indev_driver, lv_indev_data_t *data
             if (ly < 0) ly = 0;
             if (ly > h_land) ly = h_land;
             
-            if (tft.getRotation() == 2) { // Portrait
-                pixelX = ly;
-                pixelY = w_land - lx;
-            } else { // Landscape
-                pixelX = lx;
-                pixelY = ly;
+            switch (tft.getRotation()) {
+                case 0: // Portrait Rev
+                    pixelX = h_land - ly;
+                    pixelY = lx;
+                    break;
+                case 1: // Landscape
+                    pixelX = lx;
+                    pixelY = ly;
+                    break;
+                case 2: // Portrait
+                    pixelX = ly;
+                    pixelY = w_land - lx;
+                    break;
+                case 3: // Landscape Rev
+                    pixelX = w_land - lx;
+                    pixelY = h_land - ly;
+                    break;
+                default:
+                    pixelX = lx;
+                    pixelY = ly;
+                    break;
             }
         }
         data->state = LV_INDEV_STATE_PR;
@@ -145,9 +160,13 @@ static void theme_dropdown_event_cb(lv_event_t * e) {
     currentThemeFlavor = (int)lv_dropdown_get_selected(dropdown) + 1;
 }
 
+static const int dropdown_to_rotation[] = {1, 2, 3, 0};
 static void orientation_dropdown_event_cb(lv_event_t * e) {
     lv_obj_t * dropdown = lv_event_get_target(e);
-    currentOrientation = (int)lv_dropdown_get_selected(dropdown) + 1;
+    int selected = lv_dropdown_get_selected(dropdown);
+    if (selected >= 0 && selected < 4) {
+        currentOrientation = dropdown_to_rotation[selected];
+    }
 }
 
 static void exit_button_event_cb(lv_event_t * e) {
@@ -400,9 +419,14 @@ void LVGLManager::showSettings() {
     lv_label_set_text(lbl_orient, "Orientation");
     lv_obj_set_style_text_color(lbl_orient, get_lv_color(getCatppuccinFlavor(currentThemeFlavor).text), 0);
 
+    static const int rotation_to_dropdown[] = {3, 0, 1, 2};
     lv_obj_t * dd_orient = lv_dropdown_create(row_orient);
-    lv_dropdown_set_options(dd_orient, "Landscape\nPortrait");
-    lv_dropdown_set_selected(dd_orient, currentOrientation - 1);
+    lv_dropdown_set_options(dd_orient, "Landscape\nPortrait\nLandscape Rev\nPortrait Rev");
+    int initial_dd = 0;
+    if (currentOrientation >= 0 && currentOrientation < 4) {
+        initial_dd = rotation_to_dropdown[currentOrientation];
+    }
+    lv_dropdown_set_selected(dd_orient, initial_dd);
     lv_obj_add_event_cb(dd_orient, orientation_dropdown_event_cb, LV_EVENT_VALUE_CHANGED, NULL);
 
     // 9. Save & Exit Button

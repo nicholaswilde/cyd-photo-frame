@@ -349,12 +349,27 @@ void mapTouchPoint(int rawX, int rawY, int& pixelX, int& pixelY) {
   int lx = mapRangeClippedMain(rawX, 200, 3800, w_land);
   int ly = mapRangeClippedMain(rawY, 200, 3800, h_land);
   
-  if (currentOrientation == 2) { // Portrait
-    pixelX = ly;
-    pixelY = w_land - lx;
-  } else { // Landscape (1)
-    pixelX = lx;
-    pixelY = ly;
+  switch (currentOrientation) {
+    case 0: // Portrait Rev
+      pixelX = h_land - ly;
+      pixelY = lx;
+      break;
+    case 1: // Landscape
+      pixelX = lx;
+      pixelY = ly;
+      break;
+    case 2: // Portrait
+      pixelX = ly;
+      pixelY = w_land - lx;
+      break;
+    case 3: // Landscape Rev
+      pixelX = w_land - lx;
+      pixelY = h_land - ly;
+      break;
+    default:
+      pixelX = lx;
+      pixelY = ly;
+      break;
   }
 }
 
