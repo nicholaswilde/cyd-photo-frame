@@ -328,6 +328,19 @@ void showSDError() {
   }
 }
 
+void drawFilenameBanner(const char* filename) {
+  const char* namePtr = strrchr(filename, '/');
+  const char* displayName = namePtr ? namePtr + 1 : filename;
+  
+  // Draw solid Catppuccin Surface0 background banner
+  tft.fillRect(0, 240 - 24, 320, 24, CTP_SURFACE0);
+  
+  // Draw text centered in the banner
+  tft.setTextColor(CTP_TEXT, CTP_SURFACE0);
+  tft.setTextDatum(MC_DATUM);
+  tft.drawString(displayName, 160, 228, 2);
+}
+
 /**
  * @brief Reads the JPEG header, determines the optimal hardware scale 
  * factor (1, 2, 4, or 8), calculates centering offsets, and renders it.
@@ -350,11 +363,7 @@ bool renderScaledJpg(const char* filename) {
       bool drawSuccess = renderRawImage(cachePath.c_str());
       if (drawSuccess) {
         if (showFilename) {
-          tft.setTextColor(CTP_TEXT, CTP_BASE);
-          tft.setTextDatum(BC_DATUM);
-          const char* namePtr = strrchr(filename, '/');
-          const char* displayName = namePtr ? namePtr + 1 : filename;
-          tft.drawString(displayName, tft.width() / 2, tft.height() - 10, 2);
+          drawFilenameBanner(filename);
         }
         return true;
       } else {
@@ -420,11 +429,7 @@ bool renderScaledJpg(const char* filename) {
       return false;
     } else {
       if (showFilename) {
-        tft.setTextColor(CTP_TEXT, CTP_BASE);
-        tft.setTextDatum(BC_DATUM);
-        const char* namePtr = strrchr(filename, '/');
-        const char* displayName = namePtr ? namePtr + 1 : filename;
-        tft.drawString(displayName, tft.width() / 2, tft.height() - 10, 2);
+        drawFilenameBanner(filename);
       }
       return true;
     }
