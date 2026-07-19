@@ -35,6 +35,11 @@ The screen is divided into several touch zones to control behavior without visib
 2. Put your `.jpg` images directly into the root directory of the SD card.
 3. Plug the card into the CYD SD slot. On boot, the ESP32 will auto-detect any new JPEGs, scale them to fit the screen keeping their aspect ratios, and cache them inside the `/cache/` directory.
 
+> [!IMPORTANT]
+> **Display Orientation & Cache Regeneration:**
+> Raw cached files are pre-rendered and optimized specifically for the current display resolution and aspect ratio (Landscape vs. Portrait). If you change the display orientation option in the settings menu, the device will automatically format/clear the `/cache/` directory and reboot itself to rebuild the cache with the correct layout. 
+
+
 ## :usb: Serial Commands (Clearing Cache)
 
 If the CYD is plugged into your computer via USB:
