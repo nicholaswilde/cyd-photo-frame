@@ -280,10 +280,13 @@ void drawProgress(size_t current, size_t total, const char* filename) {
 
   tft.setTextColor(CTP_TEXT, CTP_BASE);
   tft.setTextDatum(MC_DATUM);
-  tft.drawString("Optimizing Photos...", tft.width() / 2, 60, 4);
+  tft.drawString("CYD Photo Frame", tft.width() / 2, 40, 4);
+
+  tft.setTextColor(CTP_TEXT, CTP_BASE);
+  tft.drawString("Optimizing Photos...", tft.width() / 2, 75, 2);
 
   tft.setTextColor(0x7BEF, CTP_BASE);
-  tft.drawString(filename, tft.width() / 2, 100, 2);
+  tft.drawString(filename, tft.width() / 2, 105, 2);
 
   int percentage = (total == 0) ? 0 : (current * 100) / total;
   char percentStr[32];
