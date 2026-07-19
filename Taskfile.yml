@@ -48,10 +48,10 @@ tasks:
     desc: Build the firmware
     cmds:
       - pio run
-  foo:
-    desc: Foo
+  prepare:
+    desc: "Prepare and optimize images for the photo frame. Usage: task prepare -- -i <input_dir> -o <output_dir> [options]"
     cmds:
-      - echo "{{ .GREETING }}"
+      - python3 scripts/prepare_images.py {{.CLI_ARGS}}
   default:
     cmds:
       - task -l
