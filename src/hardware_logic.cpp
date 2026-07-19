@@ -32,13 +32,15 @@ void loadSettings(Preferences& prefs,
                   unsigned long& delay, 
                   bool& randomMode, 
                   bool& showFilename, 
-                  bool& inactivitySleep) {
+                  bool& inactivitySleep,
+                  int& themeFlavor) {
     brightness = prefs.getUChar("bright", brightness);
     autoBright = prefs.getBool("autob", autoBright);
     delay = prefs.getULong("delay", delay);
     randomMode = prefs.getBool("random", randomMode);
     showFilename = prefs.getBool("showfn", showFilename);
     inactivitySleep = prefs.getBool("inacts", inactivitySleep);
+    themeFlavor = (int)prefs.getUInt("theme", (uint32_t)themeFlavor);
 }
 
 void saveSettings(Preferences& prefs, 
@@ -47,13 +49,15 @@ void saveSettings(Preferences& prefs,
                   unsigned long delay, 
                   bool randomMode, 
                   bool showFilename, 
-                  bool inactivitySleep) {
+                  bool inactivitySleep,
+                  int themeFlavor) {
     prefs.putUChar("bright", (uint8_t)brightness);
     prefs.putBool("autob", autoBright);
     prefs.putULong("delay", (uint32_t)delay);
     prefs.putBool("random", randomMode);
     prefs.putBool("showfn", showFilename);
     prefs.putBool("inacts", inactivitySleep);
+    prefs.putUInt("theme", (uint32_t)themeFlavor);
 }
 
 } // namespace HardwareLogic

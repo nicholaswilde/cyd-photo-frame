@@ -1,6 +1,9 @@
 #include "lvgl_manager.h"
 #include <stddef.h>
 #include <stdlib.h>
+#include "catppuccin.h"
+
+extern int currentThemeFlavor;
 
 #if !defined(NATIVE_TEST)
 #include <Arduino.h>
@@ -11,6 +14,10 @@
 #include "app_state.h"
 
 extern TFT_eSPI tft;
+
+static lv_color_t get_lv_color(uint32_t hex) {
+    return lv_color_make((hex >> 16) & 0xFF, (hex >> 8) & 0xFF, hex & 0xFF);
+}
 
 // Draw buffer definitions
 static lv_disp_draw_buf_t draw_buf;
@@ -122,6 +129,11 @@ static void delay_dropdown_event_cb(lv_event_t * e) {
     }
 }
 
+static void theme_dropdown_event_cb(lv_event_t * e) {
+    lv_obj_t * dropdown = lv_event_get_target(e);
+    currentThemeFlavor = (int)lv_dropdown_get_selected(dropdown) + 1;
+}
+
 static void exit_button_event_cb(lv_event_t * e) {
     if (exitCallback) {
         exitCallback();
@@ -204,11 +216,11 @@ void LVGLManager::showSettings() {
     }
 
     settings_screen = lv_obj_create(NULL);
-    lv_obj_set_style_bg_color(settings_screen, lv_color_make(30, 30, 46), 0);
+    lv_obj_set_style_bg_color(settings_screen, get_lv_color(getCatppuccinFlavor(currentThemeFlavor).base), 0);
     
     lv_obj_t * title = lv_label_create(settings_screen);
     lv_label_set_text(title, "Settings");
-    lv_obj_set_style_text_color(title, lv_color_make(205, 214, 244), 0);
+    lv_obj_set_style_text_color(title, get_lv_color(getCatppuccinFlavor(currentThemeFlavor).text), 0);
     lv_obj_set_style_text_font(title, &lv_font_montserrat_14, 0);
     lv_obj_align(title, LV_ALIGN_TOP_MID, 0, 10);
     
@@ -216,7 +228,7 @@ void LVGLManager::showSettings() {
     lv_obj_set_size(list, LV_PCT(95), LV_PCT(70));
     lv_obj_align(list, LV_ALIGN_TOP_MID, 0, 35);
     lv_obj_set_flex_flow(list, LV_FLEX_FLOW_COLUMN);
-    lv_obj_set_style_bg_color(list, lv_color_make(30, 30, 46), 0);
+    lv_obj_set_style_bg_color(list, get_lv_color(getCatppuccinFlavor(currentThemeFlavor).base), 0);
     lv_obj_set_style_border_width(list, 0, 0);
     lv_obj_set_style_pad_all(list, 5, 0);
     lv_obj_set_style_pad_row(list, 10, 0);
@@ -226,13 +238,13 @@ void LVGLManager::showSettings() {
     lv_obj_set_size(row_bright, LV_PCT(100), 40);
     lv_obj_set_flex_flow(row_bright, LV_FLEX_FLOW_ROW);
     lv_obj_set_flex_align(row_bright, LV_FLEX_ALIGN_SPACE_BETWEEN, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
-    lv_obj_set_style_bg_color(row_bright, lv_color_make(49, 50, 68), 0);
+    lv_obj_set_style_bg_color(row_bright, get_lv_color(getCatppuccinFlavor(currentThemeFlavor).mantle), 0);
     lv_obj_set_style_border_width(row_bright, 0, 0);
     lv_obj_set_style_pad_all(row_bright, 5, 0);
 
     lv_obj_t * lbl_bright = lv_label_create(row_bright);
     lv_label_set_text(lbl_bright, "Brightness");
-    lv_obj_set_style_text_color(lbl_bright, lv_color_make(205, 214, 244), 0);
+    lv_obj_set_style_text_color(lbl_bright, get_lv_color(getCatppuccinFlavor(currentThemeFlavor).text), 0);
 
     lv_obj_t * slider_bright = lv_slider_create(row_bright);
     slider_bright_ptr = slider_bright;
@@ -247,13 +259,13 @@ void LVGLManager::showSettings() {
     lv_obj_set_size(row_auto, LV_PCT(100), 40);
     lv_obj_set_flex_flow(row_auto, LV_FLEX_FLOW_ROW);
     lv_obj_set_flex_align(row_auto, LV_FLEX_ALIGN_SPACE_BETWEEN, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
-    lv_obj_set_style_bg_color(row_auto, lv_color_make(49, 50, 68), 0);
+    lv_obj_set_style_bg_color(row_auto, get_lv_color(getCatppuccinFlavor(currentThemeFlavor).mantle), 0);
     lv_obj_set_style_border_width(row_auto, 0, 0);
     lv_obj_set_style_pad_all(row_auto, 5, 0);
 
     lv_obj_t * lbl_auto = lv_label_create(row_auto);
     lv_label_set_text(lbl_auto, "Auto Brightness (LDR)");
-    lv_obj_set_style_text_color(lbl_auto, lv_color_make(205, 214, 244), 0);
+    lv_obj_set_style_text_color(lbl_auto, get_lv_color(getCatppuccinFlavor(currentThemeFlavor).text), 0);
 
     lv_obj_t * sw_auto = lv_switch_create(row_auto);
     if (isAutoBrightness) {
@@ -267,13 +279,13 @@ void LVGLManager::showSettings() {
     lv_obj_set_size(row_delay, LV_PCT(100), 40);
     lv_obj_set_flex_flow(row_delay, LV_FLEX_FLOW_ROW);
     lv_obj_set_flex_align(row_delay, LV_FLEX_ALIGN_SPACE_BETWEEN, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
-    lv_obj_set_style_bg_color(row_delay, lv_color_make(49, 50, 68), 0);
+    lv_obj_set_style_bg_color(row_delay, get_lv_color(getCatppuccinFlavor(currentThemeFlavor).mantle), 0);
     lv_obj_set_style_border_width(row_delay, 0, 0);
     lv_obj_set_style_pad_all(row_delay, 5, 0);
 
     lv_obj_t * lbl_delay = lv_label_create(row_delay);
     lv_label_set_text(lbl_delay, "Delay");
-    lv_obj_set_style_text_color(lbl_delay, lv_color_make(205, 214, 244), 0);
+    lv_obj_set_style_text_color(lbl_delay, get_lv_color(getCatppuccinFlavor(currentThemeFlavor).text), 0);
 
     lv_obj_t * dd_delay = lv_dropdown_create(row_delay);
     lv_dropdown_set_options(dd_delay, "2s\n5s\n10s\n15s\n30s\n60s");
@@ -294,13 +306,13 @@ void LVGLManager::showSettings() {
     lv_obj_set_size(row_random, LV_PCT(100), 40);
     lv_obj_set_flex_flow(row_random, LV_FLEX_FLOW_ROW);
     lv_obj_set_flex_align(row_random, LV_FLEX_ALIGN_SPACE_BETWEEN, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
-    lv_obj_set_style_bg_color(row_random, lv_color_make(49, 50, 68), 0);
+    lv_obj_set_style_bg_color(row_random, get_lv_color(getCatppuccinFlavor(currentThemeFlavor).mantle), 0);
     lv_obj_set_style_border_width(row_random, 0, 0);
     lv_obj_set_style_pad_all(row_random, 5, 0);
 
     lv_obj_t * lbl_random = lv_label_create(row_random);
     lv_label_set_text(lbl_random, "Random Mode");
-    lv_obj_set_style_text_color(lbl_random, lv_color_make(205, 214, 244), 0);
+    lv_obj_set_style_text_color(lbl_random, get_lv_color(getCatppuccinFlavor(currentThemeFlavor).text), 0);
 
     lv_obj_t * sw_random = lv_switch_create(row_random);
     if (isRandomMode) lv_obj_add_state(sw_random, LV_STATE_CHECKED);
@@ -311,13 +323,13 @@ void LVGLManager::showSettings() {
     lv_obj_set_size(row_filename, LV_PCT(100), 40);
     lv_obj_set_flex_flow(row_filename, LV_FLEX_FLOW_ROW);
     lv_obj_set_flex_align(row_filename, LV_FLEX_ALIGN_SPACE_BETWEEN, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
-    lv_obj_set_style_bg_color(row_filename, lv_color_make(49, 50, 68), 0);
+    lv_obj_set_style_bg_color(row_filename, get_lv_color(getCatppuccinFlavor(currentThemeFlavor).mantle), 0);
     lv_obj_set_style_border_width(row_filename, 0, 0);
     lv_obj_set_style_pad_all(row_filename, 5, 0);
 
     lv_obj_t * lbl_filename = lv_label_create(row_filename);
     lv_label_set_text(lbl_filename, "Show Filename");
-    lv_obj_set_style_text_color(lbl_filename, lv_color_make(205, 214, 244), 0);
+    lv_obj_set_style_text_color(lbl_filename, get_lv_color(getCatppuccinFlavor(currentThemeFlavor).text), 0);
 
     lv_obj_t * sw_filename = lv_switch_create(row_filename);
     if (showFilename) lv_obj_add_state(sw_filename, LV_STATE_CHECKED);
@@ -328,27 +340,45 @@ void LVGLManager::showSettings() {
     lv_obj_set_size(row_sleep, LV_PCT(100), 40);
     lv_obj_set_flex_flow(row_sleep, LV_FLEX_FLOW_ROW);
     lv_obj_set_flex_align(row_sleep, LV_FLEX_ALIGN_SPACE_BETWEEN, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
-    lv_obj_set_style_bg_color(row_sleep, lv_color_make(49, 50, 68), 0);
+    lv_obj_set_style_bg_color(row_sleep, get_lv_color(getCatppuccinFlavor(currentThemeFlavor).mantle), 0);
     lv_obj_set_style_border_width(row_sleep, 0, 0);
     lv_obj_set_style_pad_all(row_sleep, 5, 0);
 
     lv_obj_t * lbl_sleep = lv_label_create(row_sleep);
     lv_label_set_text(lbl_sleep, "Inactivity Sleep");
-    lv_obj_set_style_text_color(lbl_sleep, lv_color_make(205, 214, 244), 0);
+    lv_obj_set_style_text_color(lbl_sleep, get_lv_color(getCatppuccinFlavor(currentThemeFlavor).text), 0);
 
     lv_obj_t * sw_sleep = lv_switch_create(row_sleep);
     if (isInactivitySleep) lv_obj_add_state(sw_sleep, LV_STATE_CHECKED);
     lv_obj_add_event_cb(sw_sleep, inactivity_sleep_switch_event_cb, LV_EVENT_VALUE_CHANGED, NULL);
 
-    // 7. Save & Exit Button
+    // 7. Theme Flavor Dropdown
+    lv_obj_t * row_theme = lv_obj_create(list);
+    lv_obj_set_size(row_theme, LV_PCT(100), 40);
+    lv_obj_set_flex_flow(row_theme, LV_FLEX_FLOW_ROW);
+    lv_obj_set_flex_align(row_theme, LV_FLEX_ALIGN_SPACE_BETWEEN, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+    lv_obj_set_style_bg_color(row_theme, get_lv_color(getCatppuccinFlavor(currentThemeFlavor).mantle), 0);
+    lv_obj_set_style_border_width(row_theme, 0, 0);
+    lv_obj_set_style_pad_all(row_theme, 5, 0);
+
+    lv_obj_t * lbl_theme = lv_label_create(row_theme);
+    lv_label_set_text(lbl_theme, "Theme");
+    lv_obj_set_style_text_color(lbl_theme, get_lv_color(getCatppuccinFlavor(currentThemeFlavor).text), 0);
+
+    lv_obj_t * dd_theme = lv_dropdown_create(row_theme);
+    lv_dropdown_set_options(dd_theme, "Mocha\nMacchiato\nFrappe\nLatte");
+    lv_dropdown_set_selected(dd_theme, currentThemeFlavor - 1);
+    lv_obj_add_event_cb(dd_theme, theme_dropdown_event_cb, LV_EVENT_VALUE_CHANGED, NULL);
+
+    // 8. Save & Exit Button
     lv_obj_t * btn_exit = lv_btn_create(settings_screen);
     lv_obj_set_size(btn_exit, 100, 30);
     lv_obj_align(btn_exit, LV_ALIGN_BOTTOM_MID, 0, -5);
-    lv_obj_set_style_bg_color(btn_exit, lv_color_make(166, 227, 161), 0);
+    lv_obj_set_style_bg_color(btn_exit, get_lv_color(getCatppuccinFlavor(currentThemeFlavor).green), 0);
     
     lv_obj_t * lbl_exit = lv_label_create(btn_exit);
     lv_label_set_text(lbl_exit, "Save & Exit");
-    lv_obj_set_style_text_color(lbl_exit, lv_color_make(17, 17, 27), 0);
+    lv_obj_set_style_text_color(lbl_exit, get_lv_color(getCatppuccinFlavor(currentThemeFlavor).crust), 0);
     lv_obj_align(lbl_exit, LV_ALIGN_CENTER, 0, 0);
     
     lv_obj_add_event_cb(btn_exit, exit_button_event_cb, LV_EVENT_CLICKED, NULL);

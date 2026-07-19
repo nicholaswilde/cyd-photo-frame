@@ -47,9 +47,10 @@ void test_preferences_persistence(void) {
     bool randomMode = false;
     bool showFilename = true;
     bool inactivitySleep = false;
+    int themeFlavor = 1; // CATPPUCCIN_MOCHA
     
     // Save settings
-    HardwareLogic::saveSettings(prefs, brightness, autoBright, delay, randomMode, showFilename, inactivitySleep);
+    HardwareLogic::saveSettings(prefs, brightness, autoBright, delay, randomMode, showFilename, inactivitySleep, themeFlavor);
     
     // Modify local variables to verify they load correctly
     int testBrightness = 0;
@@ -58,9 +59,10 @@ void test_preferences_persistence(void) {
     bool testRandomMode = true;
     bool testShowFilename = false;
     bool testInactivitySleep = true;
+    int testThemeFlavor = 0;
     
     // Load settings
-    HardwareLogic::loadSettings(prefs, testBrightness, testAutoBright, testDelay, testRandomMode, testShowFilename, testInactivitySleep);
+    HardwareLogic::loadSettings(prefs, testBrightness, testAutoBright, testDelay, testRandomMode, testShowFilename, testInactivitySleep, testThemeFlavor);
     
     // Verify loaded values match saved values
     TEST_ASSERT_EQUAL_INT(brightness, testBrightness);
@@ -69,6 +71,7 @@ void test_preferences_persistence(void) {
     TEST_ASSERT_EQUAL(randomMode, testRandomMode);
     TEST_ASSERT_EQUAL(showFilename, testShowFilename);
     TEST_ASSERT_EQUAL(inactivitySleep, testInactivitySleep);
+    TEST_ASSERT_EQUAL_INT(themeFlavor, testThemeFlavor);
     
     // Verify default fallback works when loading non-existent settings
     Preferences freshPrefs;
@@ -80,12 +83,14 @@ void test_preferences_persistence(void) {
     bool fallbackRandom = false;
     bool fallbackShowFn = true;
     bool fallbackSleep = false;
+    int fallbackTheme = 1;
     
-    HardwareLogic::loadSettings(freshPrefs, fallbackBrightness, fallbackAutoBright, fallbackDelay, fallbackRandom, fallbackShowFn, fallbackSleep);
+    HardwareLogic::loadSettings(freshPrefs, fallbackBrightness, fallbackAutoBright, fallbackDelay, fallbackRandom, fallbackShowFn, fallbackSleep, fallbackTheme);
     
     TEST_ASSERT_EQUAL_INT(200, fallbackBrightness);
     TEST_ASSERT_EQUAL(true, fallbackAutoBright);
     TEST_ASSERT_EQUAL_UINT32(10000, fallbackDelay);
+    TEST_ASSERT_EQUAL_INT(1, fallbackTheme);
 }
 
 int main(int argc, char **argv) {

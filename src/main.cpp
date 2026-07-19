@@ -30,6 +30,10 @@ bool isRandomMode = false;
 bool isAutoBrightness = false;
 bool isInactivitySleep = false;
 
+#include "catppuccin.h"
+
+int currentThemeFlavor = CATPPUCCIN_MOCHA;
+
 #include "app_state.h"
 AppState currentState = STATE_SLIDESHOW;
 
@@ -43,12 +47,14 @@ int16_t current_y_offset = 0;
 // SD Card Chip Select for CYD
 // const uint8_t SD_CS_PIN = 5;
 
-// RGB565 color approximations for Catppuccin Mocha
-#define CTP_BASE 0x18E5 
-#define CTP_RED  0xF475
-#define CTP_TEXT 0xCE79
-#define CTP_GREEN 0xA714
-#define CTP_SURFACE0 0x319A
+// Dynamic RGB888 to RGB565 conversion macro
+#define RGB888_TO_RGB565(c) ((((c) & 0xF80000) >> 8) | (((c) & 0xFC00) >> 5) | (((c) & 0xF8) >> 3))
+
+#define CTP_BASE     RGB888_TO_RGB565(getCatppuccinFlavor(currentThemeFlavor).base)
+#define CTP_RED      RGB888_TO_RGB565(getCatppuccinFlavor(currentThemeFlavor).red)
+#define CTP_TEXT     RGB888_TO_RGB565(getCatppuccinFlavor(currentThemeFlavor).text)
+#define CTP_GREEN    RGB888_TO_RGB565(getCatppuccinFlavor(currentThemeFlavor).green)
+#define CTP_SURFACE0 RGB888_TO_RGB565(getCatppuccinFlavor(currentThemeFlavor).overlay)
 
 std::string getCachePath(const std::string& originalPath) {
   size_t lastDot = originalPath.find_last_of('.');
@@ -460,7 +466,7 @@ void populateCache() {
 void saveConfig() {
   Preferences prefs;
   prefs.begin("settings", false);
-  HardwareLogic::saveSettings(prefs, currentBrightness, isAutoBrightness, slideshowTimer.getInterval(), isRandomMode, showFilename, isInactivitySleep);
+  HardwareLogic::saveSettings(prefs, currentBrightness, isAutoBrightness, slideshowTimer.getInterval(), isRandomMode, showFilename, isInactivitySleep, currentThemeFlavor);
   prefs.end();
   Serial.println("[System] Settings saved to NVS.");
 }
@@ -488,11 +494,11 @@ void setup() {
     Preferences prefs;
     prefs.begin("settings", false);
     unsigned long loadedDelay = slideshowTimer.getInterval();
-    HardwareLogic::loadSettings(prefs, currentBrightness, isAutoBrightness, loadedDelay, isRandomMode, showFilename, isInactivitySleep);
+    HardwareLogic::loadSettings(prefs, currentBrightness, isAutoBrightness, loadedDelay, isRandomMode, showFilename, isInactivitySleep, currentThemeFlavor);
     slideshowTimer.setInterval(loadedDelay);
     prefs.end();
-    Serial.printf("[System] Settings loaded from NVS. Brightness: %d, Auto: %d, Delay: %lu ms, Random: %d, ShowFN: %d, Sleep: %d\n",
-                  currentBrightness, isAutoBrightness, loadedDelay, isRandomMode, showFilename, isInactivitySleep);
+    Serial.printf("[System] Settings loaded from NVS. Brightness: %d, Auto: %d, Delay: %lu ms, Random: %d, ShowFN: %d, Sleep: %d, Theme: %d\n",
+                  currentBrightness, isAutoBrightness, loadedDelay, isRandomMode, showFilename, isInactivitySleep, currentThemeFlavor);
   }
 
   lastTouchTimeMs = millis();

@@ -23,7 +23,8 @@ namespace HardwareLogic {
                       unsigned long& delay, 
                       bool& randomMode, 
                       bool& showFilename, 
-                      bool& inactivitySleep);
+                      bool& inactivitySleep,
+                      int& themeFlavor);
 
     // Save settings to Preferences
     void saveSettings(Preferences& prefs, 
@@ -32,7 +33,8 @@ namespace HardwareLogic {
                       unsigned long delay, 
                       bool randomMode, 
                       bool showFilename, 
-                      bool inactivitySleep);
+                      bool inactivitySleep,
+                      int themeFlavor);
 }
 
 #endif // HARDWARE_LOGIC_H
