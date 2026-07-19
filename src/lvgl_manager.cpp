@@ -391,7 +391,9 @@ void LVGLManager::hideSettings() {
 #if !defined(NATIVE_TEST)
     if (settings_screen != nullptr) {
         lv_obj_t * old_scr = settings_screen;
-        lv_scr_load(lv_obj_create(NULL));
+        lv_obj_t * blank_scr = lv_obj_create(NULL);
+        lv_obj_set_style_bg_opa(blank_scr, LV_OPA_TRANSP, 0);
+        lv_scr_load(blank_scr);
         lv_obj_del(old_scr);
         settings_screen = nullptr;
         slider_bright_ptr = nullptr;

@@ -508,6 +508,22 @@ void exitSettings() {
 
   // Re-draw current photo to clear settings screen artifacts
   LVGLManager::hideSettings();
+  
+  // Render transition screen
+  tft.fillScreen(CTP_BASE);
+  tft.setTextColor(CTP_TEXT, CTP_BASE);
+  tft.setTextDatum(MC_DATUM);
+  tft.drawString("CYD Photo Frame", tft.width() / 2, tft.height() / 2 - 20, 4);
+  tft.setTextColor(CTP_GREEN, CTP_BASE);
+  tft.drawString("Resuming slideshow...", tft.width() / 2, tft.height() / 2 + 20, 2);
+
+#if !defined(NATIVE_TEST)
+  // Tick LVGL handler once to render the new transparent blank screen
+  LVGLManager::handle();
+#endif
+
+  delay(800);
+
   tft.fillScreen(CTP_BASE);
   renderScaledJpg(fileCache.getCurrent().c_str());
 }
