@@ -33,6 +33,7 @@ bool optimizationCancelled = false;
 int currentOrientation = 1; // 1 = Landscape, 2 = Portrait
 
 bool isCancelButtonTouched(int touchX, int touchY);
+void drawCancellingFeedback();
 
 #include "catppuccin.h"
 
@@ -120,6 +121,7 @@ bool tft_output(int16_t x, int16_t y, uint16_t w, uint16_t h, uint16_t* bitmap) 
         if (isCancelButtonTouched(tx, ty)) {
           Serial.println("[System] Optimization cancelled during file write.");
           optimizationCancelled = true;
+          drawCancellingFeedback();
           return 0; // Abort TJpgDec decoding
         }
       }
@@ -422,6 +424,13 @@ void drawCalculating() {
 
   tft.fillRect(barX, barY, barW, barH, CTP_SURFACE0);
   drawCancelButton();
+}
+
+void drawCancellingFeedback() {
+  tft.fillRect(0, 165, tft.width(), 20, CTP_BASE);
+  tft.setTextColor(CTP_RED, CTP_BASE);
+  tft.setTextDatum(MC_DATUM);
+  tft.drawString("Cancelling...", tft.width() / 2, 175, 2);
 }
 
 void drawProgress(size_t current, size_t total, const char* filename) {
@@ -856,6 +865,7 @@ void setup() {
           if (isCancelButtonTouched(tx, ty)) {
             Serial.println("[System] Optimization cancelled during calculation.");
             optimizationCancelled = true;
+            drawCancellingFeedback();
             restrictCacheToExisting();
             filesToCache.clear();
             break;
@@ -908,6 +918,7 @@ void setup() {
             if (isCancelButtonTouched(tx, ty)) {
               Serial.println("[System] Optimization cancelled by user.");
               cancelled = true;
+              drawCancellingFeedback();
               break;
             }
           }
