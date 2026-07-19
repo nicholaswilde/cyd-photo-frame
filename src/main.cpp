@@ -483,11 +483,6 @@ void saveConfig() {
 }
 
 void exitSettings() {
-  currentState = STATE_SLIDESHOW;
-  slideshowTimer.setPaused(false);
-  slideshowTimer.reset(millis());
-  Serial.println("[System] Exiting settings menu. Resuming slideshow.");
-  
   int cachedTheme = 0;
   {
     Preferences prefs;
@@ -506,9 +501,22 @@ void exitSettings() {
   }
 #endif
 
-  // Re-draw current photo to clear settings screen artifacts
+  // Clear settings screen in LVGL and delete the objects while still in STATE_SETTINGS
   LVGLManager::hideSettings();
   
+#if !defined(NATIVE_TEST)
+  // Tick LVGL twice to ensure it cleans up the objects and renders the transparent screen
+  LVGLManager::handle();
+  delay(10);
+  LVGLManager::handle();
+#endif
+
+  // Transition to slideshow state
+  currentState = STATE_SLIDESHOW;
+  slideshowTimer.setPaused(false);
+  slideshowTimer.reset(millis());
+  Serial.println("[System] Exiting settings menu. Resuming slideshow.");
+
   // Render transition screen
   tft.fillScreen(CTP_BASE);
   tft.setTextColor(CTP_TEXT, CTP_BASE);
@@ -516,11 +524,6 @@ void exitSettings() {
   tft.drawString("CYD Photo Frame", tft.width() / 2, tft.height() / 2 - 20, 4);
   tft.setTextColor(CTP_GREEN, CTP_BASE);
   tft.drawString("Resuming slideshow...", tft.width() / 2, tft.height() / 2 + 20, 2);
-
-#if !defined(NATIVE_TEST)
-  // Tick LVGL handler once to render the new transparent blank screen
-  LVGLManager::handle();
-#endif
 
   delay(800);
 
@@ -950,6 +953,8 @@ void loop() {
   analogWrite(TFT_BL, finalBacklight);
 #endif
 
-  LVGLManager::handle();
+  if (currentState == STATE_SETTINGS) {
+    LVGLManager::handle();
+  }
   delay(50);
 }
