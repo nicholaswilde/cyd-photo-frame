@@ -67,7 +67,7 @@ std::string getCachePath(const std::string& originalPath) {
   if (base.rfind("/", 0) == 0) {
     base = base.substr(1);
   }
-  return "/cache/" + base + ".raw";
+  return "/cache/" + base + "_" + std::to_string(tft.width()) + "x" + std::to_string(tft.height()) + ".raw";
 }
 
 bool renderRawImage(const char* filename) {
@@ -812,9 +812,9 @@ void setup() {
     cacheDir.close();
   }
 
-  // Clear cache if theme or orientation changed to regenerate cache files with correct borders/dimensions
-  if (currentThemeFlavor != cachedTheme || currentOrientation != cachedOrientation) {
-    Serial.println("[System] Theme flavor or orientation changed. Clearing cache...");
+  // Clear cache if theme changed to regenerate cache files with correct background borders/colors
+  if (currentThemeFlavor != cachedTheme) {
+    Serial.println("[System] Theme flavor changed. Clearing cache...");
     File cacheDir = SD.open("/cache");
     if (cacheDir) {
       File file = cacheDir.openNextFile();
@@ -828,8 +828,10 @@ void setup() {
       }
       cacheDir.close();
     }
-    
-    // Save new cached values in NVS
+  }
+  
+  // Save new cached values in NVS if theme or orientation changed
+  if (currentThemeFlavor != cachedTheme || currentOrientation != cachedOrientation) {
     Preferences prefs;
     prefs.begin("settings", false);
     prefs.putUInt("cached_theme", (uint32_t)currentThemeFlavor);
