@@ -509,6 +509,7 @@ void exitSettings() {
 void setup() {
   Serial.begin(115200);
   Serial.println("[System] Booting ESP32 CYD Photo Frame...");
+  Serial.println("[System] Type 'clear' or 'clear_cache' in the serial terminal to empty the cache.");
 
   // Load settings from NVS
   int cachedTheme = 0;
@@ -724,6 +725,33 @@ void showPreviousImage() {
 }
 
 void loop() {
+  // Check for serial commands
+  if (Serial.available() > 0) {
+    String cmd = Serial.readStringUntil('\n');
+    cmd.trim();
+    if (cmd == "clear_cache" || cmd == "clear") {
+      Serial.println("[Serial] Clearing cache directory...");
+      File cacheDir = SD.open("/cache");
+      if (cacheDir) {
+        File file = cacheDir.openNextFile();
+        while (file) {
+          String path = file.path();
+          file.close();
+          SD.remove(path.c_str());
+          file = cacheDir.openNextFile();
+        }
+        cacheDir.close();
+        Serial.println("[Serial] Cache cleared successfully! Rebooting...");
+        delay(500);
+#if !defined(NATIVE_TEST)
+        ESP.restart();
+#endif
+      } else {
+        Serial.println("[Serial] Error: Could not open /cache directory.");
+      }
+    }
+  }
+
   if (fileCache.isEmpty()) {
     delay(1000);
     return;
