@@ -210,8 +210,11 @@ bool tft_output(int16_t x, int16_t y, uint16_t w, uint16_t h, uint16_t* bitmap) 
 }
 
 bool generateCache(const char* jpgFilename, const char* rawFilename) {
+  Serial.printf("[System] Optimizing: %s\n", jpgFilename);
   std::string tempFilename = std::string(rawFilename) + ".tmp";
-  SD.remove(tempFilename.c_str()); // Clean start
+  if (SD.exists(tempFilename.c_str())) {
+    SD.remove(tempFilename.c_str()); // Clean start
+  }
   cacheFile = SD.open(tempFilename.c_str(), FILE_WRITE);
   if (!cacheFile) {
     Serial.printf("Failed to create cache file: %s\n", tempFilename.c_str());
@@ -247,7 +250,9 @@ bool generateCache(const char* jpgFilename, const char* rawFilename) {
   if (result != 0) {
     Serial.printf("Failed to read header for caching: %s\n", jpgFilename);
     cacheFile.close();
-    SD.remove(rawFilename);
+    if (SD.exists(tempFilename.c_str())) {
+      SD.remove(tempFilename.c_str());
+    }
     return false;
   }
 
@@ -293,15 +298,21 @@ bool generateCache(const char* jpgFilename, const char* rawFilename) {
 
   if (drawResult != 0 && drawResult != 1) {
     Serial.printf("Error during caching decode: %d\n", drawResult);
-    SD.remove(tempFilename.c_str());
+    if (SD.exists(tempFilename.c_str())) {
+      SD.remove(tempFilename.c_str());
+    }
     return false;
   }
 
   // Rename temp file to final destination
-  SD.remove(rawFilename); // Remove old cached file if it exists
+  if (SD.exists(rawFilename)) {
+    SD.remove(rawFilename); // Remove old cached file if it exists
+  }
   if (!SD.rename(tempFilename.c_str(), rawFilename)) {
     Serial.printf("Failed to rename cached file: %s -> %s\n", tempFilename.c_str(), rawFilename);
-    SD.remove(tempFilename.c_str());
+    if (SD.exists(tempFilename.c_str())) {
+      SD.remove(tempFilename.c_str());
+    }
     return false;
   }
 
@@ -507,7 +518,9 @@ bool renderScaledJpg(const char* filename) {
       }
     } else {
       Serial.printf("[System] Deleting invalid/corrupt cache file: %s\n", cachePath.c_str());
-      SD.remove(cachePath.c_str());
+      if (SD.exists(cachePath.c_str())) {
+        SD.remove(cachePath.c_str());
+      }
     }
   }
 
