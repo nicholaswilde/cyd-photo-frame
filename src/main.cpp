@@ -195,8 +195,9 @@ bool generateCache(const char* jpgFilename, const char* rawFilename) {
   const size_t chunkSize = 320 * 16;
   uint16_t* chunk = (uint16_t*)malloc(chunkSize * sizeof(uint16_t));
   if (chunk) {
+    uint16_t swapped_base = (CTP_BASE >> 8) | (CTP_BASE << 8);
     for (size_t i = 0; i < chunkSize; i++) {
-      chunk[i] = CTP_BASE;
+      chunk[i] = swapped_base;
     }
     for (int i = 0; i < 240; i += 16) {
       cacheFile.write((uint8_t*)chunk, chunkSize * sizeof(uint16_t));
@@ -205,8 +206,9 @@ bool generateCache(const char* jpgFilename, const char* rawFilename) {
   } else {
     // Stack fallback using small 320 element row buffer (only 640 bytes, stack-safe)
     uint16_t rowBuffer[320];
+    uint16_t swapped_base = (CTP_BASE >> 8) | (CTP_BASE << 8);
     for (int i = 0; i < 320; i++) {
-      rowBuffer[i] = CTP_BASE;
+      rowBuffer[i] = swapped_base;
     }
     for (int i = 0; i < 240; i++) {
       cacheFile.write((uint8_t*)rowBuffer, 320 * sizeof(uint16_t));
@@ -477,7 +479,23 @@ void exitSettings() {
   slideshowTimer.reset(millis());
   Serial.println("[System] Exiting settings menu. Resuming slideshow.");
   
+  int cachedTheme = 0;
+  {
+    Preferences prefs;
+    prefs.begin("settings", false);
+    cachedTheme = (int)prefs.getUInt("cached_theme", 0);
+    prefs.end();
+  }
+
   saveConfig();
+
+#if !defined(NATIVE_TEST)
+  if (currentThemeFlavor != cachedTheme) {
+    Serial.println("[System] Theme flavor changed. Rebooting to regenerate cache...");
+    delay(500);
+    ESP.restart();
+  }
+#endif
 
   // Re-draw current photo to clear settings screen artifacts
   LVGLManager::hideSettings();
@@ -490,15 +508,17 @@ void setup() {
   Serial.println("[System] Booting ESP32 CYD Photo Frame...");
 
   // Load settings from NVS
+  int cachedTheme = 0;
   {
     Preferences prefs;
     prefs.begin("settings", false);
     unsigned long loadedDelay = slideshowTimer.getInterval();
     HardwareLogic::loadSettings(prefs, currentBrightness, isAutoBrightness, loadedDelay, isRandomMode, showFilename, isInactivitySleep, currentThemeFlavor);
     slideshowTimer.setInterval(loadedDelay);
+    cachedTheme = (int)prefs.getUInt("cached_theme", 0);
     prefs.end();
-    Serial.printf("[System] Settings loaded from NVS. Brightness: %d, Auto: %d, Delay: %lu ms, Random: %d, ShowFN: %d, Sleep: %d, Theme: %d\n",
-                  currentBrightness, isAutoBrightness, loadedDelay, isRandomMode, showFilename, isInactivitySleep, currentThemeFlavor);
+    Serial.printf("[System] Settings loaded from NVS. Brightness: %d, Auto: %d, Delay: %lu ms, Random: %d, ShowFN: %d, Sleep: %d, Theme: %d, CachedTheme: %d\n",
+                  currentBrightness, isAutoBrightness, loadedDelay, isRandomMode, showFilename, isInactivitySleep, currentThemeFlavor, cachedTheme);
   }
 
   lastTouchTimeMs = millis();
@@ -548,6 +568,29 @@ void setup() {
   // Ensure cache directory exists
   if (!SD.exists("/cache")) {
     SD.mkdir("/cache");
+  }
+
+  // Clear cache if theme changed to regenerate background borders in the new flavor
+  if (currentThemeFlavor != cachedTheme) {
+    Serial.println("[System] Theme flavor changed. Clearing cache to regenerate borders...");
+    File cacheDir = SD.open("/cache");
+    if (cacheDir) {
+      File file = cacheDir.openNextFile();
+      while (file) {
+        String path = file.path();
+        file.close();
+        SD.remove(path.c_str());
+        file = cacheDir.openNextFile();
+      }
+      cacheDir.close();
+    }
+    
+    // Save new cached theme flavor in NVS
+    Preferences prefs;
+    prefs.begin("settings", false);
+    prefs.putUInt("cached_theme", (uint32_t)currentThemeFlavor);
+    prefs.end();
+    cachedTheme = currentThemeFlavor; // Sync local variable
   }
 
   // Scan for files that need optimization/caching
