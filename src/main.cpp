@@ -12,6 +12,7 @@
 #include "hardware_logic.h"
 #include "backlight_fader.h"
 #include "screenshot_manager.h"
+#include "led_manager.h"
 
 BacklightFader fader;
 bool transitionPending = false;
@@ -32,6 +33,10 @@ bool isAutoBrightness = false;
 bool isInactivitySleep = false;
 bool optimizationCancelled = false;
 int currentOrientation = 1; // 1 = Landscape, 2 = Portrait
+
+// CYD RGB LED — pins: R=4, G=16, B=17 (active-LOW, common-anode)
+LedManager led(4, 16, 17);
+int currentLedBrightness = 128; // default mid-brightness
 
 bool isCancelButtonTouched(int touchX, int touchY);
 void drawCancellingFeedback();
@@ -666,7 +671,7 @@ void populateCache() {
 void saveConfig() {
   Preferences prefs;
   prefs.begin("settings", false);
-  HardwareLogic::saveSettings(prefs, currentBrightness, isAutoBrightness, slideshowTimer.getInterval(), isRandomMode, showFilename, isInactivitySleep, currentThemeFlavor, currentOrientation);
+  HardwareLogic::saveSettings(prefs, currentBrightness, isAutoBrightness, slideshowTimer.getInterval(), isRandomMode, showFilename, isInactivitySleep, currentThemeFlavor, currentOrientation, currentLedBrightness);
   prefs.end();
   Serial.println("[System] Settings saved to NVS.");
 }
@@ -709,6 +714,7 @@ void exitSettings() {
 
   // Transition to slideshow state
   currentState = STATE_SLIDESHOW;
+  led.setState(LedManager::STATE_SLIDESHOW);
   slideshowTimer.setPaused(false);
   slideshowTimer.reset(millis());
   Serial.println("[System] Exiting settings menu. Resuming slideshow.");
@@ -739,19 +745,24 @@ void setup() {
     Preferences prefs;
     prefs.begin("settings", false);
     unsigned long loadedDelay = slideshowTimer.getInterval();
-    HardwareLogic::loadSettings(prefs, currentBrightness, isAutoBrightness, loadedDelay, isRandomMode, showFilename, isInactivitySleep, currentThemeFlavor, currentOrientation);
+    HardwareLogic::loadSettings(prefs, currentBrightness, isAutoBrightness, loadedDelay, isRandomMode, showFilename, isInactivitySleep, currentThemeFlavor, currentOrientation, currentLedBrightness);
     slideshowTimer.setInterval(loadedDelay);
     cachedTheme = (int)prefs.getUInt("cached_theme", 0);
     cachedOrientation = (int)prefs.getInt("cached_rot", 1);
     prefs.end();
-    Serial.printf("[System] Settings loaded from NVS. Brightness: %d, Auto: %d, Delay: %lu ms, Random: %d, ShowFN: %d, Sleep: %d, Theme: %d, CachedTheme: %d, Orientation: %d, CachedOrientation: %d\n",
-                  currentBrightness, isAutoBrightness, loadedDelay, isRandomMode, showFilename, isInactivitySleep, currentThemeFlavor, cachedTheme, currentOrientation, cachedOrientation);
+    Serial.printf("[System] Settings loaded from NVS. Brightness: %d, Auto: %d, Delay: %lu ms, Random: %d, ShowFN: %d, Sleep: %d, Theme: %d, CachedTheme: %d, Orientation: %d, CachedOrientation: %d, LED Brightness: %d\n",
+                  currentBrightness, isAutoBrightness, loadedDelay, isRandomMode, showFilename, isInactivitySleep, currentThemeFlavor, cachedTheme, currentOrientation, cachedOrientation, currentLedBrightness);
   }
 
   lastTouchTimeMs = millis();
 
   // Initialize LDR Sensor Pin
   pinMode(34, INPUT);
+
+  // Initialize RGB LED
+  led.begin();
+  led.setBrightness(currentLedBrightness);
+  led.setState(LedManager::STATE_BOOT);
 
   // Initialize TFT
   tft.begin();
@@ -801,6 +812,7 @@ void setup() {
   }
 
   if (!sdSuccess) {
+    led.setState(LedManager::STATE_ERROR);
     showSDError(); // Blocks execution here if failed
   }
   Serial.println("SD Card mounted successfully.");
@@ -809,6 +821,7 @@ void setup() {
   populateCache();
   if (fileCache.isEmpty()) {
     Serial.println("Error: No images found on SD card.");
+    led.setState(LedManager::STATE_ERROR);
     tft.fillScreen(CTP_BASE);
     tft.setTextColor(CTP_RED, CTP_BASE);
     tft.setTextDatum(MC_DATUM);
@@ -920,6 +933,7 @@ void setup() {
 #endif
     
     optimizationCancelled = false; // Reset before starting optimization loop
+    led.setState(LedManager::STATE_OPTIMIZING);
     bool cancelled = false;
     unsigned long lastOptTouchCheckMs = 0;
     for (size_t i = 0; i < filesToCache.size(); i++) {
@@ -992,13 +1006,15 @@ void setup() {
 
   if (!success) {
     Serial.println("Error: All images in cache failed to render on startup.");
+    led.setState(LedManager::STATE_ERROR);
     tft.fillScreen(CTP_BASE);
     tft.setTextColor(CTP_RED, CTP_BASE);
     tft.setTextDatum(MC_DATUM);
     tft.drawString("All Images Failed", tft.width() / 2, tft.height() / 2, 4);
-    while(true) delay(1000); // Halt execution
+    while(true) { led.update(millis()); delay(100); } // Halt, keep LED updating
   }
 
+  led.setState(LedManager::STATE_SLIDESHOW);
   slideshowTimer.start(millis());
 }
 
@@ -1092,7 +1108,10 @@ void loop() {
       if (currentState == STATE_SETTINGS) {
         std::string filename = ScreenshotManager::generateFilename(millis());
         Serial.printf("[Serial] Capturing LVGL screenshot to %s...\n", filename.c_str());
+        led.setState(LedManager::STATE_SCREENSHOT);
         ScreenshotManager::captureToSD(filename.c_str());
+        // Restore settings LED state after capture
+        led.setState(LedManager::STATE_SETTINGS);
       } else {
         Serial.println("[Serial] 'screenshot' only works while the Settings screen is open.");
         Serial.println("[Serial] Use 'screenshot_tft' to capture the current raw TFT screen.");
@@ -1101,7 +1120,13 @@ void loop() {
       // Capture the current raw TFT screen (optimization, slideshow, etc.)
       std::string filename = ScreenshotManager::generateFilename(millis());
       Serial.printf("[Serial] Capturing TFT screen to %s...\n", filename.c_str());
+      LedManager::State prevLedState = (currentState == STATE_SETTINGS)
+          ? LedManager::STATE_SETTINGS
+          : LedManager::STATE_SLIDESHOW;
+      led.setState(LedManager::STATE_SCREENSHOT);
       ScreenshotManager::captureTFTToSD(filename.c_str());
+      // Restore state after capture
+      led.setState(prevLedState);
     }
   }
 
@@ -1131,6 +1156,7 @@ void loop() {
     // Auto-wake from darkness sleep if light returns
     if (isSleeping && rawLdr >= 150) { // Hysteresis threshold
       isSleeping = false;
+      led.setState(LedManager::STATE_SLIDESHOW);
       lastTouchTimeMs = now;
       Serial.println("[System] Light detected - Auto-waking from darkness sleep.");
     }
@@ -1162,6 +1188,7 @@ void loop() {
     // Wake screen if it was sleeping
     if (isSleeping) {
       isSleeping = false;
+      led.setState(LedManager::STATE_SLIDESHOW);
       Serial.println("[System] Screen woke up on touch.");
       // Clear touchHandler state and skip processing this touch to prevent accidental navigation
       touchHandler.processTouch(false, 0, 0, now);
@@ -1174,6 +1201,7 @@ void loop() {
   if (isInactivitySleep && !isSleeping) {
     if (now - lastTouchTimeMs >= 300000UL) { // 5 minutes
       isSleeping = true;
+      led.setState(LedManager::STATE_OFF);
       Serial.println("[System] Entering inactivity sleep.");
     }
   }
@@ -1184,6 +1212,7 @@ void loop() {
       if (zone == TouchZone::LONG_PRESS_MID_CENTER) {
         Serial.println("[Touch] Long Press Center - Entering Settings Menu");
         currentState = STATE_SETTINGS;
+        led.setState(LedManager::STATE_SETTINGS);
         slideshowTimer.setPaused(true);
         tft.fillScreen(CTP_BASE);
         LVGLManager::showSettings();
@@ -1265,6 +1294,7 @@ void loop() {
       } else {
         showPreviousImage();
       }
+      led.setState(LedManager::STATE_TRANSITION);
       // Start fading back in
       fader.startFade(0, currentBrightness, 300);
     } else {
@@ -1284,5 +1314,9 @@ void loop() {
   if (currentState == STATE_SETTINGS) {
     LVGLManager::handle();
   }
+
+  // Update LED state machine every loop tick
+  led.update(millis());
+
   delay(50);
 }

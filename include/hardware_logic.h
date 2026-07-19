@@ -25,7 +25,8 @@ namespace HardwareLogic {
                       bool& showFilename, 
                       bool& inactivitySleep,
                       int& themeFlavor,
-                      int& screenOrientation);
+                      int& screenOrientation,
+                      int& ledBrightness);
 
     // Save settings to Preferences
     void saveSettings(Preferences& prefs, 
@@ -36,7 +37,8 @@ namespace HardwareLogic {
                       bool showFilename, 
                       bool inactivitySleep,
                       int themeFlavor,
-                      int screenOrientation);
+                      int screenOrientation,
+                      int ledBrightness);
 }
 
 #endif // HARDWARE_LOGIC_H

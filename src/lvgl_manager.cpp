@@ -14,6 +14,7 @@ extern int currentOrientation;
 #include "slideshow_timer.h"
 #include "app_state.h"
 #include "screenshot_manager.h"
+#include "led_manager.h"
 
 extern TFT_eSPI tft;
 
@@ -112,6 +113,8 @@ extern bool isRandomMode;
 extern bool isAutoBrightness;
 extern bool isInactivitySleep;
 extern SlideshowTimer slideshowTimer;
+extern int currentLedBrightness;
+extern LedManager led;
 
 static void brightness_slider_event_cb(lv_event_t * e) {
     lv_obj_t * slider = lv_event_get_target(e);
@@ -121,6 +124,12 @@ static void brightness_slider_event_cb(lv_event_t * e) {
         analogWrite(TFT_BL, currentBrightness);
     }
 #endif
+}
+
+static void led_brightness_slider_event_cb(lv_event_t * e) {
+    lv_obj_t * slider = lv_event_get_target(e);
+    currentLedBrightness = (int)lv_slider_get_value(slider);
+    led.setBrightness(currentLedBrightness);
 }
 
 static void auto_brightness_switch_event_cb(lv_event_t * e) {
@@ -319,6 +328,26 @@ void LVGLManager::showSettings() {
     }
     lv_obj_add_event_cb(sw_auto, auto_brightness_switch_event_cb, LV_EVENT_VALUE_CHANGED, slider_bright);
     
+    // 2a. LED Brightness Slider
+    lv_obj_t * row_led = lv_obj_create(list);
+    lv_obj_set_size(row_led, LV_PCT(100), 40);
+    lv_obj_set_flex_flow(row_led, LV_FLEX_FLOW_ROW);
+    lv_obj_set_flex_align(row_led, LV_FLEX_ALIGN_SPACE_BETWEEN, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+    lv_obj_set_style_bg_color(row_led, get_lv_color(getCatppuccinFlavor(currentThemeFlavor).mantle), 0);
+    lv_obj_set_style_border_width(row_led, 0, 0);
+    lv_obj_set_style_pad_all(row_led, 5, 0);
+
+    lv_obj_t * lbl_led = lv_label_create(row_led);
+    lv_label_set_text(lbl_led, "LED Brightness");
+    lv_obj_set_style_text_color(lbl_led, get_lv_color(getCatppuccinFlavor(currentThemeFlavor).text), 0);
+
+    lv_obj_t * slider_led = lv_slider_create(row_led);
+    lv_obj_set_size(slider_led, 80, 10);
+    lv_obj_set_style_pad_right(row_led, 15, 0);
+    lv_slider_set_range(slider_led, 0, 255);
+    lv_slider_set_value(slider_led, currentLedBrightness, LV_ANIM_OFF);
+    lv_obj_add_event_cb(slider_led, led_brightness_slider_event_cb, LV_EVENT_VALUE_CHANGED, NULL);
+
     // 3. Delay Dropdown
     lv_obj_t * row_delay = lv_obj_create(list);
     lv_obj_set_size(row_delay, LV_PCT(100), 40);
