@@ -29,6 +29,9 @@ bool showFilename = true;
 bool isRandomMode = false;
 bool isAutoBrightness = false;
 bool isInactivitySleep = false;
+bool optimizationCancelled = false;
+
+bool isCancelButtonTouched(int touchX, int touchY);
 
 #include "catppuccin.h"
 
@@ -104,6 +107,28 @@ bool cacheFileActive = false;
  * Pushes decompressed MCU blocks (usually 16x16 pixels) to the screen.
  */
 bool tft_output(int16_t x, int16_t y, uint16_t w, uint16_t h, uint16_t* bitmap) {
+  // Poll touch screen periodically during decoding (e.g., every 20 blocks) to check for Cancel
+  static int blockCounter = 0;
+  blockCounter++;
+  if (blockCounter >= 20) {
+    blockCounter = 0;
+    if (TouchManager::isTouched()) {
+      int tx = 0, ty = 0;
+      if (TouchManager::getTouchPoint(tx, ty)) {
+        Serial.printf("[Touch Debug] Touch detected during decode at X=%d, Y=%d\n", tx, ty);
+        if (isCancelButtonTouched(tx, ty)) {
+          Serial.println("[System] Optimization cancelled during file write.");
+          optimizationCancelled = true;
+          return 0; // Abort TJpgDec decoding
+        }
+      }
+    }
+  }
+
+  if (optimizationCancelled) {
+    return 0;
+  }
+
   // Calculate block bounds in scaled coordinate system (using rounding to prevent gaps)
   uint16_t x_start_scaled = (uint16_t)round((float)x / current_scale_sw);
   uint16_t x_end_scaled = (uint16_t)round((float)(x + w) / current_scale_sw);
@@ -283,6 +308,76 @@ bool generateCache(const char* jpgFilename, const char* rawFilename) {
   return true;
 }
 
+void drawCancelButton() {
+  int btnW = 100;
+  int btnH = 30;
+  int btnX = (tft.width() - btnW) / 2;
+  int btnY = tft.height() - 40;
+  
+  tft.fillRect(btnX, btnY, btnW, btnH, CTP_RED);
+  tft.setTextColor(CTP_BASE, CTP_RED);
+  tft.setTextDatum(MC_DATUM);
+  tft.drawString("Cancel", btnX + btnW / 2, btnY + btnH / 2, 2);
+}
+
+static int mapRangeClippedMain(int val, int in_min, int in_max, int out_max) {
+  if (in_max == in_min) return 0;
+  long out = (long)(val - in_min) * out_max / (in_max - in_min);
+  if (out < 0) return 0;
+  if (out > out_max) return out_max;
+  return (int)out;
+}
+
+bool isCancelButtonTouched(int rawX, int rawY) {
+  int pixelX = 0;
+  int pixelY = 0;
+  bool isCapacitive = (rawX <= tft.width() * 2 && rawY <= tft.height() * 2);
+  if (isCapacitive) {
+    pixelX = rawX;
+    pixelY = rawY;
+  } else {
+    pixelX = mapRangeClippedMain(rawX, 200, 3800, tft.width());
+    pixelY = mapRangeClippedMain(rawY, 200, 3800, tft.height());
+  }
+
+  Serial.printf("[Touch Debug] Mapped Coordinates: PixelX=%d, PixelY=%d\n", pixelX, pixelY);
+
+  int btnW = 100;
+  int btnH = 30;
+  int btnX = (tft.width() - btnW) / 2;
+  int btnY = tft.height() - 40;
+  
+  return (pixelX >= btnX && pixelX <= (btnX + btnW) &&
+          pixelY >= btnY && pixelY <= (btnY + btnH));
+}
+
+void restrictCacheToExisting() {
+  std::vector<std::string> validFiles;
+  for (size_t i = 0; i < fileCache.size(); i++) {
+    std::string originalPath = fileCache.getAt(i);
+    std::string cachePath = getCachePath(originalPath);
+    bool cacheValid = false;
+    if (SD.exists(cachePath.c_str())) {
+      File checkFile = SD.open(cachePath.c_str(), FILE_READ);
+      if (checkFile) {
+        if (checkFile.size() == 153600) {
+          cacheValid = true;
+        }
+        checkFile.close();
+      }
+    }
+    if (cacheValid) {
+      validFiles.push_back(originalPath);
+    }
+  }
+
+  fileCache.clear();
+  for (const auto& path : validFiles) {
+    fileCache.addFile(path);
+  }
+  Serial.printf("[System] Restricted cache to %zu already-cached images.\n", fileCache.size());
+}
+
 void drawCalculating() {
   tft.fillScreen(CTP_BASE);
 
@@ -305,6 +400,7 @@ void drawCalculating() {
   int barH = 20;
 
   tft.fillRect(barX, barY, barW, barH, CTP_SURFACE0);
+  drawCancelButton();
 }
 
 void drawProgress(size_t current, size_t total, const char* filename) {
@@ -345,6 +441,7 @@ void drawProgress(size_t current, size_t total, const char* filename) {
   if (fillW > 0) {
     tft.fillRect(barX + border, barY + border, fillW - 2 * border, barH - 2 * border, CTP_GREEN);
   }
+  drawCancelButton();
 }
 
 /**
@@ -706,7 +803,27 @@ void setup() {
 
   // Scan for files that need optimization/caching
   std::vector<std::pair<std::string, std::string>> filesToCache;
+  unsigned long lastTouchCheckMs = 0;
   for (size_t i = 0; i < fileCache.size(); i++) {
+    // Poll touch screen at most once every 50ms to prevent XPT2046 bus lockup
+    unsigned long loopNow = millis();
+    if (loopNow - lastTouchCheckMs >= 50) {
+      lastTouchCheckMs = loopNow;
+      if (TouchManager::isTouched()) {
+        int tx = 0, ty = 0;
+        if (TouchManager::getTouchPoint(tx, ty)) {
+          Serial.printf("[Touch Debug] Touch detected during calculation at X=%d, Y=%d\n", tx, ty);
+          if (isCancelButtonTouched(tx, ty)) {
+            Serial.println("[System] Optimization cancelled during calculation.");
+            optimizationCancelled = true;
+            restrictCacheToExisting();
+            filesToCache.clear();
+            break;
+          }
+        }
+      }
+    }
+
     std::string originalPath = fileCache.getAt(i);
     std::string cachePath = getCachePath(originalPath);
     bool cacheValid = false;
@@ -736,7 +853,32 @@ void setup() {
     analogWrite(TFT_BL, currentBrightness);
 #endif
     
+    optimizationCancelled = false; // Reset before starting optimization loop
+    bool cancelled = false;
+    unsigned long lastOptTouchCheckMs = 0;
     for (size_t i = 0; i < filesToCache.size(); i++) {
+      // Poll touch screen between files (rate-limited to 50ms)
+      unsigned long optNow = millis();
+      if (optNow - lastOptTouchCheckMs >= 50) {
+        lastOptTouchCheckMs = optNow;
+        if (TouchManager::isTouched()) {
+          int tx = 0, ty = 0;
+          if (TouchManager::getTouchPoint(tx, ty)) {
+            Serial.printf("[Touch Debug] Touch detected between files at X=%d, Y=%d\n", tx, ty);
+            if (isCancelButtonTouched(tx, ty)) {
+              Serial.println("[System] Optimization cancelled by user.");
+              cancelled = true;
+              break;
+            }
+          }
+        }
+      }
+
+      if (optimizationCancelled) {
+        cancelled = true;
+        break;
+      }
+
       const char* displayName = strrchr(filesToCache[i].first.c_str(), '/');
       displayName = displayName ? displayName + 1 : filesToCache[i].first.c_str();
       
@@ -745,10 +887,27 @@ void setup() {
       
       // Perform silent resizing and cache write
       generateCache(filesToCache[i].first.c_str(), filesToCache[i].second.c_str());
+
+      if (optimizationCancelled) {
+        cancelled = true;
+        break;
+      }
     }
     
-    drawProgress(filesToCache.size(), filesToCache.size(), "All Photos Optimized!");
-    delay(500);
+    if (cancelled) {
+      restrictCacheToExisting();
+      
+      tft.fillScreen(CTP_BASE);
+      tft.setTextColor(CTP_TEXT, CTP_BASE);
+      tft.setTextDatum(MC_DATUM);
+      tft.drawString("CYD Photo Frame", tft.width() / 2, tft.height() / 2 - 20, 4);
+      tft.setTextColor(CTP_RED, CTP_BASE);
+      tft.drawString("Optimization cancelled. Loading slideshow...", tft.width() / 2, tft.height() / 2 + 20, 2);
+      delay(1500);
+    } else {
+      drawProgress(filesToCache.size(), filesToCache.size(), "All Photos Optimized!");
+      delay(500);
+    }
   }
 
   // Find and render the first valid image
