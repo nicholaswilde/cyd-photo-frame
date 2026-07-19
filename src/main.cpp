@@ -482,6 +482,11 @@ void saveConfig() {
   Serial.println("[System] Settings saved to NVS.");
 }
 
+bool pendingExitSettings = false;
+void triggerExitSettings() {
+  pendingExitSettings = true;
+}
+
 void exitSettings() {
   int cachedTheme = 0;
   {
@@ -564,7 +569,7 @@ void setup() {
 
   // Initialize LVGL
   LVGLManager::init(tft.width(), tft.height());
-  LVGLManager::setExitCallback(exitSettings);
+  LVGLManager::setExitCallback(triggerExitSettings);
 
   // Initialize backlight control
 #if defined(TFT_BL) && (TFT_BL >= 0)
@@ -750,6 +755,11 @@ void showPreviousImage() {
 }
 
 void loop() {
+  if (pendingExitSettings) {
+    pendingExitSettings = false;
+    exitSettings();
+  }
+
   // Check for serial commands
   if (Serial.available() > 0) {
     String cmd = Serial.readStringUntil('\n');
