@@ -293,6 +293,13 @@ bool ScreenshotManager::captureTFTToSD(const char* filepath) {
             rowBGR24[x * 3 + 2] = r;
         }
         f.write(rowBGR24, width * 3);
+
+        // Print progress every 10% of rows
+        uint32_t pct = (y + 1) * 100 / height;
+        uint32_t prevPct = y * 100 / height;
+        if (pct / 10 != prevPct / 10) {
+            Serial.printf("[Screenshot] TFT capture: %lu%%\n", pct);
+        }
     }
 
     free(rowRGB565);
