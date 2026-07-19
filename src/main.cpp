@@ -55,6 +55,7 @@ int16_t current_y_offset = 0;
 #define CTP_TEXT     RGB888_TO_RGB565(getCatppuccinFlavor(currentThemeFlavor).text)
 #define CTP_GREEN    RGB888_TO_RGB565(getCatppuccinFlavor(currentThemeFlavor).green)
 #define CTP_SURFACE0 RGB888_TO_RGB565(getCatppuccinFlavor(currentThemeFlavor).overlay)
+#define CTP_MANTLE   RGB888_TO_RGB565(getCatppuccinFlavor(currentThemeFlavor).mantle)
 
 std::string getCachePath(const std::string& originalPath) {
   size_t lastDot = originalPath.find_last_of('.');
@@ -332,11 +333,11 @@ void drawFilenameBanner(const char* filename) {
   const char* namePtr = strrchr(filename, '/');
   const char* displayName = namePtr ? namePtr + 1 : filename;
   
-  // Draw solid Catppuccin Surface0 background banner
-  tft.fillRect(0, 240 - 24, 320, 24, CTP_SURFACE0);
+  // Draw solid Catppuccin Mantle background banner
+  tft.fillRect(0, 240 - 24, 320, 24, CTP_MANTLE);
   
   // Draw text centered in the banner
-  tft.setTextColor(CTP_TEXT, CTP_SURFACE0);
+  tft.setTextColor(CTP_TEXT, CTP_MANTLE);
   tft.setTextDatum(MC_DATUM);
   tft.drawString(displayName, 160, 228, 2);
 }
