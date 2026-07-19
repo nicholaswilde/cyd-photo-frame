@@ -333,46 +333,11 @@ void drawFilenameBanner(const char* filename) {
   const char* namePtr = strrchr(filename, '/');
   const char* displayName = namePtr ? namePtr + 1 : filename;
   
-  std::string cachePath = getCachePath(filename);
-  bool blended = false;
+  // Draw solid Catppuccin Mantle background banner
+  tft.fillRect(0, 240 - 24, 320, 24, CTP_MANTLE);
   
-  // Try to perform a beautiful software alpha blend from the cached raw file
-  if (SD.exists(cachePath.c_str())) {
-    File rawFile = SD.open(cachePath.c_str(), FILE_READ);
-    if (rawFile) {
-      uint16_t rowBuffer[320];
-      for (int16_t row = 0; row < 24; row++) {
-        int16_t y = 216 + row;
-        rawFile.seek((y * 320) * 2);
-        if (rawFile.read((uint8_t*)rowBuffer, 320 * 2) == 320 * 2) {
-          for (int16_t x = 0; x < 320; x++) {
-            uint16_t bg = rowBuffer[x];
-            // Un-swap big-endian pixel from file to little-endian host order
-            uint16_t host_bg = (bg >> 8) | (bg << 8);
-            
-            // 3/8 (37.5%) CTP_MANTLE + 5/8 (62.5%) host_bg blend
-            uint8_t r = (((CTP_MANTLE >> 11) & 0x1F) * 3 + ((host_bg >> 11) & 0x1F) * 5) >> 3;
-            uint8_t g = (((CTP_MANTLE >> 5) & 0x3F) * 3 + ((host_bg >> 5) & 0x3F) * 5) >> 3;
-            uint8_t b = ((CTP_MANTLE & 0x1F) * 3 + (host_bg & 0x1F) * 5) >> 3;
-            
-            // Store in little-endian host order (pushImage will swap it to big-endian)
-            rowBuffer[x] = (r << 11) | (g << 5) | b;
-          }
-          tft.pushImage(0, y, 320, 1, rowBuffer);
-        }
-      }
-      rawFile.close();
-      blended = true;
-    }
-  }
-  
-  // Fallback to solid banner if raw file is not available
-  if (!blended) {
-    tft.fillRect(0, 240 - 24, 320, 24, CTP_MANTLE);
-  }
-  
-  // Draw text centered in the banner (transparent background)
-  tft.setTextColor(CTP_TEXT);
+  // Draw text centered in the banner
+  tft.setTextColor(CTP_TEXT, CTP_MANTLE);
   tft.setTextDatum(MC_DATUM);
   tft.drawString(displayName, 160, 228, 2);
 }
