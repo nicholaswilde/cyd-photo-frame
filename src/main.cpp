@@ -347,10 +347,15 @@ void drawFilenameBanner(const char* filename) {
         if (rawFile.read((uint8_t*)rowBuffer, 320 * 2) == 320 * 2) {
           for (int16_t x = 0; x < 320; x++) {
             uint16_t bg = rowBuffer[x];
-            // 3/8 (37.5%) CTP_MANTLE + 5/8 (62.5%) raw background image blend
-            uint8_t r = (((CTP_MANTLE >> 11) & 0x1F) * 3 + ((bg >> 11) & 0x1F) * 5) >> 3;
-            uint8_t g = (((CTP_MANTLE >> 5) & 0x3F) * 3 + ((bg >> 5) & 0x3F) * 5) >> 3;
-            uint8_t b = ((CTP_MANTLE & 0x1F) * 3 + (bg & 0x1F) * 5) >> 3;
+            // Un-swap big-endian pixel from file to little-endian host order
+            uint16_t host_bg = (bg >> 8) | (bg << 8);
+            
+            // 3/8 (37.5%) CTP_MANTLE + 5/8 (62.5%) host_bg blend
+            uint8_t r = (((CTP_MANTLE >> 11) & 0x1F) * 3 + ((host_bg >> 11) & 0x1F) * 5) >> 3;
+            uint8_t g = (((CTP_MANTLE >> 5) & 0x3F) * 3 + ((host_bg >> 5) & 0x3F) * 5) >> 3;
+            uint8_t b = ((CTP_MANTLE & 0x1F) * 3 + (host_bg & 0x1F) * 5) >> 3;
+            
+            // Store in little-endian host order (pushImage will swap it to big-endian)
             rowBuffer[x] = (r << 11) | (g << 5) | b;
           }
           tft.pushImage(0, y, 320, 1, rowBuffer);
