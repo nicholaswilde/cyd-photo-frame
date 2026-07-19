@@ -54,11 +54,21 @@ void test_file_cache_index(void) {
     TEST_ASSERT_FALSE(cache.setIndex(2)); // out of bounds
 }
 
+void test_file_cache_get_at(void) {
+    FileCache cache(5);
+    cache.addFile("1.jpg");
+    cache.addFile("2.jpg");
+    TEST_ASSERT_EQUAL_STRING("1.jpg", cache.getAt(0).c_str());
+    TEST_ASSERT_EQUAL_STRING("2.jpg", cache.getAt(1).c_str());
+    TEST_ASSERT_EQUAL_STRING("", cache.getAt(2).c_str()); // out of bounds
+}
+
 int main(int argc, char **argv) {
     UNITY_BEGIN();
     RUN_TEST(test_file_cache_empty);
     RUN_TEST(test_file_cache_add_and_navigate);
     RUN_TEST(test_file_cache_clear);
     RUN_TEST(test_file_cache_index);
+    RUN_TEST(test_file_cache_get_at);
     return UNITY_END();
 }

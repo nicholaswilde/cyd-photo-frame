@@ -19,6 +19,7 @@ public:
     size_t getIndex() const;
     bool setIndex(size_t index);
     bool isEmpty() const;
+    std::string getAt(size_t index) const;
 
 private:
     std::vector<std::string> m_files;

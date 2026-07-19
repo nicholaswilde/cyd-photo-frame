@@ -61,3 +61,10 @@ bool FileCache::setIndex(size_t index) {
 bool FileCache::isEmpty() const {
     return m_files.empty();
 }
+
+std::string FileCache::getAt(size_t index) const {
+    if (index >= m_files.size()) {
+        return "";
+    }
+    return m_files[index];
+}
