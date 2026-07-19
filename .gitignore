@@ -86,3 +86,6 @@ lcov.info
 lcov_raw.info
 # CodeGraph local index and database files
 .codegraph/
+
+# Raw BMP screenshots from CYD device (convert to PNG with scripts/convert_screenshots.py)
+screenshots/*.bmp

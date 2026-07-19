@@ -68,6 +68,11 @@ tasks:
     cmds:
       - uv run scripts/prepare_images.py --orientation both {{.CLI_ARGS}}
 
+  screenshot:convert:
+    desc: "Convert BMP screenshots from the SD card into PNG files. Copy .bmp files into screenshots/ first."
+    cmds:
+      - uv run scripts/convert_screenshots.py
+
   default:
     cmds:
       - task -l

@@ -13,6 +13,7 @@ extern int currentOrientation;
 #include "touch_manager.h"
 #include "slideshow_timer.h"
 #include "app_state.h"
+#include "screenshot_manager.h"
 
 extern TFT_eSPI tft;
 
@@ -31,6 +32,14 @@ static void my_disp_flush(lv_disp_drv_t *disp_drv, const lv_area_t *area, lv_col
     tft.setAddrWindow(area->x1, area->y1, w, h);
     tft.pushColors((uint16_t *)&color_p->full, w * h, true);
     tft.endWrite();
+
+    // Forward tile to ScreenshotManager if a LVGL capture is in progress
+    if (ScreenshotManager::isCaptureInProgress()) {
+        ScreenshotManager::onFlushTile(
+            area->x1, area->y1, area->x2, area->y2,
+            (const uint16_t *)&color_p->full);
+    }
+
     lv_disp_flush_ready(disp_drv);
 }
 

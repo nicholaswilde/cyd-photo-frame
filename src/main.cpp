@@ -11,6 +11,7 @@
 #include "lvgl_manager.h"
 #include "hardware_logic.h"
 #include "backlight_fader.h"
+#include "screenshot_manager.h"
 
 BacklightFader fader;
 bool transitionPending = false;
@@ -729,7 +730,7 @@ void exitSettings() {
 void setup() {
   Serial.begin(115200);
   Serial.println("[System] Booting ESP32 CYD Photo Frame...");
-  Serial.println("[System] Type 'clear' or 'clear_cache' in the serial terminal to empty the cache.");
+  Serial.println("[System] Serial commands: 'clear'/'clear_cache', 'screenshot' (settings screen), 'screenshot_tft' (current raw TFT screen)");
 
   // Load settings from NVS
   int cachedTheme = 0;
@@ -1086,6 +1087,21 @@ void loop() {
       } else {
         Serial.println("[Serial] Error: Could not open /cache directory.");
       }
+    } else if (cmd == "screenshot") {
+      // Capture the current LVGL screen (settings screen only)
+      if (currentState == STATE_SETTINGS) {
+        std::string filename = ScreenshotManager::generateFilename(millis());
+        Serial.printf("[Serial] Capturing LVGL screenshot to %s...\n", filename.c_str());
+        ScreenshotManager::captureToSD(filename.c_str());
+      } else {
+        Serial.println("[Serial] 'screenshot' only works while the Settings screen is open.");
+        Serial.println("[Serial] Use 'screenshot_tft' to capture the current raw TFT screen.");
+      }
+    } else if (cmd == "screenshot_tft") {
+      // Capture the current raw TFT screen (optimization, slideshow, etc.)
+      std::string filename = ScreenshotManager::generateFilename(millis());
+      Serial.printf("[Serial] Capturing TFT screen to %s...\n", filename.c_str());
+      ScreenshotManager::captureTFTToSD(filename.c_str());
     }
   }
 
