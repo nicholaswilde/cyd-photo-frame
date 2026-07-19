@@ -41,13 +41,15 @@ The screen is divided into several touch zones to control behavior without visib
 > Cached images are stored per resolution (e.g., `_320x240.raw` for landscape modes and `_240x320.raw` for portrait modes), so switching between orientations no longer requires clearing the cache. Only a theme change clears the cache. 
 
 
-## :usb: Serial Commands (Clearing Cache)
+## :usb: Serial Commands
 
 If the CYD is plugged into your computer via USB:
 1. Open the PlatformIO Serial Device Monitor (at `115200` baud).
 2. Press **`Ctrl + T`** then **`Ctrl + E`** to enable local line editing/input mode.
-3. Type **`clear`** or **`clear_cache`** and press **`Enter`**.
-4. The ESP32 will format/empty the `/cache/` directory on the SD card and automatically reboot itself to regenerate the caching borders.
+3. Type **`clear`** or **`clear_cache`** and press **`Enter`** to clear the image cache.
+4. Type **`screenshot`** and press **`Enter`** to capture the LVGL Settings screen (saved as BMP on the SD card).
+5. Type **`screenshot_tft`** and press **`Enter`** to capture the current raw TFT screen (e.g., Optimization) as BMP on the SD card.
+6. The ESP32 will format/empty the `/cache` directory (for clear) or write the BMP file, then automatically reboot if the cache was cleared.
 
 ## :framed_picture: Preparing Images
 
