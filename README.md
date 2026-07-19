@@ -55,27 +55,28 @@ A helper script (`scripts/prepare_images.py`) is included to resize and optimise
 
 ### Requirements
 ```bash
-pip install Pillow
+# Install dependencies from uv.lock (first time or after pulling)
+uv sync
 ```
 
 ### Usage
 ```bash
 # Landscape (320×240) — default
-python scripts/prepare_images.py -i ~/Photos -o /mnt/sdcard
+uv run scripts/prepare_images.py -i ~/Photos -o /mnt/sdcard
 
 # Portrait (240×320)
-python scripts/prepare_images.py -i ~/Photos -o /mnt/sdcard --orientation portrait
+uv run scripts/prepare_images.py -i ~/Photos -o /mnt/sdcard --orientation portrait
 
 # Both orientations at once
 # Landscape images -> /mnt/sdcard/landscape/
 # Portrait images  -> /mnt/sdcard/portrait/
-python scripts/prepare_images.py -i ~/Photos -o /mnt/sdcard --orientation both
+uv run scripts/prepare_images.py -i ~/Photos -o /mnt/sdcard --orientation both
 
 # Crop to fill instead of letterboxing
-python scripts/prepare_images.py -i ~/Photos -o /mnt/sdcard --orientation both --fill
+uv run scripts/prepare_images.py -i ~/Photos -o /mnt/sdcard --orientation both --fill
 
 # Override dimensions manually (e.g. CYD-35C landscape)
-python scripts/prepare_images.py -i ~/Photos -o /mnt/sdcard --width 480 --height 320
+uv run scripts/prepare_images.py -i ~/Photos -o /mnt/sdcard --width 480 --height 320
 ```
 
 | Flag | Default | Description |
