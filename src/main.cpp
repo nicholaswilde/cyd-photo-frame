@@ -106,13 +106,6 @@ bool tft_output(int16_t x, int16_t y, uint16_t w, uint16_t h, uint16_t* bitmap) 
 
   if (dest_y >= 240) return 0;
   
-  uint16_t scaled_bitmap[256];
-  for (uint16_t row = 0; row < h_scaled; row++) {
-    for (uint16_t col = 0; col < w_scaled; col++) {
-      scaled_bitmap[row * w_scaled + col] = bitmap[(row * current_scale_sw) * w + (col * current_scale_sw)];
-    }
-  }
-
   int16_t w_visible = w_scaled;
   if (dest_x >= 320) return 1;
   if (dest_x + w_visible > 320) {
@@ -124,14 +117,45 @@ bool tft_output(int16_t x, int16_t y, uint16_t w, uint16_t h, uint16_t* bitmap) 
     h_visible = 240 - dest_y;
   }
 
+  // Bypass software scaling completely if scale is 1
+  if (current_scale_sw == 1) {
+    if (!cacheFileActive) {
+      tft.pushImage(dest_x, dest_y, w_visible, h_visible, bitmap, w);
+    } else {
+      if (cacheFile) {
+        for (int row = 0; row < h_visible; row++) {
+          unsigned long fileOffset = ((dest_y + row) * 320 + dest_x) * 2;
+          cacheFile.seek(fileOffset);
+          cacheFile.write((uint8_t*)(bitmap + row * w), w_visible * 2);
+        }
+      }
+    }
+    return 1;
+  }
+
+  // Software scale is > 1. Copy and downsample to scaled_bitmap.
+  // Maximum possible scaled block size is (16/2)*(16/2) = 64 pixels.
+  // We allocate 256 elements which is extremely safe.
+  uint16_t scaled_bitmap[256];
+  
+  // Safe bounds guard
+  uint16_t safe_w_scaled = w_scaled > 16 ? 16 : w_scaled;
+  uint16_t safe_h_scaled = h_scaled > 16 ? 16 : h_scaled;
+
+  for (uint16_t row = 0; row < safe_h_scaled; row++) {
+    for (uint16_t col = 0; col < safe_w_scaled; col++) {
+      scaled_bitmap[row * safe_w_scaled + col] = bitmap[(row * current_scale_sw) * w + (col * current_scale_sw)];
+    }
+  }
+
   if (!cacheFileActive) {
-    tft.pushImage(dest_x, dest_y, w_visible, h_visible, scaled_bitmap, w_scaled);
+    tft.pushImage(dest_x, dest_y, w_visible, h_visible, scaled_bitmap, safe_w_scaled);
   } else {
     if (cacheFile) {
       for (int row = 0; row < h_visible; row++) {
         unsigned long fileOffset = ((dest_y + row) * 320 + dest_x) * 2;
         cacheFile.seek(fileOffset);
-        uint16_t* src_ptr = scaled_bitmap + row * w_scaled;
+        uint16_t* src_ptr = scaled_bitmap + row * safe_w_scaled;
         cacheFile.write((uint8_t*)src_ptr, w_visible * 2);
       }
     }
