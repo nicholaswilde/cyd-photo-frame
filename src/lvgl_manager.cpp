@@ -64,7 +64,7 @@ static void my_touchpad_read(lv_indev_drv_t *indev_driver, lv_indev_data_t *data
             if (ly < 0) ly = 0;
             if (ly > h_land) ly = h_land;
             
-            if (currentOrientation == 2) { // Portrait
+            if (tft.getRotation() == 2) { // Portrait
                 pixelX = ly;
                 pixelY = w_land - lx;
             } else { // Landscape
@@ -151,6 +151,7 @@ static void orientation_dropdown_event_cb(lv_event_t * e) {
 }
 
 static void exit_button_event_cb(lv_event_t * e) {
+    Serial.println("[LVGL Debug] Save & Exit button pressed.");
     if (exitCallback) {
         exitCallback();
     }
