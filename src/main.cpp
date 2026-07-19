@@ -473,7 +473,7 @@ void setup() {
 
   // Initialize SD Card
   Serial.println("Mounting SD Card...");
-  if (!SD.begin(SD_CS_PIN, SPI, 20000000UL)) {
+  if (!SD.begin(SD_CS_PIN, SPI, 20000000UL, "/sd", 5, true)) {
     showSDError(); // Blocks execution here if failed
   }
   Serial.println("SD Card mounted successfully.");
