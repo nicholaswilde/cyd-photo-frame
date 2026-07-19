@@ -43,6 +43,43 @@ unsigned long lastTouchTimeMs = 0;
 #define CTP_BASE 0x18E5 
 #define CTP_RED  0xF475
 #define CTP_TEXT 0xCE79
+#define CTP_GREEN 0xA714
+#define CTP_SURFACE0 0x319A
+
+std::string getCachePath(const std::string& originalPath) {
+  size_t lastDot = originalPath.find_last_of('.');
+  std::string base = (lastDot == std::string::npos) ? originalPath : originalPath.substr(0, lastDot);
+  if (base.rfind("/", 0) == 0) {
+    base = base.substr(1);
+  }
+  return "/cache/" + base + ".raw";
+}
+
+bool renderRawImage(const char* filename) {
+  File rawFile = SD.open(filename, FILE_READ);
+  if (!rawFile) {
+    Serial.printf("Failed to open raw image: %s\n", filename);
+    return false;
+  }
+  
+  const size_t bufferSize = 320 * 16;
+  uint16_t buffer[bufferSize];
+  
+  tft.startWrite();
+  tft.setAddrWindow(0, 0, 320, 240);
+  
+  while (rawFile.available()) {
+    int readCount = rawFile.read((uint8_t*)buffer, bufferSize * 2);
+    if (readCount <= 0) break;
+    tft.pushPixels(buffer, readCount / 2);
+  }
+  tft.endWrite();
+  rawFile.close();
+  return true;
+}
+
+File cacheFile;
+bool cacheFileActive = false;
 
 /**
  * @brief Callback function required by TJpg_Decoder.
@@ -52,9 +89,116 @@ bool tft_output(int16_t x, int16_t y, uint16_t w, uint16_t h, uint16_t* bitmap) 
   // Stop drawing if it goes beyond the screen height
   if (y >= tft.height()) return 0;
   
-  // Push the block of pixels to the TFT
-  tft.pushImage(x, y, w, h, bitmap);
+  if (!cacheFileActive) {
+    // Push the block of pixels to the TFT
+    tft.pushImage(x, y, w, h, bitmap);
+  } else {
+    if (cacheFile) {
+      for (int row = 0; row < h; row++) {
+        if (y + row >= 240) break;
+        unsigned long fileOffset = ((y + row) * 320 + x) * 2;
+        cacheFile.seek(fileOffset);
+        cacheFile.write((uint8_t*)(bitmap + row * w), w * 2);
+      }
+    }
+  }
   return 1;
+}
+
+bool generateCache(const char* jpgFilename, const char* rawFilename) {
+  SD.remove(rawFilename); // Clean start
+  cacheFile = SD.open(rawFilename, FILE_WRITE);
+  if (!cacheFile) {
+    Serial.printf("Failed to create cache file: %s\n", rawFilename);
+    return false;
+  }
+
+  // Pre-allocate and fill with background color
+  const size_t chunkSize = 320 * 16;
+  uint16_t chunk[chunkSize];
+  for (int i = 0; i < chunkSize; i++) {
+    chunk[i] = CTP_BASE;
+  }
+  for (int i = 0; i < 240; i += 16) {
+    cacheFile.write((uint8_t*)chunk, chunkSize * 2);
+  }
+
+  uint16_t img_w = 0, img_h = 0;
+  uint16_t result = TJpgDec.getSdJpgSize(&img_w, &img_h, jpgFilename);
+  if (result != 0) {
+    Serial.printf("Failed to read header for caching: %s\n", jpgFilename);
+    cacheFile.close();
+    SD.remove(rawFilename);
+    return false;
+  }
+
+  float ratio_w = (float)img_w / 320.0f;
+  float ratio_h = (float)img_h / 240.0f;
+  float max_ratio = max(ratio_w, ratio_h);
+
+  uint8_t scale = 1;
+  if (max_ratio >= 8.0f) {
+    scale = 8;
+  } else if (max_ratio >= 4.0f) {
+    scale = 4;
+  } else if (max_ratio >= 2.0f) {
+    scale = 2;
+  }
+
+  TJpgDec.setJpgScale(scale);
+
+  int16_t scaled_w = img_w / scale;
+  int16_t scaled_h = img_h / scale;
+  int16_t x_offset = (320 - scaled_w) / 2;
+  int16_t y_offset = (240 - scaled_h) / 2;
+  if (x_offset < 0) x_offset = 0;
+  if (y_offset < 0) y_offset = 0;
+
+  cacheFileActive = true;
+  uint16_t drawResult = TJpgDec.drawSdJpg(x_offset, y_offset, jpgFilename);
+  cacheFileActive = false;
+
+  cacheFile.close();
+
+  if (drawResult != 0) {
+    Serial.printf("Error during caching decode: %d\n", drawResult);
+    SD.remove(rawFilename);
+    return false;
+  }
+
+  return true;
+}
+
+void drawProgress(size_t current, size_t total, const char* filename) {
+  if (current == 0) {
+    tft.fillScreen(CTP_BASE);
+  }
+
+  tft.setTextColor(CTP_TEXT, CTP_BASE);
+  tft.setTextDatum(MC_DATUM);
+  tft.drawString("Optimizing Photos...", tft.width() / 2, 60, 4);
+
+  tft.setTextColor(0x7BEF, CTP_BASE);
+  tft.drawString(filename, tft.width() / 2, 100, 2);
+
+  int percentage = (total == 0) ? 0 : (current * 100) / total;
+  char percentStr[32];
+  sprintf(percentStr, "%d%% (%zu/%zu)", percentage, current, total);
+  tft.setTextColor(CTP_TEXT, CTP_BASE);
+  tft.drawString(percentStr, tft.width() / 2, 175, 2);
+
+  int barX = 40;
+  int barY = 130;
+  int barW = 240;
+  int barH = 20;
+  int border = 2;
+
+  tft.fillRect(barX, barY, barW, barH, CTP_SURFACE0);
+  
+  int fillW = (total == 0) ? 0 : (current * barW) / total;
+  if (fillW > 0) {
+    tft.fillRect(barX + border, barY + border, fillW - 2 * border, barH - 2 * border, CTP_GREEN);
+  }
 }
 
 /**
@@ -83,6 +227,24 @@ void showSDError() {
  * @return true if drawing succeeded, false otherwise.
  */
 bool renderScaledJpg(const char* filename) {
+  std::string cachePath = getCachePath(filename);
+  if (SD.exists(cachePath.c_str())) {
+    Serial.printf("[System] Loading cached raw image: %s\n", cachePath.c_str());
+    bool drawSuccess = renderRawImage(cachePath.c_str());
+    if (drawSuccess) {
+      if (showFilename) {
+        tft.setTextColor(CTP_TEXT, CTP_BASE);
+        tft.setTextDatum(BC_DATUM);
+        const char* namePtr = strrchr(filename, '/');
+        const char* displayName = namePtr ? namePtr + 1 : filename;
+        tft.drawString(displayName, tft.width() / 2, tft.height() - 10, 2);
+      }
+      return true;
+    } else {
+      Serial.println("[System] Failed to render raw cache, falling back to decoding original JPEG...");
+    }
+  }
+
   uint16_t img_w = 0, img_h = 0;
 
   Serial.printf("\n--- Rendering: %s ---\n", filename);
@@ -263,6 +425,44 @@ void setup() {
     tft.setTextDatum(MC_DATUM);
     tft.drawString("No Images Found", tft.width() / 2, tft.height() / 2, 4);
     while(true) delay(1000); // Halt execution
+  }
+
+  // Ensure cache directory exists
+  if (!SD.exists("/cache")) {
+    SD.mkdir("/cache");
+  }
+
+  // Scan for files that need optimization/caching
+  std::vector<std::pair<std::string, std::string>> filesToCache;
+  for (size_t i = 0; i < fileCache.size(); i++) {
+    std::string originalPath = fileCache.getAt(i);
+    std::string cachePath = getCachePath(originalPath);
+    if (!SD.exists(cachePath.c_str())) {
+      filesToCache.push_back({originalPath, cachePath});
+    }
+  }
+
+  // If there are files to cache, display progress bar and generate them silently
+  if (!filesToCache.empty()) {
+    Serial.printf("[System] Found %zu images that need optimization/caching.\n", filesToCache.size());
+#if defined(TFT_BL) && (TFT_BL >= 0)
+    // Make sure backlight is on during progress bar display
+    analogWrite(TFT_BL, currentBrightness);
+#endif
+    
+    for (size_t i = 0; i < filesToCache.size(); i++) {
+      const char* displayName = strrchr(filesToCache[i].first.c_str(), '/');
+      displayName = displayName ? displayName + 1 : filesToCache[i].first.c_str();
+      
+      // Update progress bar
+      drawProgress(i, filesToCache.size(), displayName);
+      
+      // Perform silent resizing and cache write
+      generateCache(filesToCache[i].first.c_str(), filesToCache[i].second.c_str());
+    }
+    
+    drawProgress(filesToCache.size(), filesToCache.size(), "All Photos Optimized!");
+    delay(500);
   }
 
   // Find and render the first valid image
