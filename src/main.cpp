@@ -312,19 +312,33 @@ void showSDError() {
 bool renderScaledJpg(const char* filename) {
   std::string cachePath = getCachePath(filename);
   if (SD.exists(cachePath.c_str())) {
-    Serial.printf("[System] Loading cached raw image: %s\n", cachePath.c_str());
-    bool drawSuccess = renderRawImage(cachePath.c_str());
-    if (drawSuccess) {
-      if (showFilename) {
-        tft.setTextColor(CTP_TEXT, CTP_BASE);
-        tft.setTextDatum(BC_DATUM);
-        const char* namePtr = strrchr(filename, '/');
-        const char* displayName = namePtr ? namePtr + 1 : filename;
-        tft.drawString(displayName, tft.width() / 2, tft.height() - 10, 2);
+    bool cacheValid = false;
+    File checkFile = SD.open(cachePath.c_str(), FILE_READ);
+    if (checkFile) {
+      if (checkFile.size() == 153600) {
+        cacheValid = true;
       }
-      return true;
+      checkFile.close();
+    }
+    
+    if (cacheValid) {
+      Serial.printf("[System] Loading cached raw image: %s\n", cachePath.c_str());
+      bool drawSuccess = renderRawImage(cachePath.c_str());
+      if (drawSuccess) {
+        if (showFilename) {
+          tft.setTextColor(CTP_TEXT, CTP_BASE);
+          tft.setTextDatum(BC_DATUM);
+          const char* namePtr = strrchr(filename, '/');
+          const char* displayName = namePtr ? namePtr + 1 : filename;
+          tft.drawString(displayName, tft.width() / 2, tft.height() - 10, 2);
+        }
+        return true;
+      } else {
+        Serial.println("[System] Failed to render raw cache, falling back to decoding original JPEG...");
+      }
     } else {
-      Serial.println("[System] Failed to render raw cache, falling back to decoding original JPEG...");
+      Serial.printf("[System] Deleting invalid/corrupt cache file: %s\n", cachePath.c_str());
+      SD.remove(cachePath.c_str());
     }
   }
 
@@ -523,7 +537,21 @@ void setup() {
   for (size_t i = 0; i < fileCache.size(); i++) {
     std::string originalPath = fileCache.getAt(i);
     std::string cachePath = getCachePath(originalPath);
-    if (!SD.exists(cachePath.c_str())) {
+    bool cacheValid = false;
+    if (SD.exists(cachePath.c_str())) {
+      File checkFile = SD.open(cachePath.c_str(), FILE_READ);
+      if (checkFile) {
+        if (checkFile.size() == 153600) {
+          cacheValid = true;
+        }
+        checkFile.close();
+      }
+      if (!cacheValid) {
+        Serial.printf("[System] Found invalid cache size for %s. Deleting...\n", cachePath.c_str());
+        SD.remove(cachePath.c_str());
+      }
+    }
+    if (!cacheValid) {
       filesToCache.push_back({originalPath, cachePath});
     }
   }
