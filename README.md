@@ -12,7 +12,7 @@ A digital photo frame for the ESP32 Cheap Yellow Device (CYD)
 - **ESP32 Cheap Yellow Device (CYD)**:
   - **CYD 2.8" (Resistive)**: ESP32-2432S028R — 2.8″ 320×240 ILI9341 LCD with XPT2046 resistive touch.
   - **CYD 3.5" (Capacitive)**: ESP32-3248S035C — 3.5″ 480×320 ST7796 LCD with GT911/CST820 capacitive touch.
-- **Storage**: MicroSD card slot (compatible with standard FAT32 formatted cards).
+- **Storage**: MicroSD card slot (SDHC up to 32 GB out-of-the-box; SDXC up to 2 TB supported when reformatted to FAT32).
 - Micro-USB / USB-C cable for power and programming.
 
 ## :star: Features
@@ -49,6 +49,8 @@ The screen is divided into a 3x3 touch grid to control slideshow behavior and pa
 > If you insert a corrupted card or experience connection issues, the card's contents **will be wiped**. Always keep backup copies of your images elsewhere.
 
 1. Format your MicroSD card to **FAT32**.
+   - **SDHC Cards (up to 32 GB):** Supported out-of-the-box when formatted as FAT32.
+   - **SDXC Cards (64 GB, 128 GB, 256 GB+):** Supported on both CYD 2.8" and CYD 3.5", but **must be reformatted to FAT32** (e.g., using `FAT32 Format`, `guiformat`, or `mkfs.fat -F 32`). Standard `exFAT` or `NTFS` formats are **not supported** by the ESP32 `SD` library. Maximum FAT32 volume limit is **2 TB** (max single file size is **4 GB**).
 2. Put your `.jpg` images directly into the root directory of the SD card.
 3. Plug the card into the CYD SD slot. On boot, the ESP32 will auto-detect any new JPEGs, scale them to fit the screen keeping their aspect ratios, and cache them inside the `/cache/` directory.
 
