@@ -169,6 +169,7 @@ extern bool isAutoBrightness;
 extern bool isInactivitySleep;
 extern SlideshowTimer slideshowTimer;
 extern int currentLedBrightness;
+extern bool isLedEnabled;
 extern LedManager led;
 
 static void brightness_slider_event_cb(lv_event_t * e) {
@@ -185,6 +186,20 @@ static void led_brightness_slider_event_cb(lv_event_t * e) {
     lv_obj_t * slider = lv_event_get_target(e);
     currentLedBrightness = (int)lv_slider_get_value(slider);
     led.setBrightness(currentLedBrightness);
+}
+
+static void led_enable_switch_event_cb(lv_event_t * e) {
+    lv_obj_t * sw = lv_event_get_target(e);
+    isLedEnabled = lv_obj_has_state(sw, LV_STATE_CHECKED);
+    led.setEnabled(isLedEnabled);
+    lv_obj_t * slider = (lv_obj_t *)lv_event_get_user_data(e);
+    if (slider) {
+        if (isLedEnabled) {
+            lv_obj_clear_state(slider, LV_STATE_DISABLED);
+        } else {
+            lv_obj_add_state(slider, LV_STATE_DISABLED);
+        }
+    }
 }
 
 static void auto_brightness_switch_event_cb(lv_event_t * e) {
@@ -408,6 +423,28 @@ void LVGLManager::showSettings() {
     lv_slider_set_range(slider_led, 0, 255);
     lv_slider_set_value(slider_led, currentLedBrightness, LV_ANIM_OFF);
     lv_obj_add_event_cb(slider_led, led_brightness_slider_event_cb, LV_EVENT_VALUE_CHANGED, NULL);
+
+    // 2b. Enable LED Switch
+    lv_obj_t * row_led_enable = lv_obj_create(list);
+    lv_obj_clear_flag(row_led_enable, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_set_size(row_led_enable, LV_PCT(100), 40);
+    lv_obj_set_flex_flow(row_led_enable, LV_FLEX_FLOW_ROW);
+    lv_obj_set_flex_align(row_led_enable, LV_FLEX_ALIGN_SPACE_BETWEEN, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+    lv_obj_set_style_bg_color(row_led_enable, get_lv_color(getCatppuccinFlavor(currentThemeFlavor).mantle), 0);
+    lv_obj_set_style_border_width(row_led_enable, 0, 0);
+    lv_obj_set_style_pad_all(row_led_enable, 5, 0);
+
+    lv_obj_t * lbl_led_enable = lv_label_create(row_led_enable);
+    lv_label_set_text(lbl_led_enable, "LED Light");
+    lv_obj_set_style_text_color(lbl_led_enable, get_lv_color(getCatppuccinFlavor(currentThemeFlavor).text), 0);
+
+    lv_obj_t * sw_led_enable = lv_switch_create(row_led_enable);
+    if (isLedEnabled) {
+        lv_obj_add_state(sw_led_enable, LV_STATE_CHECKED);
+    } else {
+        lv_obj_add_state(slider_led, LV_STATE_DISABLED);
+    }
+    lv_obj_add_event_cb(sw_led_enable, led_enable_switch_event_cb, LV_EVENT_VALUE_CHANGED, slider_led);
 
     // 3. Delay Dropdown
     lv_obj_t * row_delay = lv_obj_create(list);

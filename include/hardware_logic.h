@@ -26,7 +26,8 @@ namespace HardwareLogic {
                       bool& inactivitySleep,
                       int& themeFlavor,
                       int& screenOrientation,
-                      int& ledBrightness);
+                      int& ledBrightness,
+                      bool& isLedEnabled);
 
     // Save settings to Preferences
     void saveSettings(Preferences& prefs, 
@@ -38,7 +39,8 @@ namespace HardwareLogic {
                       bool inactivitySleep,
                       int themeFlavor,
                       int screenOrientation,
-                      int ledBrightness);
+                      int ledBrightness,
+                      bool isLedEnabled);
 }
 
 #endif // HARDWARE_LOGIC_H

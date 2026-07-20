@@ -35,7 +35,8 @@ void loadSettings(Preferences& prefs,
                   bool& inactivitySleep,
                   int& themeFlavor,
                   int& screenOrientation,
-                  int& ledBrightness) {
+                  int& ledBrightness,
+                  bool& isLedEnabled) {
     brightness = prefs.getUChar("bright", brightness);
     autoBright = prefs.getBool("autob", autoBright);
     delay = prefs.getULong("delay", delay);
@@ -45,6 +46,7 @@ void loadSettings(Preferences& prefs,
     themeFlavor = (int)prefs.getUInt("theme", (uint32_t)themeFlavor);
     screenOrientation = (int)prefs.getUInt("screen_rot", (uint32_t)screenOrientation);
     ledBrightness = (int)prefs.getUChar("led_bright", (uint8_t)ledBrightness);
+    isLedEnabled = prefs.getBool("led_on", isLedEnabled);
 }
 
 void saveSettings(Preferences& prefs, 
@@ -56,7 +58,8 @@ void saveSettings(Preferences& prefs,
                   bool inactivitySleep,
                   int themeFlavor,
                   int screenOrientation,
-                  int ledBrightness) {
+                  int ledBrightness,
+                  bool isLedEnabled) {
     prefs.putUChar("bright", (uint8_t)brightness);
     prefs.putBool("autob", autoBright);
     prefs.putULong("delay", (uint32_t)delay);
@@ -66,6 +69,7 @@ void saveSettings(Preferences& prefs,
     prefs.putUInt("theme", (uint32_t)themeFlavor);
     prefs.putUInt("screen_rot", (uint32_t)screenOrientation);
     prefs.putUChar("led_bright", (uint8_t)ledBrightness);
+    prefs.putBool("led_on", isLedEnabled);
 }
 
 } // namespace HardwareLogic

@@ -23,7 +23,7 @@ A digital photo frame for the ESP32 Cheap Yellow Device (CYD)
 - **Filename Banner Overlay:** Displays a clean, toggleable Catppuccin Mantle banner containing the current image name at the bottom of the screen.
 - **Touch Navigation Zones:** Easily navigate images and access settings by tapping designated screen areas.
 
-## :touch: Touch Navigation Zones
+## :world_map: Touch Navigation Zones
 
 The screen is divided into several touch zones to control behavior without visible UI clutter during the slideshow:
 - **Left 20% of Screen:** Slide to the **previous** photo.

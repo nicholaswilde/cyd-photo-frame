@@ -37,6 +37,7 @@ int currentOrientation = 1; // 1 = Landscape, 2 = Portrait
 // CYD RGB LED — pins: R=4, G=16, B=17 (active-LOW, common-anode)
 LedManager led(4, 16, 17);
 int currentLedBrightness = 128; // default mid-brightness
+bool isLedEnabled = true;
 
 bool isCancelButtonTouched(int touchX, int touchY);
 void drawCancellingFeedback();
@@ -726,7 +727,7 @@ void populateCache() {
 void saveConfig() {
   Preferences prefs;
   prefs.begin("settings", false);
-  HardwareLogic::saveSettings(prefs, currentBrightness, isAutoBrightness, slideshowTimer.getInterval(), isRandomMode, showFilename, isInactivitySleep, currentThemeFlavor, currentOrientation, currentLedBrightness);
+  HardwareLogic::saveSettings(prefs, currentBrightness, isAutoBrightness, slideshowTimer.getInterval(), isRandomMode, showFilename, isInactivitySleep, currentThemeFlavor, currentOrientation, currentLedBrightness, isLedEnabled);
   prefs.end();
   Serial.println("[System] Settings saved to NVS.");
 }
@@ -800,13 +801,13 @@ void setup() {
     Preferences prefs;
     prefs.begin("settings", false);
     unsigned long loadedDelay = slideshowTimer.getInterval();
-    HardwareLogic::loadSettings(prefs, currentBrightness, isAutoBrightness, loadedDelay, isRandomMode, showFilename, isInactivitySleep, currentThemeFlavor, currentOrientation, currentLedBrightness);
+    HardwareLogic::loadSettings(prefs, currentBrightness, isAutoBrightness, loadedDelay, isRandomMode, showFilename, isInactivitySleep, currentThemeFlavor, currentOrientation, currentLedBrightness, isLedEnabled);
     slideshowTimer.setInterval(loadedDelay);
     cachedTheme = (int)prefs.getUInt("cached_theme", 0);
     cachedOrientation = (int)prefs.getInt("cached_rot", 1);
     prefs.end();
-    Serial.printf("[System] Settings loaded from NVS. Brightness: %d, Auto: %d, Delay: %lu ms, Random: %d, ShowFN: %d, Sleep: %d, Theme: %d, CachedTheme: %d, Orientation: %d, CachedOrientation: %d, LED Brightness: %d\n",
-                  currentBrightness, isAutoBrightness, loadedDelay, isRandomMode, showFilename, isInactivitySleep, currentThemeFlavor, cachedTheme, currentOrientation, cachedOrientation, currentLedBrightness);
+    Serial.printf("[System] Settings loaded from NVS. Brightness: %d, Auto: %d, Delay: %lu ms, Random: %d, ShowFN: %d, Sleep: %d, Theme: %d, CachedTheme: %d, Orientation: %d, CachedOrientation: %d, LED Brightness: %d, LED Enabled: %d\n",
+                  currentBrightness, isAutoBrightness, loadedDelay, isRandomMode, showFilename, isInactivitySleep, currentThemeFlavor, cachedTheme, currentOrientation, cachedOrientation, currentLedBrightness, isLedEnabled);
   }
 
   lastTouchTimeMs = millis();
@@ -816,6 +817,7 @@ void setup() {
 
   // Initialize RGB LED
   led.begin();
+  led.setEnabled(isLedEnabled);
   led.setBrightness(currentLedBrightness);
   led.setState(LedManager::STATE_BOOT);
 
