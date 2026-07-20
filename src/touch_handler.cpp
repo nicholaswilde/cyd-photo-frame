@@ -73,8 +73,63 @@ TouchZone TouchHandler::processTouch(bool isTouched, int rawX, int rawY, unsigne
 
 void TouchHandler::mapCoordinates(int rawX, int rawY, int& pixelX, int& pixelY, bool isCapacitive) {
     if (isCapacitive) {
-        pixelX = rawX;
-        pixelY = rawY;
+        int w_land = m_displayWidth > m_displayHeight ? m_displayWidth : m_displayHeight;
+        int h_land = m_displayWidth < m_displayHeight ? m_displayWidth : m_displayHeight;
+        
+        bool rawIsPortrait = (rawX <= h_land && rawY <= w_land);
+        
+        if (rawIsPortrait) {
+            switch (m_orientation) {
+                case 0: // Portrait Rev / Native Portrait
+                    pixelX = h_land - rawX;
+                    pixelY = rawY;
+                    break;
+                case 1: // Landscape
+                    pixelX = rawY;
+                    pixelY = h_land - rawX;
+                    break;
+                case 2: // Portrait
+                    pixelX = rawX;
+                    pixelY = w_land - rawY;
+                    break;
+                case 3: // Landscape Rev
+                    pixelX = w_land - rawY;
+                    pixelY = rawX;
+                    break;
+                default:
+                    pixelX = rawY;
+                    pixelY = rawX;
+                    break;
+            }
+        } else {
+            switch (m_orientation) {
+                case 0: // Portrait
+                    pixelX = rawY;
+                    pixelY = w_land - rawX;
+                    break;
+                case 1: // Landscape
+                    pixelX = rawX;
+                    pixelY = rawY;
+                    break;
+                case 2: // Portrait Rev
+                    pixelX = h_land - rawY;
+                    pixelY = rawX;
+                    break;
+                case 3: // Landscape Rev
+                    pixelX = w_land - rawX;
+                    pixelY = h_land - rawY;
+                    break;
+                default:
+                    pixelX = rawX;
+                    pixelY = rawY;
+                    break;
+            }
+        }
+        
+        if (pixelX < 0) pixelX = 0;
+        if (pixelX >= m_displayWidth) pixelX = m_displayWidth - 1;
+        if (pixelY < 0) pixelY = 0;
+        if (pixelY >= m_displayHeight) pixelY = m_displayHeight - 1;
     } else {
         int w_land = m_displayWidth > m_displayHeight ? m_displayWidth : m_displayHeight;
         int h_land = m_displayWidth < m_displayHeight ? m_displayWidth : m_displayHeight;

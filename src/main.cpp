@@ -344,8 +344,63 @@ static int mapRangeClippedMain(int val, int in_min, int in_max, int out_max) {
 void mapTouchPoint(int rawX, int rawY, int& pixelX, int& pixelY) {
   bool isCapacitive = (rawX <= tft.width() * 2 && rawY <= tft.height() * 2);
   if (isCapacitive) {
-    pixelX = rawX;
-    pixelY = rawY;
+    int w_land = max(tft.width(), tft.height());
+    int h_land = min(tft.width(), tft.height());
+    
+    bool rawIsPortrait = (rawX <= h_land && rawY <= w_land);
+    
+    if (rawIsPortrait) {
+      switch (currentOrientation) {
+        case 0: // Portrait Rev / Native Portrait
+          pixelX = h_land - rawX;
+          pixelY = rawY;
+          break;
+        case 1: // Landscape
+          pixelX = rawY;
+          pixelY = h_land - rawX;
+          break;
+        case 2: // Portrait
+          pixelX = rawX;
+          pixelY = w_land - rawY;
+          break;
+        case 3: // Landscape Rev
+          pixelX = w_land - rawY;
+          pixelY = rawX;
+          break;
+        default:
+          pixelX = rawY;
+          pixelY = rawX;
+          break;
+      }
+    } else {
+      switch (currentOrientation) {
+        case 0: // Portrait
+          pixelX = rawY;
+          pixelY = w_land - rawX;
+          break;
+        case 1: // Landscape
+          pixelX = rawX;
+          pixelY = rawY;
+          break;
+        case 2: // Portrait Rev
+          pixelX = h_land - rawY;
+          pixelY = rawX;
+          break;
+        case 3: // Landscape Rev
+          pixelX = w_land - rawX;
+          pixelY = h_land - rawY;
+          break;
+        default:
+          pixelX = rawX;
+          pixelY = rawY;
+          break;
+      }
+    }
+    
+    if (pixelX < 0) pixelX = 0;
+    if (pixelX >= tft.width()) pixelX = tft.width() - 1;
+    if (pixelY < 0) pixelY = 0;
+    if (pixelY >= tft.height()) pixelY = tft.height() - 1;
     return;
   }
   // Resistive mapping:

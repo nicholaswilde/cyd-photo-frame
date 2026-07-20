@@ -62,8 +62,63 @@ static void my_touchpad_read(lv_indev_drv_t *indev_driver, lv_indev_data_t *data
         int disp_h = LVGLManager::getHeight();
         bool isCapacitive = (touchX <= disp_w * 2 && touchY <= disp_h * 2);
         if (isCapacitive) {
-            pixelX = touchX;
-            pixelY = touchY;
+            int w_land = disp_w > disp_h ? disp_w : disp_h;
+            int h_land = disp_w < disp_h ? disp_w : disp_h;
+            
+            bool rawIsPortrait = (touchX <= h_land && touchY <= w_land);
+            
+            if (rawIsPortrait) {
+                switch (tft.getRotation()) {
+                    case 0: // Portrait Rev / Native Portrait
+                        pixelX = h_land - touchX;
+                        pixelY = touchY;
+                        break;
+                    case 1: // Landscape
+                        pixelX = touchY;
+                        pixelY = h_land - touchX;
+                        break;
+                    case 2: // Portrait
+                        pixelX = touchX;
+                        pixelY = w_land - touchY;
+                        break;
+                    case 3: // Landscape Rev
+                        pixelX = w_land - touchY;
+                        pixelY = touchX;
+                        break;
+                    default:
+                        pixelX = touchY;
+                        pixelY = touchX;
+                        break;
+                }
+            } else {
+                switch (tft.getRotation()) {
+                    case 0: // Portrait
+                        pixelX = touchY;
+                        pixelY = w_land - touchX;
+                        break;
+                    case 1: // Landscape
+                        pixelX = touchX;
+                        pixelY = touchY;
+                        break;
+                    case 2: // Portrait Rev
+                        pixelX = h_land - touchY;
+                        pixelY = touchX;
+                        break;
+                    case 3: // Landscape Rev
+                        pixelX = w_land - touchX;
+                        pixelY = h_land - touchY;
+                        break;
+                    default:
+                        pixelX = touchX;
+                        pixelY = touchY;
+                        break;
+                }
+            }
+            
+            if (pixelX < 0) pixelX = 0;
+            if (pixelX >= disp_w) pixelX = disp_w - 1;
+            if (pixelY < 0) pixelY = 0;
+            if (pixelY >= disp_h) pixelY = disp_h - 1;
         } else {
             int w_land = disp_w > disp_h ? disp_w : disp_h;
             int h_land = disp_w < disp_h ? disp_w : disp_h;
@@ -279,16 +334,20 @@ void LVGLManager::showSettings() {
     lv_obj_align(title, LV_ALIGN_TOP_MID, 0, 10);
     
     lv_obj_t * list = lv_obj_create(settings_screen);
-    lv_obj_set_size(list, LV_PCT(95), LV_PCT(70));
+    lv_obj_set_size(list, LV_PCT(95), LV_PCT(74));
     lv_obj_align(list, LV_ALIGN_TOP_MID, 0, 35);
     lv_obj_set_flex_flow(list, LV_FLEX_FLOW_COLUMN);
     lv_obj_set_style_bg_color(list, get_lv_color(getCatppuccinFlavor(currentThemeFlavor).base), 0);
     lv_obj_set_style_border_width(list, 0, 0);
     lv_obj_set_style_pad_all(list, 5, 0);
     lv_obj_set_style_pad_row(list, 10, 0);
+    lv_obj_set_style_pad_bottom(list, 20, 0);
+    lv_obj_set_scroll_dir(list, LV_DIR_VER);
+    lv_obj_set_scrollbar_mode(list, LV_SCROLLBAR_MODE_AUTO);
     
     // 1. Brightness Slider
     lv_obj_t * row_bright = lv_obj_create(list);
+    lv_obj_clear_flag(row_bright, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_set_size(row_bright, LV_PCT(100), 40);
     lv_obj_set_flex_flow(row_bright, LV_FLEX_FLOW_ROW);
     lv_obj_set_flex_align(row_bright, LV_FLEX_ALIGN_SPACE_BETWEEN, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
@@ -310,6 +369,7 @@ void LVGLManager::showSettings() {
     
     // 2. Auto Brightness
     lv_obj_t * row_auto = lv_obj_create(list);
+    lv_obj_clear_flag(row_auto, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_set_size(row_auto, LV_PCT(100), 40);
     lv_obj_set_flex_flow(row_auto, LV_FLEX_FLOW_ROW);
     lv_obj_set_flex_align(row_auto, LV_FLEX_ALIGN_SPACE_BETWEEN, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
@@ -330,6 +390,7 @@ void LVGLManager::showSettings() {
     
     // 2a. LED Brightness Slider
     lv_obj_t * row_led = lv_obj_create(list);
+    lv_obj_clear_flag(row_led, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_set_size(row_led, LV_PCT(100), 40);
     lv_obj_set_flex_flow(row_led, LV_FLEX_FLOW_ROW);
     lv_obj_set_flex_align(row_led, LV_FLEX_ALIGN_SPACE_BETWEEN, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
@@ -350,6 +411,7 @@ void LVGLManager::showSettings() {
 
     // 3. Delay Dropdown
     lv_obj_t * row_delay = lv_obj_create(list);
+    lv_obj_clear_flag(row_delay, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_set_size(row_delay, LV_PCT(100), 40);
     lv_obj_set_flex_flow(row_delay, LV_FLEX_FLOW_ROW);
     lv_obj_set_flex_align(row_delay, LV_FLEX_ALIGN_SPACE_BETWEEN, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
@@ -377,6 +439,7 @@ void LVGLManager::showSettings() {
     
     // 4. Random Mode
     lv_obj_t * row_random = lv_obj_create(list);
+    lv_obj_clear_flag(row_random, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_set_size(row_random, LV_PCT(100), 40);
     lv_obj_set_flex_flow(row_random, LV_FLEX_FLOW_ROW);
     lv_obj_set_flex_align(row_random, LV_FLEX_ALIGN_SPACE_BETWEEN, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
@@ -394,6 +457,7 @@ void LVGLManager::showSettings() {
     
     // 5. Show Filename
     lv_obj_t * row_filename = lv_obj_create(list);
+    lv_obj_clear_flag(row_filename, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_set_size(row_filename, LV_PCT(100), 40);
     lv_obj_set_flex_flow(row_filename, LV_FLEX_FLOW_ROW);
     lv_obj_set_flex_align(row_filename, LV_FLEX_ALIGN_SPACE_BETWEEN, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
@@ -411,6 +475,7 @@ void LVGLManager::showSettings() {
     
     // 6. Inactivity Sleep
     lv_obj_t * row_sleep = lv_obj_create(list);
+    lv_obj_clear_flag(row_sleep, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_set_size(row_sleep, LV_PCT(100), 40);
     lv_obj_set_flex_flow(row_sleep, LV_FLEX_FLOW_ROW);
     lv_obj_set_flex_align(row_sleep, LV_FLEX_ALIGN_SPACE_BETWEEN, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
@@ -428,6 +493,7 @@ void LVGLManager::showSettings() {
 
     // 7. Theme Flavor Dropdown
     lv_obj_t * row_theme = lv_obj_create(list);
+    lv_obj_clear_flag(row_theme, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_set_size(row_theme, LV_PCT(100), 40);
     lv_obj_set_flex_flow(row_theme, LV_FLEX_FLOW_ROW);
     lv_obj_set_flex_align(row_theme, LV_FLEX_ALIGN_SPACE_BETWEEN, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
@@ -446,6 +512,7 @@ void LVGLManager::showSettings() {
 
     // 8. Screen Orientation Dropdown
     lv_obj_t * row_orient = lv_obj_create(list);
+    lv_obj_clear_flag(row_orient, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_set_size(row_orient, LV_PCT(100), 40);
     lv_obj_set_flex_flow(row_orient, LV_FLEX_FLOW_ROW);
     lv_obj_set_flex_align(row_orient, LV_FLEX_ALIGN_SPACE_BETWEEN, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);

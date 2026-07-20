@@ -10,11 +10,13 @@ void tearDown(void) {
 }
 
 void test_touch_handler_mapping_capacitive(void) {
-    TouchHandler handler(480, 320); // CYD-35C
+    TouchHandler handler(480, 320); // CYD-35C (orientation 1 landscape by default)
     int px = -1, py = -1;
-    handler.mapCoordinates(150, 200, px, py, true);
-    TEST_ASSERT_EQUAL_INT(150, px);
-    TEST_ASSERT_EQUAL_INT(200, py);
+    // Native portrait touch (160, 240) on 480x320 screen in landscape (orientation 1):
+    // pixelX = 240, pixelY = 320 - 160 = 160
+    handler.mapCoordinates(160, 240, px, py, true);
+    TEST_ASSERT_EQUAL_INT(240, px);
+    TEST_ASSERT_EQUAL_INT(160, py);
 }
 
 void test_touch_handler_mapping_resistive(void) {
