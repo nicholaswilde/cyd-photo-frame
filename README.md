@@ -25,11 +25,20 @@ A digital photo frame for the ESP32 Cheap Yellow Device (CYD)
 
 ## :world_map: Touch Navigation Zones
 
-The screen is divided into several touch zones to control behavior without visible UI clutter during the slideshow:
-- **Left 20% of Screen:** Slide to the **previous** photo.
-- **Right 20% of Screen:** Slide to the **next** photo.
-- **Top 20% (Center):** **Toggle** the bottom filename banner display.
-- **Bottom 20% (Center):** **Open** the LVGL Settings Menu.
+The screen is divided into a 3x3 touch grid to control slideshow behavior and parameters directly:
+
+| Zone | Action |
+| --- | --- |
+| **Middle-Left** | Show **previous** photo |
+| **Middle-Right** | Show **next** photo |
+| **Middle-Center (Tap)** | **Pause / Resume** slideshow |
+| **Middle-Center (Long Press, 1.5s)** | **Open Settings Menu** |
+| **Top-Left** | Increase backlight brightness |
+| **Bottom-Left** | Decrease backlight brightness |
+| **Top-Center** | Toggle filename banner display |
+| **Bottom-Center** | Toggle random slideshow mode |
+| **Top-Right** | Increase slideshow delay (+1s) |
+| **Bottom-Right** | Decrease slideshow delay (-1s) |
 
 ## :floppy_disk: SD Card Configuration
 
