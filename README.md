@@ -22,6 +22,7 @@ A digital photo frame for the ESP32 Cheap Yellow Device (CYD)
 - **Auto-Brightness (LDR Sensor):** Automatically adjusts LCD backlight brightness depending on ambient room light levels.
 - **Filename Banner Overlay:** Displays a clean, toggleable Catppuccin Mantle banner containing the current image name at the bottom of the screen.
 - **Touch Navigation Zones:** Easily navigate images and access settings by tapping designated screen areas.
+- **On-Screen Feedback Banners:** Displays a temporary top toast notification banner to confirm touch zone settings changes on-screen (e.g. brightness, delay, random mode, etc.) before auto-restoring the photo.
 
 ## :world_map: Touch Navigation Zones
 
