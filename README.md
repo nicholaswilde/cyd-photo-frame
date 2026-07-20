@@ -52,6 +52,10 @@ The screen is divided into a 3x3 touch grid to control slideshow behavior and pa
 2. Put your `.jpg` images directly into the root directory of the SD card.
 3. Plug the card into the CYD SD slot. On boot, the ESP32 will auto-detect any new JPEGs, scale them to fit the screen keeping their aspect ratios, and cache them inside the `/cache/` directory.
 
+> [!WARNING]
+> **On-Device Optimization Speed:**
+> On-device JPEG scaling and caching on the ESP32 takes significant time (~1 minute per photo for high-resolution images from modern phone cameras; e.g., processing 235 photos on a CYD 2.8" device took ~3 hours 49 minutes). For large photo sets, pre-processing images on a computer using `scripts/prepare_images.py` before copying to the SD card is strongly recommended.
+
 > [!NOTE]
 > **Display Orientation & Caching:**
 > The device now supports four orientations (Landscape, Portrait, Landscape Rev, Portrait Rev).
