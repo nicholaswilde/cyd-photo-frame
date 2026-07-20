@@ -31,7 +31,7 @@ The screen is divided into several touch zones to control behavior without visib
 - **Top 20% (Center):** **Toggle** the bottom filename banner display.
 - **Bottom 20% (Center):** **Open** the LVGL Settings Menu.
 
-## :sd: SD Card Configuration
+## :floppy_disk: SD Card Configuration
 
 1. Format your MicroSD card to **FAT32**.
 2. Put your `.jpg` images directly into the root directory of the SD card.
