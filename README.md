@@ -33,6 +33,11 @@ The screen is divided into several touch zones to control behavior without visib
 
 ## :floppy_disk: SD Card Configuration
 
+> [!WARNING]
+> **Auto-Formatting Warning:**
+> On boot, if the SD card fails to mount (e.g., due to partition corruption or being raw/unformatted), the firmware is configured to automatically format the card to **FAT32**. 
+> If you insert a corrupted card or experience connection issues, the card's contents **will be wiped**. Always keep backup copies of your images elsewhere.
+
 1. Format your MicroSD card to **FAT32**.
 2. Put your `.jpg` images directly into the root directory of the SD card.
 3. Plug the card into the CYD SD slot. On boot, the ESP32 will auto-detect any new JPEGs, scale them to fit the screen keeping their aspect ratios, and cache them inside the `/cache/` directory.
