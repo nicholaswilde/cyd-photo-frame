@@ -601,3 +601,161 @@ void LVGLManager::hideSettings() {
     }
 #endif
 }
+
+#if !defined(NATIVE_TEST)
+static lv_obj_t * opt_screen = nullptr;
+static lv_obj_t * opt_lbl_status = nullptr;
+static lv_obj_t * opt_lbl_file = nullptr;
+static lv_obj_t * opt_lbl_percent = nullptr;
+static lv_obj_t * opt_bar = nullptr;
+static lv_obj_t * opt_btn_cancel = nullptr;
+static void (*opt_cancel_callback)() = nullptr;
+
+static void opt_cancel_btn_cb(lv_event_t * e) {
+    if (opt_cancel_callback) {
+        opt_cancel_callback();
+    }
+}
+#else
+static void (*opt_cancel_callback)() = nullptr;
+#endif
+
+void LVGLManager::setCancelCallback(void (*cancel_cb)()) {
+    opt_cancel_callback = cancel_cb;
+}
+
+void LVGLManager::showSDError() {
+#if !defined(NATIVE_TEST)
+    lv_obj_t * sd_screen = lv_obj_create(NULL);
+    lv_obj_set_style_bg_color(sd_screen, get_lv_color(getCatppuccinFlavor(currentThemeFlavor).base), 0);
+    lv_obj_set_style_bg_opa(sd_screen, LV_OPA_COVER, 0);
+
+    lv_obj_t * lbl_title = lv_label_create(sd_screen);
+    lv_label_set_text(lbl_title, "CYD Photo Frame");
+    lv_obj_set_style_text_font(lbl_title, &lv_font_montserrat_20, 0);
+    lv_obj_set_style_text_color(lbl_title, get_lv_color(getCatppuccinFlavor(currentThemeFlavor).text), 0);
+    lv_obj_align(lbl_title, LV_ALIGN_TOP_MID, 0, 15);
+
+    lv_obj_t * lbl_err = lv_label_create(sd_screen);
+    lv_label_set_text(lbl_err, "NO SD CARD");
+    lv_obj_set_style_text_color(lbl_err, get_lv_color(getCatppuccinFlavor(currentThemeFlavor).red), 0);
+    lv_obj_align(lbl_err, LV_ALIGN_TOP_MID, 0, 50);
+
+    lv_obj_t * lbl_inst = lv_label_create(sd_screen);
+    lv_label_set_text(lbl_inst, "Insert card and reboot");
+    lv_obj_set_style_text_color(lbl_inst, get_lv_color(getCatppuccinFlavor(currentThemeFlavor).text), 0);
+    lv_obj_align(lbl_inst, LV_ALIGN_TOP_MID, 0, 80);
+
+    lv_scr_load(sd_screen);
+    lv_task_handler();
+#endif
+}
+
+void LVGLManager::showOptimizationScreen() {
+#if !defined(NATIVE_TEST)
+    if (opt_screen != nullptr) return;
+
+    opt_screen = lv_obj_create(NULL);
+    lv_obj_set_style_bg_color(opt_screen, get_lv_color(getCatppuccinFlavor(currentThemeFlavor).base), 0);
+    lv_obj_set_style_bg_opa(opt_screen, LV_OPA_COVER, 0);
+
+    // Title label
+    lv_obj_t * lbl_title = lv_label_create(opt_screen);
+    lv_label_set_text(lbl_title, "CYD Photo Frame");
+    lv_obj_set_style_text_font(lbl_title, &lv_font_montserrat_20, 0);
+    lv_obj_set_style_text_color(lbl_title, get_lv_color(getCatppuccinFlavor(currentThemeFlavor).text), 0);
+    lv_obj_align(lbl_title, LV_ALIGN_TOP_MID, 0, 15);
+
+    // Subtitle label
+    opt_lbl_status = lv_label_create(opt_screen);
+    lv_label_set_text(opt_lbl_status, "Optimizing Photos...");
+    lv_obj_set_style_text_color(opt_lbl_status, get_lv_color(getCatppuccinFlavor(currentThemeFlavor).text), 0);
+    lv_obj_align(opt_lbl_status, LV_ALIGN_TOP_MID, 0, 50);
+
+    // Filename / Status detail label
+    opt_lbl_file = lv_label_create(opt_screen);
+    lv_label_set_text(opt_lbl_file, "Analyzing SD Card...");
+    lv_obj_set_style_text_color(opt_lbl_file, get_lv_color(getCatppuccinFlavor(currentThemeFlavor).blue), 0);
+    lv_obj_align(opt_lbl_file, LV_ALIGN_TOP_MID, 0, 80);
+
+    // Progress Bar
+    opt_bar = lv_bar_create(opt_screen);
+    lv_obj_set_size(opt_bar, LVGLManager::getWidth() - 80, 20);
+    lv_obj_align(opt_bar, LV_ALIGN_TOP_MID, 0, 110);
+    lv_obj_set_style_bg_color(opt_bar, get_lv_color(getCatppuccinFlavor(currentThemeFlavor).overlay), 0);
+    lv_obj_set_style_bg_color(opt_bar, get_lv_color(getCatppuccinFlavor(currentThemeFlavor).green), LV_PART_INDICATOR);
+    lv_bar_set_value(opt_bar, 0, LV_ANIM_OFF);
+
+    // Percentage / Counter label
+    opt_lbl_percent = lv_label_create(opt_screen);
+    lv_label_set_text(opt_lbl_percent, "Calculating...");
+    lv_obj_set_style_text_color(opt_lbl_percent, get_lv_color(getCatppuccinFlavor(currentThemeFlavor).text), 0);
+    lv_obj_align(opt_lbl_percent, LV_ALIGN_TOP_MID, 0, 140);
+
+    // Cancel Button
+    opt_btn_cancel = lv_btn_create(opt_screen);
+    lv_obj_set_size(opt_btn_cancel, 100, 32);
+    lv_obj_align(opt_btn_cancel, LV_ALIGN_BOTTOM_MID, 0, -15);
+    lv_obj_set_style_bg_color(opt_btn_cancel, get_lv_color(getCatppuccinFlavor(currentThemeFlavor).red), 0);
+    lv_obj_add_event_cb(opt_btn_cancel, opt_cancel_btn_cb, LV_EVENT_CLICKED, NULL);
+
+    lv_obj_t * lbl_cancel = lv_label_create(opt_btn_cancel);
+    lv_label_set_text(lbl_cancel, "Cancel");
+    lv_obj_set_style_text_color(lbl_cancel, get_lv_color(getCatppuccinFlavor(currentThemeFlavor).crust), 0);
+    lv_obj_align(lbl_cancel, LV_ALIGN_CENTER, 0, 0);
+
+    lv_scr_load(opt_screen);
+    lv_task_handler();
+#endif
+}
+
+void LVGLManager::updateOptimizationProgress(size_t current, size_t total, const char* filename) {
+#if !defined(NATIVE_TEST)
+    if (opt_screen == nullptr) showOptimizationScreen();
+
+    if (opt_lbl_file && filename) {
+        lv_label_set_text(opt_lbl_file, filename);
+    }
+
+    int percentage = (total == 0) ? 0 : (current * 100) / total;
+    if (opt_bar) {
+        lv_bar_set_value(opt_bar, percentage, LV_ANIM_OFF);
+    }
+
+    if (opt_lbl_percent) {
+        char percentStr[32];
+        snprintf(percentStr, sizeof(percentStr), "%d%% (%zu/%zu)", percentage, current, total);
+        lv_label_set_text(opt_lbl_percent, percentStr);
+    }
+
+    lv_task_handler();
+#endif
+}
+
+void LVGLManager::setOptimizationCancelling() {
+#if !defined(NATIVE_TEST)
+    if (opt_lbl_percent) {
+        lv_label_set_text(opt_lbl_percent, "Cancelling...");
+        lv_obj_set_style_text_color(opt_lbl_percent, get_lv_color(getCatppuccinFlavor(currentThemeFlavor).red), 0);
+    }
+    lv_task_handler();
+#endif
+}
+
+void LVGLManager::hideOptimizationScreen() {
+#if !defined(NATIVE_TEST)
+    if (opt_screen != nullptr) {
+        lv_obj_t * old_scr = opt_screen;
+        lv_obj_t * blank_scr = lv_obj_create(NULL);
+        lv_obj_set_style_bg_opa(blank_scr, LV_OPA_TRANSP, 0);
+        lv_scr_load(blank_scr);
+        lv_obj_del(old_scr);
+        opt_screen = nullptr;
+        opt_lbl_status = nullptr;
+        opt_lbl_file = nullptr;
+        opt_lbl_percent = nullptr;
+        opt_bar = nullptr;
+        opt_btn_cancel = nullptr;
+    }
+#endif
+}

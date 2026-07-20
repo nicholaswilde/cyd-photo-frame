@@ -480,101 +480,26 @@ void restrictCacheToExisting() {
 }
 
 void drawCalculating() {
-  tft.fillScreen(CTP_BASE);
-
-  tft.setTextColor(CTP_TEXT, CTP_BASE);
-  tft.setTextDatum(MC_DATUM);
-  tft.drawString("CYD Photo Frame", tft.width() / 2, 40, 4);
-
-  tft.setTextColor(CTP_TEXT, CTP_BASE);
-  tft.drawString("Optimizing Photos...", tft.width() / 2, 75, 2);
-
-  tft.setTextColor(0x7BEF, CTP_BASE);
-  tft.drawString("Analyzing SD Card...", tft.width() / 2, 105, 2);
-
-  tft.setTextColor(CTP_TEXT, CTP_BASE);
-  tft.drawString("Calculating...", tft.width() / 2, 175, 2);
-
-  int barX = 40;
-  int barY = 130;
-  int barW = tft.width() - 80;
-  int barH = 20;
-
-  tft.fillRect(barX, barY, barW, barH, CTP_SURFACE0);
-  drawCancelButton();
+  LVGLManager::showOptimizationScreen();
 }
 
 void drawCancellingFeedback() {
-  tft.fillRect(0, 165, tft.width(), 20, CTP_BASE);
-  tft.setTextColor(CTP_RED, CTP_BASE);
-  tft.setTextDatum(MC_DATUM);
-  tft.drawString("Cancelling...", tft.width() / 2, 175, 2);
+  LVGLManager::setOptimizationCancelling();
 }
 
 void drawProgress(size_t current, size_t total, const char* filename) {
-  if (current == 0) {
-    tft.fillScreen(CTP_BASE);
-  }
-
-  tft.setTextColor(CTP_TEXT, CTP_BASE);
-  tft.setTextDatum(MC_DATUM);
-  tft.drawString("CYD Photo Frame", tft.width() / 2, 40, 4);
-
-  tft.setTextColor(CTP_TEXT, CTP_BASE);
-  tft.drawString("Optimizing Photos...", tft.width() / 2, 75, 2);
-
-  // Clear the filename area to prevent text overlap
-  tft.fillRect(0, 95, tft.width(), 20, CTP_BASE);
-  tft.setTextColor(0x7BEF, CTP_BASE);
-  tft.drawString(filename, tft.width() / 2, 105, 2);
-
-  int percentage = (total == 0) ? 0 : (current * 100) / total;
-  char percentStr[32];
-  sprintf(percentStr, "%d%% (%zu/%zu)", percentage, current, total);
-  
-  // Clear the percentage text area to prevent text overlap
-  tft.fillRect(0, 165, tft.width(), 20, CTP_BASE);
-  tft.setTextColor(CTP_TEXT, CTP_BASE);
-  tft.drawString(percentStr, tft.width() / 2, 175, 2);
-
-  int barX = 40;
-  int barY = 130;
-  int barW = tft.width() - 80;
-  int barH = 20;
-  int border = 2;
-
-  tft.fillRect(barX, barY, barW, barH, CTP_SURFACE0);
-  
-  int fillW = (total == 0) ? 0 : (current * barW) / total;
-  if (fillW > 0) {
-    tft.fillRect(barX + border, barY + border, fillW - 2 * border, barH - 2 * border, CTP_GREEN);
-  }
-  drawCancelButton();
+  LVGLManager::updateOptimizationProgress(current, total, filename);
 }
 
 /**
  * @brief Displays an error state if the SD card is missing or unreadable.
  */
 void showSDError() {
-  tft.fillScreen(CTP_BASE);
-  
-  // Project Title (consistent with calculation/optimization screens)
-  tft.setTextColor(CTP_TEXT, CTP_BASE);
-  tft.setTextDatum(MC_DATUM);
-  tft.drawString("CYD Photo Frame", tft.width() / 2, 40, 4);
-  
-  // Resized and colored error label (matches Optimizing Photos position and size)
-  tft.setTextColor(CTP_RED, CTP_BASE);
-  tft.drawString("NO SD CARD", tft.width() / 2, 75, 2);
-  
-  // Instruction sub-label (matches file name position and size)
-  tft.setTextColor(CTP_TEXT, CTP_BASE);
-  tft.drawString("Insert card and reboot", tft.width() / 2, 105, 2);
-  
+  LVGLManager::showSDError();
   Serial.println("Error: SD Card Mount Failed.");
-  // Halt execution
   while(true) {
-    delay(1000);
+    LVGLManager::handle();
+    delay(10);
   }
 }
 
@@ -1089,6 +1014,8 @@ void setup() {
       delay(500);
     }
   }
+
+  LVGLManager::hideOptimizationScreen();
 
   // Find and render the first valid image
   bool success = false;
