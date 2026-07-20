@@ -9,9 +9,11 @@ A digital photo frame for the ESP32 Cheap Yellow Device (CYD)
 
 ## :hammer_and_wrench: Hardware Requirements
 
-- **ESP32 Cheap Yellow Device (CYD)**: ESP32-2432S028R — 2.8″ 320×240 ILI9341 LCD with XPT2046 resistive touch.
+- **ESP32 Cheap Yellow Device (CYD)**:
+  - **CYD 2.8" (Resistive)**: ESP32-2432S028R — 2.8″ 320×240 ILI9341 LCD with XPT2046 resistive touch.
+  - **CYD 3.5" (Capacitive)**: ESP32-3248S035C — 3.5″ 480×320 ST7796 LCD with GT911/CST820 capacitive touch.
 - **Storage**: MicroSD card slot (compatible with standard FAT32 formatted cards).
-- Micro-USB cable for power and programming.
+- Micro-USB / USB-C cable for power and programming.
 
 ## :star: Features
 
@@ -97,10 +99,14 @@ uv run scripts/prepare_images.py -i ~/Photos -o /mnt/sdcard --width 480 --height
 
 
 ### Compiling & Flashing
-To compile and upload the project to the CYD:
+Select the environment matching your hardware:
+
 ```bash
-# Upload to CYD 2.8" Resistive Touch Board
+# For CYD 2.8" (Resistive Touch, ILI9341)
 pio run -e cyd_28r -t upload
+
+# For CYD 3.5" (Capacitive Touch, ST7796)
+pio run -e cyd_35c -t upload
 
 # Start the Serial Monitor
 pio device monitor
