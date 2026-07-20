@@ -58,7 +58,7 @@ The screen is divided into a 3x3 touch grid to control slideshow behavior and pa
 > Cached images are stored per resolution (e.g., `_320x240.raw` for landscape modes and `_240x320.raw` for portrait modes), so switching between orientations no longer requires clearing the cache. Only a theme change clears the cache. 
 
 
-## :usb: Serial Commands
+## :electric_plug: Serial Commands
 
 If the CYD is plugged into your computer via USB:
 1. Open the PlatformIO Serial Device Monitor (at `115200` baud).
