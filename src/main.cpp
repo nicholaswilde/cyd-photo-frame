@@ -41,6 +41,7 @@ bool isLedEnabled = true;
 
 bool isCancelButtonTouched(int touchX, int touchY);
 void drawCancellingFeedback();
+bool renderScaledJpg(const char* filename);
 
 #include "catppuccin.h"
 
@@ -577,6 +578,45 @@ void showSDError() {
   }
 }
 
+static bool toastActive = false;
+static unsigned long toastEndTimeMs = 0;
+static char toastMessage[64] = {0};
+
+void drawToastBanner(const char* message) {
+  tft.fillRect(0, 0, tft.width(), 28, CTP_MANTLE);
+  tft.drawFastHLine(0, 27, tft.width(), CTP_GREEN);
+  tft.setTextColor(CTP_TEXT, CTP_MANTLE);
+  tft.setTextDatum(MC_DATUM);
+  tft.drawString(message, tft.width() / 2, 14, 2);
+}
+
+void showToastBanner(const char* message, unsigned long durationMs = 2000) {
+  if (currentState != STATE_SLIDESHOW) return;
+  
+  strncpy(toastMessage, message, sizeof(toastMessage) - 1);
+  toastMessage[sizeof(toastMessage) - 1] = '\0';
+  
+  drawToastBanner(toastMessage);
+  
+  toastActive = true;
+  toastEndTimeMs = millis() + durationMs;
+}
+
+void drawToastBannerIfNeeded() {
+  if (toastActive && millis() < toastEndTimeMs) {
+    drawToastBanner(toastMessage);
+  }
+}
+
+void clearToastBanner() {
+  if (!toastActive) return;
+  toastActive = false;
+  
+  if (currentState == STATE_SLIDESHOW && !fileCache.isEmpty()) {
+    renderScaledJpg(fileCache.getCurrent().c_str());
+  }
+}
+
 void drawFilenameBanner(const char* filename) {
   const char* namePtr = strrchr(filename, '/');
   const char* displayName = namePtr ? namePtr + 1 : filename;
@@ -614,6 +654,7 @@ bool renderScaledJpg(const char* filename) {
         if (showFilename) {
           drawFilenameBanner(filename);
         }
+        drawToastBannerIfNeeded();
         return true;
       } else {
         Serial.println("[System] Failed to render raw cache, falling back to decoding original JPEG...");
@@ -682,6 +723,7 @@ bool renderScaledJpg(const char* filename) {
       if (showFilename) {
         drawFilenameBanner(filename);
       }
+      drawToastBannerIfNeeded();
       return true;
     }
     
@@ -1268,6 +1310,7 @@ void loop() {
     if (zone != TouchZone::NONE) {
       if (zone == TouchZone::LONG_PRESS_MID_CENTER) {
         Serial.println("[Touch] Long Press Center - Entering Settings Menu");
+        showToastBanner("Entering Settings...", 1000);
         currentState = STATE_SETTINGS;
         led.setState(LedManager::STATE_SETTINGS);
         slideshowTimer.setPaused(true);
@@ -1276,6 +1319,7 @@ void loop() {
       } else if (zone == TouchZone::MID_LEFT) {
         Serial.println("[Touch] Mid-Left tapped - Previous Image");
         if (!transitionPending) {
+          showToastBanner("Previous Image", 1500);
           transitionPending = true;
           pendingDirection = DIR_PREV;
           fader.startFade(currentBrightness, 0, 300);
@@ -1284,6 +1328,7 @@ void loop() {
       } else if (zone == TouchZone::MID_RIGHT) {
         Serial.println("[Touch] Mid-Right tapped - Next Image");
         if (!transitionPending) {
+          showToastBanner("Next Image", 1500);
           transitionPending = true;
           pendingDirection = DIR_NEXT;
           fader.startFade(currentBrightness, 0, 300);
@@ -1293,6 +1338,7 @@ void loop() {
         bool isPaused = !slideshowTimer.isPaused();
         slideshowTimer.setPaused(isPaused);
         Serial.printf("[Touch] Mid-Center tapped - %s Slideshow\n", isPaused ? "Paused" : "Resumed");
+        showToastBanner(isPaused ? "Slideshow Paused" : "Slideshow Resumed", 2000);
         if (!isPaused) {
           slideshowTimer.reset(now);
         }
@@ -1300,31 +1346,49 @@ void loop() {
         currentBrightness = min(currentBrightness + 25, 255);
         Serial.printf("[Touch] Top-Left tapped - Brightness increased to %d\n", currentBrightness);
         saveConfig();
+        char msgBuf[32];
+        snprintf(msgBuf, sizeof(msgBuf), "Brightness: %d%%", (currentBrightness * 100 + 127) / 255);
+        showToastBanner(msgBuf, 2000);
       } else if (zone == TouchZone::BOTTOM_LEFT) {
         currentBrightness = max(currentBrightness - 25, 25);
         Serial.printf("[Touch] Bottom-Left tapped - Brightness decreased to %d\n", currentBrightness);
         saveConfig();
+        char msgBuf[32];
+        snprintf(msgBuf, sizeof(msgBuf), "Brightness: %d%%", (currentBrightness * 100 + 127) / 255);
+        showToastBanner(msgBuf, 2000);
       } else if (zone == TouchZone::TOP_CENTER) {
         showFilename = !showFilename;
         Serial.printf("[Touch] Top-Center tapped - Filename display: %s\n", showFilename ? "ON" : "OFF");
         saveConfig();
+        char msgBuf[32];
+        snprintf(msgBuf, sizeof(msgBuf), "Filename Banner: %s", showFilename ? "ON" : "OFF");
+        showToastBanner(msgBuf, 2000);
         renderScaledJpg(fileCache.getCurrent().c_str());
       } else if (zone == TouchZone::BOTTOM_CENTER) {
         isRandomMode = !isRandomMode;
         Serial.printf("[Touch] Bottom-Center tapped - Random mode: %s\n", isRandomMode ? "ON" : "OFF");
         saveConfig();
+        char msgBuf[32];
+        snprintf(msgBuf, sizeof(msgBuf), "Random Mode: %s", isRandomMode ? "ON" : "OFF");
+        showToastBanner(msgBuf, 2000);
       } else if (zone == TouchZone::TOP_RIGHT) {
         unsigned long currentDelay = slideshowTimer.getInterval();
         currentDelay = min(currentDelay + 1000, 60000UL);
         slideshowTimer.setInterval(currentDelay);
         Serial.printf("[Touch] Top-Right tapped - Delay increased to %lu ms\n", currentDelay);
         saveConfig();
+        char msgBuf[32];
+        snprintf(msgBuf, sizeof(msgBuf), "Slideshow Delay: %lus", currentDelay / 1000UL);
+        showToastBanner(msgBuf, 2000);
       } else if (zone == TouchZone::BOTTOM_RIGHT) {
         unsigned long currentDelay = slideshowTimer.getInterval();
         currentDelay = max(currentDelay - 1000, 2000UL);
         slideshowTimer.setInterval(currentDelay);
         Serial.printf("[Touch] Bottom-Right tapped - Delay decreased to %lu ms\n", currentDelay);
         saveConfig();
+        char msgBuf[32];
+        snprintf(msgBuf, sizeof(msgBuf), "Slideshow Delay: %lus", currentDelay / 1000UL);
+        showToastBanner(msgBuf, 2000);
       }
     }
 
@@ -1337,6 +1401,10 @@ void loop() {
   } else {
     // In STATE_SETTINGS, clear touchHandler's state machine
     touchHandler.processTouch(false, 0, 0, now);
+  }
+
+  if (toastActive && now >= toastEndTimeMs) {
+    clearToastBanner();
   }
 
   // Tick the fader and obtain current interpolated brightness
