@@ -758,16 +758,79 @@ void exitSettings() {
   tft.setTextColor(CTP_GREEN, CTP_BASE);
   tft.drawString("Resuming slideshow...", tft.width() / 2, tft.height() / 2 + 20, 2);
 
-  delay(800);
+  delay(500);
 
+  // Smoothly fade out "Resuming slideshow..." screen to black
+  fader.startFade(currentBrightness, 0, 250);
+  while (fader.getState() != BacklightFader::STATE_IDLE) {
+    int b = 0;
+    fader.update(millis(), b);
+#if defined(TFT_BL) && (TFT_BL >= 0)
+    analogWrite(TFT_BL, b);
+#endif
+    delay(10);
+  }
+#if defined(TFT_BL) && (TFT_BL >= 0)
+  analogWrite(TFT_BL, 0);
+#endif
+
+  // Render the photo in complete darkness (no line scan visible!)
   tft.fillScreen(CTP_BASE);
-  renderScaledJpg(fileCache.getCurrent().c_str());
+  if (!fileCache.isEmpty()) {
+    renderScaledJpg(fileCache.getCurrent().c_str());
+  }
+
+  // Smoothly fade in to the rendered photo
+  transitionPending = true;
+  fader.startFade(0, currentBrightness, 300);
 }
 
 void setup() {
   Serial.begin(115200);
   Serial.println("[System] Booting ESP32 CYD Photo Frame...");
   Serial.println("[System] Serial commands: 'clear'/'clear_cache', 'screenshot' (settings screen), 'screenshot_tft' (current raw TFT screen)");
+
+#if defined(SD_CS_PIN) && (SD_CS_PIN >= 0)
+  pinMode(SD_CS_PIN, OUTPUT);
+  digitalWrite(SD_CS_PIN, HIGH);
+  delay(200); // Allow SD card power rails & internal controller to stabilize on cold boot
+#endif
+
+  // Initialize SD Card FIRST (before TFT, Touch, and LVGL SPI bus initialization)
+  Serial.println("Mounting SD Card...");
+  bool sdSuccess = false;
+  uint32_t frequencies[] = {20000000UL, 10000000UL, 4000000UL};
+  
+#if defined(SD_SCK_PIN) && defined(SD_MISO_PIN) && defined(SD_MOSI_PIN) && defined(SD_CS_PIN)
+  SPI.begin(SD_SCK_PIN, SD_MISO_PIN, SD_MOSI_PIN, SD_CS_PIN);
+#else
+  SPI.begin();
+#endif
+
+  // Send 80 dummy clock cycles with CS high to initialize SD card SPI mode (per SD specification)
+  SPI.beginTransaction(SPISettings(4000000, MSBFIRST, SPI_MODE0));
+  for (int i = 0; i < 10; i++) {
+    SPI.transfer(0xFF);
+  }
+  SPI.endTransaction();
+  delay(50);
+
+  for (uint32_t freq : frequencies) {
+    for (int retry = 1; retry <= 2; retry++) {
+      if (SD.begin(SD_CS_PIN, SPI, freq, "/sd", 5, true)) {
+        sdSuccess = true;
+        Serial.printf("[SD] Mounted successfully at %lu MHz.\n", freq / 1000000UL);
+        break;
+      }
+      Serial.printf("[SD] Mount failed at %lu MHz (attempt %d). Cleaning up & retrying...\n", freq / 1000000UL, retry);
+      SD.end();
+#if defined(SD_CS_PIN) && (SD_CS_PIN >= 0)
+      digitalWrite(SD_CS_PIN, HIGH);
+#endif
+      delay(150); // Give SD card controller time to reset before next attempt
+    }
+    if (sdSuccess) break;
+  }
 
   // Load settings from NVS
   int cachedTheme = 0;
@@ -808,58 +871,30 @@ void setup() {
   LVGLManager::init(tft.width(), tft.height());
   LVGLManager::setExitCallback(triggerExitSettings);
 
-  // Initialize backlight control
-#if defined(TFT_BL) && (TFT_BL >= 0)
-  pinMode(TFT_BL, OUTPUT);
-  analogWrite(TFT_BL, currentBrightness);
-#endif
-
-  // Show calculating screen as soon as backlight is on
-  drawCalculating();
-
-  // Initialize the TJpg_Decoder
-  TJpgDec.setCallback(tft_output);
-  TJpgDec.setSwapBytes(true);
-
-#if defined(SD_CS_PIN) && (SD_CS_PIN >= 0)
-  pinMode(SD_CS_PIN, OUTPUT);
-  digitalWrite(SD_CS_PIN, HIGH);
-  delay(10);
-#endif
-
-  // Initialize SD Card with fallback frequencies
-  Serial.println("Mounting SD Card...");
-  bool sdSuccess = false;
-  uint32_t frequencies[] = {20000000UL, 10000000UL, 4000000UL};
-  
-#if defined(SD_SCK_PIN) && defined(SD_MISO_PIN) && defined(SD_MOSI_PIN) && defined(SD_CS_PIN)
-  SPI.begin(SD_SCK_PIN, SD_MISO_PIN, SD_MOSI_PIN, SD_CS_PIN);
-#else
-  SPI.begin();
-#endif
-
-  for (uint32_t freq : frequencies) {
-    for (int retry = 1; retry <= 2; retry++) {
-      if (SD.begin(SD_CS_PIN, SPI, freq, "/sd", 5, true)) {
-        sdSuccess = true;
-        Serial.printf("[SD] Mounted successfully at %lu MHz.\n", freq / 1000000UL);
-        break;
-      }
-      Serial.printf("[SD] Mount failed at %lu MHz (attempt %d). Cleaning up & retrying...\n", freq / 1000000UL, retry);
-      SD.end();
-#if defined(SD_CS_PIN) && (SD_CS_PIN >= 0)
-      digitalWrite(SD_CS_PIN, HIGH);
-#endif
-      delay(50);
-    }
-    if (sdSuccess) break;
-  }
-
   if (!sdSuccess) {
     led.setState(LedManager::STATE_ERROR);
     showSDError(); // Blocks execution here if failed
   }
   Serial.println("SD Card mounted successfully.");
+
+  // Keep backlight OFF initially so optimization screen renders silently without flashing leftover image
+#if defined(TFT_BL) && (TFT_BL >= 0)
+  pinMode(TFT_BL, OUTPUT);
+  analogWrite(TFT_BL, 0);
+#endif
+
+  // Show calculating screen in darkness first
+  drawCalculating();
+  LVGLManager::handle();
+
+  // Now turn on backlight to reveal the optimization screen cleanly
+#if defined(TFT_BL) && (TFT_BL >= 0)
+  analogWrite(TFT_BL, currentBrightness);
+#endif
+
+  // Initialize the TJpg_Decoder
+  TJpgDec.setCallback(tft_output);
+  TJpgDec.setSwapBytes(true);
 
   // Populate cache
   populateCache();
@@ -1076,13 +1111,35 @@ void setup() {
       delay(1500);
     } else {
       drawProgress(filesToCache.size(), filesToCache.size(), "All Photos Optimized!");
-      delay(500);
+      delay(1500);
     }
+  } else {
+    // If all photos were already cached, display completion status on screen for 1.5s
+    LVGLManager::updateCalculationProgress(totalImages, totalImages, "All Photos Ready!", 0);
+    delay(1500);
   }
 
-  LVGLManager::hideOptimizationScreen();
+  // Smoothly fade out optimization / progress screen to black before loading first image
+  fader.startFade(currentBrightness, 0, 250);
+  while (fader.getState() != BacklightFader::STATE_IDLE) {
+    int b = 0;
+    fader.update(millis(), b);
+#if defined(TFT_BL) && (TFT_BL >= 0)
+    analogWrite(TFT_BL, b);
+#endif
+    delay(10);
+  }
+#if defined(TFT_BL) && (TFT_BL >= 0)
+  analogWrite(TFT_BL, 0);
+#endif
 
-  // Find and render the first valid image
+  LVGLManager::hideOptimizationScreen();
+  tft.fillScreen(CTP_BASE);
+
+  // Pause briefly in darkness for a smooth transition before loading the first photo
+  delay(300);
+
+  // Find and render the first valid image in complete darkness (no line scan or flashing!)
   bool success = false;
   size_t attempts = 0;
   size_t maxAttempts = fileCache.size();
@@ -1107,6 +1164,10 @@ void setup() {
 
   led.setState(LedManager::STATE_SLIDESHOW);
   slideshowTimer.start(millis());
+
+  // Smoothly fade in from black to display the first image
+  transitionPending = true;
+  fader.startFade(0, currentBrightness, 300);
 }
 
 std::string getNextImageFile() {
@@ -1405,14 +1466,18 @@ void loop() {
 
   if (transitionPending && fader.getState() == BacklightFader::STATE_IDLE && fadeDone) {
     if (fadeBrightness == 0) {
-      // Fade out complete, render next image
+      // Fade out complete: turn off backlight pin immediately before rendering new image
+#if defined(TFT_BL) && (TFT_BL >= 0)
+      analogWrite(TFT_BL, 0);
+#endif
+      // Render next image in total darkness (no line scan or tearing visible!)
       if (pendingDirection == DIR_NEXT) {
         showNextImage();
       } else {
         showPreviousImage();
       }
       led.setState(LedManager::STATE_TRANSITION);
-      // Start fading back in
+      // Start fading back in to target brightness
       fader.startFade(0, currentBrightness, 300);
     } else {
       // Fade in complete
@@ -1435,5 +1500,7 @@ void loop() {
   // Update LED state machine every loop tick
   led.update(millis());
 
-  delay(50);
+  // Use high-framerate (10ms) loop delay during backlight transitions for smooth fading
+  int loopDelayMs = (transitionPending || fader.getState() != BacklightFader::STATE_IDLE) ? 10 : 50;
+  delay(loopDelayMs);
 }
