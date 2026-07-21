@@ -117,17 +117,27 @@ bool cacheFileActive = false;
  * Pushes decompressed MCU blocks (usually 16x16 pixels) to the screen.
  */
 bool tft_output(int16_t x, int16_t y, uint16_t w, uint16_t h, uint16_t* bitmap) {
-  // Poll touch screen periodically during decoding (e.g., every 20 blocks) to check for Cancel
+  if (optimizationCancelled) {
+    return 0;
+  }
+
+  // Poll touch screen frequently during decoding (every 5 MCU blocks) to check for Cancel
   static int blockCounter = 0;
   blockCounter++;
-  if (blockCounter >= 20) {
+  if (blockCounter >= 5) {
     blockCounter = 0;
+    LVGLManager::handle();
+    if (optimizationCancelled) {
+      Serial.println("[System] Optimization cancelled during decode (via LVGL callback).");
+      drawCancellingFeedback();
+      return 0;
+    }
     if (TouchManager::isTouched()) {
       int tx = 0, ty = 0;
       if (TouchManager::getTouchPoint(tx, ty)) {
-        Serial.printf("[Touch Debug] Touch detected during decode at X=%d, Y=%d\n", tx, ty);
+        Serial.printf("[Touch Debug] Touch detected during decode: Raw X=%d, Y=%d\n", tx, ty);
         if (isCancelButtonTouched(tx, ty)) {
-          Serial.println("[System] Optimization cancelled during file write.");
+          Serial.println("[System] Optimization CANCELLED by user touch during file decode!");
           optimizationCancelled = true;
           drawCancellingFeedback();
           return 0; // Abort TJpgDec decoding
@@ -441,15 +451,10 @@ bool isCancelButtonTouched(int rawX, int rawY) {
   int pixelY = 0;
   mapTouchPoint(rawX, rawY, pixelX, pixelY);
 
-  Serial.printf("[Touch Debug] Mapped Coordinates: PixelX=%d, PixelY=%d\n", pixelX, pixelY);
+  Serial.printf("[Touch Debug] Cancel Screen Tap: Raw(%d,%d) -> Mapped Pixel(%d,%d) => MATCH (CANCEL TRIGGERED)\n",
+                rawX, rawY, pixelX, pixelY);
 
-  int btnW = 100;
-  int btnH = 30;
-  int btnX = (tft.width() - btnW) / 2;
-  int btnY = tft.height() - 40;
-  
-  return (pixelX >= btnX && pixelX <= (btnX + btnW) &&
-          pixelY >= btnY && pixelY <= (btnY + btnH));
+  return true; // Any tap anywhere on screen while in calculating/optimizing mode triggers cancellation
 }
 
 void restrictCacheToExisting() {
@@ -481,6 +486,9 @@ void restrictCacheToExisting() {
 
 void drawCalculating() {
   LVGLManager::showOptimizationScreen();
+  LVGLManager::setCancelCallback([]() {
+    optimizationCancelled = true;
+  });
 }
 
 void drawCancellingFeedback() {
@@ -813,6 +821,12 @@ void setup() {
   TJpgDec.setCallback(tft_output);
   TJpgDec.setSwapBytes(true);
 
+#if defined(SD_CS_PIN) && (SD_CS_PIN >= 0)
+  pinMode(SD_CS_PIN, OUTPUT);
+  digitalWrite(SD_CS_PIN, HIGH);
+  delay(10);
+#endif
+
   // Initialize SD Card with fallback frequencies
   Serial.println("Mounting SD Card...");
   bool sdSuccess = false;
@@ -820,6 +834,8 @@ void setup() {
   
 #if defined(SD_SCK_PIN) && defined(SD_MISO_PIN) && defined(SD_MOSI_PIN) && defined(SD_CS_PIN)
   SPI.begin(SD_SCK_PIN, SD_MISO_PIN, SD_MOSI_PIN, SD_CS_PIN);
+#else
+  SPI.begin();
 #endif
 
   for (uint32_t freq : frequencies) {
@@ -829,8 +845,12 @@ void setup() {
         Serial.printf("[SD] Mounted successfully at %lu MHz.\n", freq / 1000000UL);
         break;
       }
-      Serial.printf("[SD] Mount failed at %lu MHz (attempt %d). Retrying...\n", freq / 1000000UL, retry);
-      delay(100);
+      Serial.printf("[SD] Mount failed at %lu MHz (attempt %d). Cleaning up & retrying...\n", freq / 1000000UL, retry);
+      SD.end();
+#if defined(SD_CS_PIN) && (SD_CS_PIN >= 0)
+      digitalWrite(SD_CS_PIN, HIGH);
+#endif
+      delay(50);
     }
     if (sdSuccess) break;
   }
@@ -901,22 +921,43 @@ void setup() {
     prefs.end();
     cachedTheme = currentThemeFlavor; // Sync local variable
     cachedOrientation = currentOrientation; // Sync local variable
-  }
-
-  // Scan for files that need optimization/caching
+  }  // Scan for files that need optimization/caching
   std::vector<std::pair<std::string, std::string>> filesToCache;
   unsigned long lastTouchCheckMs = 0;
-  for (size_t i = 0; i < fileCache.size(); i++) {
+  size_t totalImages = fileCache.size();
+  size_t expectedCacheBytes = (size_t)(tft.width() * tft.height() * 2);
+
+  Serial.printf("[System] Beginning SD Card image calculation phase for %zu total image(s) (%dx%d resolution, expected cache size: %zu bytes)...\n",
+                totalImages, tft.width(), tft.height(), expectedCacheBytes);
+
+  for (size_t i = 0; i < totalImages; i++) {
+    std::string originalPath = fileCache.getAt(i);
+    std::string cachePath = getCachePath(originalPath);
+
+    const char* displayName = strrchr(originalPath.c_str(), '/');
+    displayName = displayName ? displayName + 1 : originalPath.c_str();
+
+    // Update screen labels & progress bar dynamically
+    LVGLManager::updateCalculationProgress(i + 1, totalImages, displayName, filesToCache.size());
+
     // Poll touch screen at most once every 50ms to prevent XPT2046 bus lockup
     unsigned long loopNow = millis();
     if (loopNow - lastTouchCheckMs >= 50) {
       lastTouchCheckMs = loopNow;
+      LVGLManager::handle();
+      if (optimizationCancelled) {
+        Serial.println("[System] Optimization cancelled during calculation (via LVGL callback).");
+        drawCancellingFeedback();
+        restrictCacheToExisting();
+        filesToCache.clear();
+        break;
+      }
       if (TouchManager::isTouched()) {
         int tx = 0, ty = 0;
         if (TouchManager::getTouchPoint(tx, ty)) {
-          Serial.printf("[Touch Debug] Touch detected during calculation at X=%d, Y=%d\n", tx, ty);
+          Serial.printf("[Touch Debug] Touch detected during calculation: Raw X=%d, Y=%d\n", tx, ty);
           if (isCancelButtonTouched(tx, ty)) {
-            Serial.println("[System] Optimization cancelled during calculation.");
+            Serial.println("[System] Optimization CANCELLED by user touch during calculation phase!");
             optimizationCancelled = true;
             drawCancellingFeedback();
             restrictCacheToExisting();
@@ -927,30 +968,40 @@ void setup() {
       }
     }
 
-    std::string originalPath = fileCache.getAt(i);
-    std::string cachePath = getCachePath(originalPath);
     bool cacheValid = false;
+    size_t actualSize = 0;
     if (SD.exists(cachePath.c_str())) {
       File checkFile = SD.open(cachePath.c_str(), FILE_READ);
       if (checkFile) {
-        if (checkFile.size() == (size_t)(tft.width() * tft.height() * 2)) {
+        actualSize = checkFile.size();
+        if (actualSize == expectedCacheBytes) {
           cacheValid = true;
         }
         checkFile.close();
       }
       if (!cacheValid) {
-        Serial.printf("[System] Found invalid cache size for %s. Deleting...\n", cachePath.c_str());
+        Serial.printf("[System] [Calculation %zu/%zu] '%s': Stale/invalid cache size (%zu B vs expected %zu B). Removing...\n",
+                      i + 1, totalImages, displayName, actualSize, expectedCacheBytes);
         SD.remove(cachePath.c_str());
       }
     }
+
     if (!cacheValid) {
       filesToCache.push_back({originalPath, cachePath});
+      Serial.printf("[System] [Calculation %zu/%zu] '%s' -> Cache MISS (Needs optimization) [Total needing opt: %zu]\n",
+                    i + 1, totalImages, displayName, filesToCache.size());
+    } else {
+      Serial.printf("[System] [Calculation %zu/%zu] '%s' -> Cache HIT (Valid %zu B raw file present)\n",
+                    i + 1, totalImages, displayName, actualSize);
     }
   }
 
+  Serial.printf("[System] Calculation phase complete! Scanned %zu images | %zu cached | %zu requiring optimization.\n",
+                totalImages, totalImages - filesToCache.size(), filesToCache.size());
+
   // If there are files to cache, display progress bar and generate them silently
   if (!filesToCache.empty()) {
-    Serial.printf("[System] Found %zu images that need optimization/caching.\n", filesToCache.size());
+    Serial.printf("[System] Starting batch optimization phase for %zu photo(s)...\n", filesToCache.size());
 #if defined(TFT_BL) && (TFT_BL >= 0)
     // Make sure backlight is on during progress bar display
     analogWrite(TFT_BL, currentBrightness);
@@ -961,16 +1012,29 @@ void setup() {
     bool cancelled = false;
     unsigned long lastOptTouchCheckMs = 0;
     for (size_t i = 0; i < filesToCache.size(); i++) {
+      const char* displayName = strrchr(filesToCache[i].first.c_str(), '/');
+      displayName = displayName ? displayName + 1 : filesToCache[i].first.c_str();
+
+      // Update progress bar & labels
+      drawProgress(i, filesToCache.size(), displayName);
+      
       // Poll touch screen between files (rate-limited to 50ms)
       unsigned long optNow = millis();
       if (optNow - lastOptTouchCheckMs >= 50) {
         lastOptTouchCheckMs = optNow;
+        LVGLManager::handle();
+        if (optimizationCancelled) {
+          Serial.println("[System] Optimization cancelled during optimization loop (via LVGL callback).");
+          cancelled = true;
+          drawCancellingFeedback();
+          break;
+        }
         if (TouchManager::isTouched()) {
           int tx = 0, ty = 0;
           if (TouchManager::getTouchPoint(tx, ty)) {
-            Serial.printf("[Touch Debug] Touch detected between files at X=%d, Y=%d\n", tx, ty);
+            Serial.printf("[Touch Debug] Touch detected during optimization loop: Raw X=%d, Y=%d\n", tx, ty);
             if (isCancelButtonTouched(tx, ty)) {
-              Serial.println("[System] Optimization cancelled by user.");
+              Serial.println("[System] Optimization CANCELLED by user touch during optimization phase!");
               cancelled = true;
               drawCancellingFeedback();
               break;
@@ -983,15 +1047,16 @@ void setup() {
         cancelled = true;
         break;
       }
+      
+      Serial.printf("[System] [Optimization %zu/%zu] Resizing & caching '%s' -> '%s'...\n",
+                    i + 1, filesToCache.size(), displayName, filesToCache[i].second.c_str());
 
-      const char* displayName = strrchr(filesToCache[i].first.c_str(), '/');
-      displayName = displayName ? displayName + 1 : filesToCache[i].first.c_str();
-      
-      // Update progress bar
-      drawProgress(i, filesToCache.size(), displayName);
-      
-      // Perform silent resizing and cache write
+      unsigned long optStart = millis();
       generateCache(filesToCache[i].first.c_str(), filesToCache[i].second.c_str());
+      unsigned long optElapsed = millis() - optStart;
+
+      Serial.printf("[System] [Optimization %zu/%zu] Completed '%s' in %lu ms.\n",
+                    i + 1, filesToCache.size(), displayName, optElapsed);
 
       if (optimizationCancelled) {
         cancelled = true;

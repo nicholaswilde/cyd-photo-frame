@@ -28,8 +28,15 @@ static XPT2046_Touchscreen touch(XPT2046_CS, XPT2046_IRQ);
 static bool s_lastTouched = false;
 static int s_lastX = 0;
 static int s_lastY = 0;
+static unsigned long s_lastSampleMs = 0;
 
 static void updateTouchSample() {
+    unsigned long now = millis();
+    if (now - s_lastSampleMs < 10) {
+        return;
+    }
+    s_lastSampleMs = now;
+
     if (touch.touched()) {
         TS_Point p = touch.getPoint();
         s_lastX = p.x;
@@ -74,9 +81,15 @@ static bool s_lastTouched = false;
 static int s_lastX = 0;
 static int s_lastY = 0;
 static unsigned long s_lastTouchTimeMs = 0;
+static unsigned long s_lastSampleMs = 0;
 
 static void updateTouchSample() {
     unsigned long now = millis();
+    if (now - s_lastSampleMs < 10) {
+        return;
+    }
+    s_lastSampleMs = now;
+
     if (!initialized) {
         s_lastTouched = false;
         return;

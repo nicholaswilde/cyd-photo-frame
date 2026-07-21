@@ -612,6 +612,7 @@ static lv_obj_t * opt_btn_cancel = nullptr;
 static void (*opt_cancel_callback)() = nullptr;
 
 static void opt_cancel_btn_cb(lv_event_t * e) {
+    Serial.println("[LVGL Debug] Cancel button event triggered!");
     if (opt_cancel_callback) {
         opt_cancel_callback();
     }
@@ -658,6 +659,9 @@ void LVGLManager::showOptimizationScreen() {
     opt_screen = lv_obj_create(NULL);
     lv_obj_set_style_bg_color(opt_screen, get_lv_color(getCatppuccinFlavor(currentThemeFlavor).base), 0);
     lv_obj_set_style_bg_opa(opt_screen, LV_OPA_COVER, 0);
+    lv_obj_add_flag(opt_screen, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_add_event_cb(opt_screen, opt_cancel_btn_cb, LV_EVENT_CLICKED, NULL);
+    lv_obj_add_event_cb(opt_screen, opt_cancel_btn_cb, LV_EVENT_PRESSED, NULL);
 
     // Title label
     lv_obj_t * lbl_title = lv_label_create(opt_screen);
@@ -698,6 +702,7 @@ void LVGLManager::showOptimizationScreen() {
     lv_obj_align(opt_btn_cancel, LV_ALIGN_BOTTOM_MID, 0, -15);
     lv_obj_set_style_bg_color(opt_btn_cancel, get_lv_color(getCatppuccinFlavor(currentThemeFlavor).red), 0);
     lv_obj_add_event_cb(opt_btn_cancel, opt_cancel_btn_cb, LV_EVENT_CLICKED, NULL);
+    lv_obj_add_event_cb(opt_btn_cancel, opt_cancel_btn_cb, LV_EVENT_PRESSED, NULL);
 
     lv_obj_t * lbl_cancel = lv_label_create(opt_btn_cancel);
     lv_label_set_text(lbl_cancel, "Cancel");
@@ -709,12 +714,18 @@ void LVGLManager::showOptimizationScreen() {
 #endif
 }
 
-void LVGLManager::updateOptimizationProgress(size_t current, size_t total, const char* filename) {
+void LVGLManager::updateCalculationProgress(size_t current, size_t total, const char* filename, size_t needsOptCount) {
 #if !defined(NATIVE_TEST)
     if (opt_screen == nullptr) showOptimizationScreen();
 
+    if (opt_lbl_status) {
+        lv_label_set_text(opt_lbl_status, "Scanning SD Card...");
+    }
+
     if (opt_lbl_file && filename) {
-        lv_label_set_text(opt_lbl_file, filename);
+        char fileStr[128];
+        snprintf(fileStr, sizeof(fileStr), "Checking: %s", filename);
+        lv_label_set_text(opt_lbl_file, fileStr);
     }
 
     int percentage = (total == 0) ? 0 : (current * 100) / total;
@@ -723,8 +734,41 @@ void LVGLManager::updateOptimizationProgress(size_t current, size_t total, const
     }
 
     if (opt_lbl_percent) {
-        char percentStr[32];
-        snprintf(percentStr, sizeof(percentStr), "%d%% (%zu/%zu)", percentage, current, total);
+        char percentStr[64];
+        if (needsOptCount == 1) {
+            snprintf(percentStr, sizeof(percentStr), "%d%% (%zu/%zu) - 1 needs optimization", percentage, current, total);
+        } else {
+            snprintf(percentStr, sizeof(percentStr), "%d%% (%zu/%zu) - %zu need optimization", percentage, current, total, needsOptCount);
+        }
+        lv_label_set_text(opt_lbl_percent, percentStr);
+    }
+
+    lv_task_handler();
+#endif
+}
+
+void LVGLManager::updateOptimizationProgress(size_t current, size_t total, const char* filename) {
+#if !defined(NATIVE_TEST)
+    if (opt_screen == nullptr) showOptimizationScreen();
+
+    if (opt_lbl_status) {
+        lv_label_set_text(opt_lbl_status, "Optimizing Photos...");
+    }
+
+    if (opt_lbl_file && filename) {
+        char fileStr[128];
+        snprintf(fileStr, sizeof(fileStr), "Optimizing: %s", filename);
+        lv_label_set_text(opt_lbl_file, fileStr);
+    }
+
+    int percentage = (total == 0) ? 0 : (current * 100) / total;
+    if (opt_bar) {
+        lv_bar_set_value(opt_bar, percentage, LV_ANIM_OFF);
+    }
+
+    if (opt_lbl_percent) {
+        char percentStr[64];
+        snprintf(percentStr, sizeof(percentStr), "Optimizing %zu/%zu (%d%%)", current, total, percentage);
         lv_label_set_text(opt_lbl_percent, percentStr);
     }
 

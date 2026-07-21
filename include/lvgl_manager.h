@@ -18,6 +18,7 @@ public:
 
     static void showSDError();
     static void showOptimizationScreen();
+    static void updateCalculationProgress(size_t current, size_t total, const char* filename, size_t needsOptCount);
     static void updateOptimizationProgress(size_t current, size_t total, const char* filename);
     static void setOptimizationCancelling();
     static void hideOptimizationScreen();
