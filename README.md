@@ -1,4 +1,5 @@
 # :framed_picture: CYD Photo Frame :pager:
+[![Coveralls](https://img.shields.io/coveralls/github/nicholaswilde/cyd-photo-frame/main?style=for-the-badge&logo=coveralls)](https://coveralls.io/github/nicholaswilde/cyd-photo-frame?branch=main)
 [![task](https://img.shields.io/badge/Task-Enabled-brightgreen?style=for-the-badge&logo=task&logoColor=white)](https://taskfile.dev/#/)
 
 
