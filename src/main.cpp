@@ -193,37 +193,31 @@ bool tft_output(int16_t x, int16_t y, uint16_t w, uint16_t h, uint16_t* bitmap) 
     return 1;
   }
 
-  // Software scale is > 1. Copy and downsample to scaled_bitmap.
-  // Maximum possible scaled block size is (16/1)*(16/1) = 256 pixels.
-  uint16_t scaled_bitmap[256];
-  
-  // Safe bounds guard
-  uint16_t safe_w_scaled = w_scaled > 16 ? 16 : w_scaled;
-  uint16_t safe_h_scaled = h_scaled > 16 ? 16 : h_scaled;
+  // Software scale is != 1.0f. Render row by row to support downscaling & upscaling.
+  uint16_t line_buffer[480];
+  uint16_t safe_w_visible = w_visible > 480 ? 480 : w_visible;
+  uint16_t safe_h_visible = h_visible > 480 ? 480 : h_visible;
 
-  for (uint16_t row = 0; row < safe_h_scaled; row++) {
+  for (uint16_t row = 0; row < safe_h_visible; row++) {
     int16_t src_y = (int16_t)floor(((float)(y_start_scaled + row) + 0.5f) * current_scale_sw) - y;
     if (src_y < 0) src_y = 0;
     if (src_y >= h) src_y = h - 1;
     
-    for (uint16_t col = 0; col < safe_w_scaled; col++) {
+    for (uint16_t col = 0; col < safe_w_visible; col++) {
       int16_t src_x = (int16_t)floor(((float)(x_start_scaled + col) + 0.5f) * current_scale_sw) - x;
       if (src_x < 0) src_x = 0;
       if (src_x >= w) src_x = w - 1;
       
-      scaled_bitmap[row * safe_w_scaled + col] = bitmap[src_y * w + src_x];
+      line_buffer[col] = bitmap[src_y * w + src_x];
     }
-  }
 
-  if (!cacheFileActive) {
-    tft.pushImage(dest_x, dest_y, w_visible, h_visible, scaled_bitmap, safe_w_scaled);
-  } else {
-    if (cacheFile) {
-      for (int row = 0; row < h_visible; row++) {
+    if (!cacheFileActive) {
+      tft.pushImage(dest_x, dest_y + row, safe_w_visible, 1, line_buffer);
+    } else {
+      if (cacheFile) {
         unsigned long fileOffset = ((dest_y + row) * tft.width() + dest_x) * 2;
         cacheFile.seek(fileOffset);
-        uint16_t* src_ptr = scaled_bitmap + row * safe_w_scaled;
-        cacheFile.write((uint8_t*)src_ptr, w_visible * 2);
+        cacheFile.write((uint8_t*)line_buffer, safe_w_visible * 2);
       }
     }
   }
@@ -287,11 +281,7 @@ bool generateCache(const char* jpgFilename, const char* rawFilename) {
     scale_hw = 8;
   }
 
-  if (max_ratio > (float)scale_hw) {
-    scale_sw = max_ratio / (float)scale_hw;
-  } else {
-    scale_sw = 1.0f;
-  }
+  scale_sw = max_ratio / (float)scale_hw;
 
   TJpgDec.setJpgScale(scale_hw);
 
@@ -625,11 +615,7 @@ bool renderScaledJpg(const char* filename) {
       scale_hw = 8;
     }
 
-    if (max_ratio > (float)scale_hw) {
-      scale_sw = max_ratio / (float)scale_hw;
-    } else {
-      scale_sw = 1.0f;
-    }
+    scale_sw = max_ratio / (float)scale_hw;
 
     Serial.printf("Original Size: %dx%d | Screen Size: %dx%d | HW Scale: 1/%d | SW Scale: 1/%.2f\n", 
                   img_w, img_h, tft.width(), tft.height(), scale_hw, scale_sw);
