@@ -4,6 +4,7 @@
 #include <SD.h>
 #include <TFT_eSPI.h>
 #include <TJpg_Decoder.h>
+#include "config/config.h"
 #include "file_cache.h"
 #include "slideshow_timer.h"
 #include "touch_manager.h"
@@ -23,21 +24,21 @@ TransitionDirection pendingDirection = DIR_NEXT;
 // Note: Pins and drivers are automatically handled by platformio.ini build_flags!
 TFT_eSPI tft = TFT_eSPI();
 FileCache fileCache(1024);
-SlideshowTimer slideshowTimer(10000);
+SlideshowTimer slideshowTimer(DEFAULT_SLIDESHOW_DELAY_MS);
 TouchHandler touchHandler(TFT_HEIGHT, TFT_WIDTH);
 
-int currentBrightness = 255;
-bool showFilename = true;
-bool isRandomMode = false;
-bool isAutoBrightness = false;
-bool isInactivitySleep = false;
+int currentBrightness = DEFAULT_BRIGHTNESS;
+bool showFilename = DEFAULT_SHOW_FILENAME;
+bool isRandomMode = DEFAULT_RANDOM_MODE;
+bool isAutoBrightness = DEFAULT_AUTO_BRIGHTNESS;
+bool isInactivitySleep = DEFAULT_INACTIVITY_SLEEP;
 bool optimizationCancelled = false;
-int currentOrientation = 1; // 1 = Landscape, 2 = Portrait
+int currentOrientation = DEFAULT_SCREEN_ORIENTATION; // 1 = Landscape, 2 = Portrait, 3 = Landscape Rev, 4 = Portrait Rev
 
 // CYD RGB LED — pins: R=4, G=16, B=17 (active-LOW, common-anode)
-LedManager led(4, 16, 17);
-int currentLedBrightness = 128; // default mid-brightness
-bool isLedEnabled = true;
+LedManager led(RGB_LED_RED_PIN, RGB_LED_GREEN_PIN, RGB_LED_BLUE_PIN);
+int currentLedBrightness = DEFAULT_LED_BRIGHTNESS;
+bool isLedEnabled = DEFAULT_LED_ENABLED;
 
 bool isCancelButtonTouched(int touchX, int touchY);
 void drawCancellingFeedback();
@@ -45,7 +46,7 @@ bool renderScaledJpg(const char* filename);
 
 #include "catppuccin.h"
 
-int currentThemeFlavor = CATPPUCCIN_MOCHA;
+int currentThemeFlavor = DEFAULT_THEME_FLAVOR;
 
 #include "app_state.h"
 AppState currentState = STATE_SLIDESHOW;
@@ -837,7 +838,7 @@ void setup() {
   lastTouchTimeMs = millis();
 
   // Initialize LDR Sensor Pin
-  pinMode(34, INPUT);
+  pinMode(LDR_PIN, INPUT);
 
   // Initialize RGB LED
   led.begin();
