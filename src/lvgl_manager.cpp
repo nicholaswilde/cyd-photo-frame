@@ -7,6 +7,7 @@ extern int currentThemeFlavor;
 extern int currentOrientation;
 
 #include "wifi_manager.h"
+#include "touch_handler.h"
 extern WifiManager* wifiManager;
 
 #if !defined(NATIVE_TEST)
@@ -47,6 +48,8 @@ static void my_disp_flush(lv_disp_drv_t *disp_drv, const lv_area_t *area, lv_col
     lv_disp_flush_ready(disp_drv);
 }
 
+extern TouchHandler touchHandler;
+
 static void my_touchpad_read(lv_indev_drv_t *indev_driver, lv_indev_data_t *data) {
     if (currentState != STATE_SETTINGS) {
         data->state = LV_INDEV_STATE_REL;
@@ -64,97 +67,9 @@ static void my_touchpad_read(lv_indev_drv_t *indev_driver, lv_indev_data_t *data
         int disp_w = LVGLManager::getWidth();
         int disp_h = LVGLManager::getHeight();
         bool isCapacitive = (touchX <= disp_w * 2 && touchY <= disp_h * 2);
-        if (isCapacitive) {
-            int w_land = disp_w > disp_h ? disp_w : disp_h;
-            int h_land = disp_w < disp_h ? disp_w : disp_h;
-            
-            bool rawIsPortrait = (touchX <= h_land && touchY <= w_land);
-            
-            if (rawIsPortrait) {
-                switch (tft.getRotation()) {
-                    case 0: // Portrait Rev / Native Portrait
-                        pixelX = h_land - touchX;
-                        pixelY = touchY;
-                        break;
-                    case 1: // Landscape
-                        pixelX = touchY;
-                        pixelY = h_land - touchX;
-                        break;
-                    case 2: // Portrait
-                        pixelX = touchX;
-                        pixelY = w_land - touchY;
-                        break;
-                    case 3: // Landscape Rev
-                        pixelX = w_land - touchY;
-                        pixelY = touchX;
-                        break;
-                    default:
-                        pixelX = touchY;
-                        pixelY = touchX;
-                        break;
-                }
-            } else {
-                switch (tft.getRotation()) {
-                    case 0: // Portrait
-                        pixelX = touchY;
-                        pixelY = w_land - touchX;
-                        break;
-                    case 1: // Landscape
-                        pixelX = touchX;
-                        pixelY = touchY;
-                        break;
-                    case 2: // Portrait Rev
-                        pixelX = h_land - touchY;
-                        pixelY = touchX;
-                        break;
-                    case 3: // Landscape Rev
-                        pixelX = w_land - touchX;
-                        pixelY = h_land - touchY;
-                        break;
-                    default:
-                        pixelX = touchX;
-                        pixelY = touchY;
-                        break;
-                }
-            }
-            
-            if (pixelX < 0) pixelX = 0;
-            if (pixelX >= disp_w) pixelX = disp_w - 1;
-            if (pixelY < 0) pixelY = 0;
-            if (pixelY >= disp_h) pixelY = disp_h - 1;
-        } else {
-            int w_land = disp_w > disp_h ? disp_w : disp_h;
-            int h_land = disp_w < disp_h ? disp_w : disp_h;
-            int lx = (long)(touchX - 200) * w_land / (3800 - 200);
-            int ly = (long)(touchY - 200) * h_land / (3800 - 200);
-            if (lx < 0) lx = 0;
-            if (lx > w_land) lx = w_land;
-            if (ly < 0) ly = 0;
-            if (ly > h_land) ly = h_land;
-            
-            switch (tft.getRotation()) {
-                case 0: // Portrait Rev
-                    pixelX = h_land - ly;
-                    pixelY = lx;
-                    break;
-                case 1: // Landscape
-                    pixelX = lx;
-                    pixelY = ly;
-                    break;
-                case 2: // Portrait
-                    pixelX = ly;
-                    pixelY = w_land - lx;
-                    break;
-                case 3: // Landscape Rev
-                    pixelX = w_land - lx;
-                    pixelY = h_land - ly;
-                    break;
-                default:
-                    pixelX = lx;
-                    pixelY = ly;
-                    break;
-            }
-        }
+        
+        touchHandler.mapCoordinates(touchX, touchY, pixelX, pixelY, isCapacitive);
+        
         data->state = LV_INDEV_STATE_PR;
         data->point.x = pixelX;
         data->point.y = pixelY;
