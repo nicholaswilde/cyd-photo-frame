@@ -56,4 +56,6 @@ inline void lv_indev_drv_register(lv_indev_drv_t * driver) {}
 inline uint32_t lv_timer_handler() { return 0; }
 inline lv_obj_t* lv_scr_act() { return nullptr; }
 
+#define LV_SYMBOL_WIFI "[WiFi]"
+
 #endif // MOCK_LVGL_H

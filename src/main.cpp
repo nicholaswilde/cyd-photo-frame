@@ -1296,6 +1296,44 @@ void loop() {
     exitSettings();
   }
 
+  // Handle AP Mode configuration screen display
+  static bool apScreenShown = false;
+  if (wifiManager != nullptr && wifiManager->getState() == WIFI_STATE_AP_MODE && currentState != STATE_SETTINGS) {
+    if (!apScreenShown) {
+      apScreenShown = true;
+      LVGLManager::showAPModeScreen(wifiManager->getAPSSID().c_str(), wifiManager->getIPAddress().c_str());
+    }
+
+    LVGLManager::handle();
+
+    // Check for touch input to go to settings in AP Mode
+    bool touched = TouchManager::isTouched();
+    int rawX = 0, rawY = 0;
+    if (touched) {
+      TouchManager::getTouchPoint(rawX, rawY);
+      lastTouchTimeMs = millis();
+      TouchZone zone = touchHandler.processTouch(touched, rawX, rawY, millis());
+      if (zone == TouchZone::LONG_PRESS_MID_CENTER) {
+        Serial.println("[Touch] Long Press Center in AP Mode - Entering Settings Menu");
+        currentState = STATE_SETTINGS;
+        led.setState(LedManager::STATE_SETTINGS);
+        slideshowTimer.setPaused(true);
+        tft.fillScreen(CTP_BASE);
+        LVGLManager::hideAPModeScreen();
+        apScreenShown = false;
+        LVGLManager::showSettings();
+      }
+    }
+
+    delay(5);
+    return;
+  } else {
+    if (apScreenShown) {
+      LVGLManager::hideAPModeScreen();
+      apScreenShown = false;
+    }
+  }
+
   // Check for serial commands
   if (Serial.available() > 0) {
     String cmd = Serial.readStringUntil('\n');

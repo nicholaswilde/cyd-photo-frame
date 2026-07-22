@@ -6,6 +6,9 @@
 extern int currentThemeFlavor;
 extern int currentOrientation;
 
+#include "wifi_manager.h"
+extern WifiManager* wifiManager;
+
 #if !defined(NATIVE_TEST)
 #include <Arduino.h>
 #include <lvgl.h>
@@ -163,6 +166,8 @@ static void (*clearCacheCallback)() = nullptr;
 static lv_obj_t* settings_screen = nullptr;
 static lv_obj_t* confirm_dialog = nullptr;
 static lv_obj_t* slider_bright_ptr = nullptr;
+static lv_obj_t* settings_wifi_icon = nullptr;
+static lv_obj_t* ap_screen = nullptr;
 
 extern bool isWifiEnabled;
 extern int currentBrightness;
@@ -384,9 +389,24 @@ void LVGLManager::handle() {
         lv_timer_handler();
         
         // If settings menu is open and auto-brightness is active, keep slider in sync
-        if (settings_screen && lv_scr_act() == settings_screen && isAutoBrightness) {
-            if (slider_bright_ptr) {
+        if (settings_screen && lv_scr_act() == settings_screen) {
+            if (isAutoBrightness && slider_bright_ptr) {
                 lv_slider_set_value(slider_bright_ptr, currentBrightness, LV_ANIM_OFF);
+            }
+            if (settings_wifi_icon) {
+                if (wifiManager == nullptr) {
+                    lv_obj_add_flag(settings_wifi_icon, LV_OBJ_FLAG_HIDDEN);
+                } else {
+                    lv_obj_clear_flag(settings_wifi_icon, LV_OBJ_FLAG_HIDDEN);
+                    WifiState ws = wifiManager->getState();
+                    if (ws == WIFI_STATE_CONNECTED) {
+                        lv_obj_set_style_text_color(settings_wifi_icon, get_lv_color(getCatppuccinFlavor(currentThemeFlavor).green), 0);
+                    } else if (ws == WIFI_STATE_CONNECTING || ws == WIFI_STATE_AP_MODE) {
+                        lv_obj_set_style_text_color(settings_wifi_icon, get_lv_color(getCatppuccinFlavor(currentThemeFlavor).yellow), 0);
+                    } else {
+                        lv_obj_set_style_text_color(settings_wifi_icon, get_lv_color(getCatppuccinFlavor(currentThemeFlavor).red), 0);
+                    }
+                }
             }
         }
     }
@@ -431,6 +451,23 @@ void LVGLManager::showSettings() {
     lv_obj_set_style_text_color(title, get_lv_color(getCatppuccinFlavor(currentThemeFlavor).text), 0);
     lv_obj_set_style_text_font(title, &lv_font_montserrat_14, 0);
     lv_obj_align(title, LV_ALIGN_TOP_MID, 0, 10);
+
+    // WiFi status icon in top right
+    settings_wifi_icon = lv_label_create(settings_screen);
+    lv_label_set_text(settings_wifi_icon, LV_SYMBOL_WIFI);
+    lv_obj_align(settings_wifi_icon, LV_ALIGN_TOP_RIGHT, -15, 10);
+    if (wifiManager == nullptr) {
+        lv_obj_add_flag(settings_wifi_icon, LV_OBJ_FLAG_HIDDEN);
+    } else {
+        WifiState ws = wifiManager->getState();
+        if (ws == WIFI_STATE_CONNECTED) {
+            lv_obj_set_style_text_color(settings_wifi_icon, get_lv_color(getCatppuccinFlavor(currentThemeFlavor).green), 0);
+        } else if (ws == WIFI_STATE_CONNECTING || ws == WIFI_STATE_AP_MODE) {
+            lv_obj_set_style_text_color(settings_wifi_icon, get_lv_color(getCatppuccinFlavor(currentThemeFlavor).yellow), 0);
+        } else {
+            lv_obj_set_style_text_color(settings_wifi_icon, get_lv_color(getCatppuccinFlavor(currentThemeFlavor).red), 0);
+        }
+    }
     
     lv_obj_t * list = lv_obj_create(settings_screen);
     lv_obj_set_size(list, LV_PCT(95), LV_PCT(74));
@@ -728,6 +765,7 @@ void LVGLManager::hideSettings() {
         lv_obj_del(old_scr);
         settings_screen = nullptr;
         slider_bright_ptr = nullptr;
+        settings_wifi_icon = nullptr;
     }
 #endif
 }
@@ -996,5 +1034,55 @@ void LVGLManager::updateClearCacheProgress(size_t current, size_t total, const c
 void LVGLManager::hideClearCacheScreen() {
 #if !defined(NATIVE_TEST)
     hideOptimizationScreen();
+#endif
+}
+
+void LVGLManager::showAPModeScreen(const char* apSSID, const char* ipAddress) {
+#if !defined(NATIVE_TEST)
+    if (ap_screen != nullptr) return;
+
+    ap_screen = lv_obj_create(NULL);
+    lv_obj_set_style_bg_color(ap_screen, get_lv_color(getCatppuccinFlavor(currentThemeFlavor).base), 0);
+    
+    // Title label
+    lv_obj_t * lbl_title = lv_label_create(ap_screen);
+    lv_label_set_text(lbl_title, "CYD Photo Frame");
+    lv_obj_set_style_text_font(lbl_title, &lv_font_montserrat_20, 0);
+    lv_obj_set_style_text_color(lbl_title, get_lv_color(getCatppuccinFlavor(currentThemeFlavor).text), 0);
+    lv_obj_align(lbl_title, LV_ALIGN_TOP_MID, 0, 15);
+
+    // Status label
+    lv_obj_t * lbl_status = lv_label_create(ap_screen);
+    lv_label_set_text(lbl_status, "Captive Portal Active");
+    lv_obj_set_style_text_font(lbl_status, &lv_font_montserrat_14, 0);
+    lv_obj_set_style_text_color(lbl_status, get_lv_color(getCatppuccinFlavor(currentThemeFlavor).mauve), 0);
+    lv_obj_align(lbl_status, LV_ALIGN_TOP_MID, 0, 50);
+
+    // Info details
+    lv_obj_t * lbl_info = lv_label_create(ap_screen);
+    char infoBuf[256];
+    snprintf(infoBuf, sizeof(infoBuf), 
+             "SSID: %s\nIP: %s\n\nConnect your device to setup WiFi", 
+             apSSID, ipAddress);
+    lv_label_set_text(lbl_info, infoBuf);
+    lv_obj_set_style_text_align(lbl_info, LV_TEXT_ALIGN_CENTER, 0);
+    lv_obj_set_style_text_color(lbl_info, get_lv_color(getCatppuccinFlavor(currentThemeFlavor).text), 0);
+    lv_obj_align(lbl_info, LV_ALIGN_CENTER, 0, 15);
+
+    lv_scr_load(ap_screen);
+    lv_task_handler();
+#endif
+}
+
+void LVGLManager::hideAPModeScreen() {
+#if !defined(NATIVE_TEST)
+    if (ap_screen != nullptr) {
+        lv_obj_t * old_scr = ap_screen;
+        lv_obj_t * blank_scr = lv_obj_create(NULL);
+        lv_obj_set_style_bg_opa(blank_scr, LV_OPA_TRANSP, 0);
+        lv_scr_load(blank_scr);
+        lv_obj_del(old_scr);
+        ap_screen = nullptr;
+    }
 #endif
 }

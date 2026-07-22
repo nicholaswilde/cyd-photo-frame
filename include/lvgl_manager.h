@@ -27,6 +27,9 @@ public:
     static void showClearCacheScreen();
     static void updateClearCacheProgress(size_t current, size_t total, const char* filename);
     static void hideClearCacheScreen();
+
+    static void showAPModeScreen(const char* apSSID, const char* ipAddress);
+    static void hideAPModeScreen();
 };
 
 #endif // LVGL_MANAGER_H
