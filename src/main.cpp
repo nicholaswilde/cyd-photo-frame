@@ -1012,6 +1012,17 @@ void setup() {
 #if defined(TFT_BL) && (TFT_BL >= 0)
     analogWrite(TFT_BL, currentBrightness);
 #endif
+  } else {
+    // Bypass: show a brief loading splash so the user knows the device is booting
+    tft.fillScreen(CTP_BASE);
+    tft.setTextColor(CTP_TEXT, CTP_BASE);
+    tft.setTextDatum(MC_DATUM);
+    tft.drawString("CYD Photo Frame", tft.width() / 2, tft.height() / 2 - 20, 4);
+    tft.setTextColor(CTP_GREEN, CTP_BASE);
+    tft.drawString("Loading slideshow...", tft.width() / 2, tft.height() / 2 + 20, 2);
+#if defined(TFT_BL) && (TFT_BL >= 0)
+    analogWrite(TFT_BL, currentBrightness);
+#endif
   }
 
   // Initialize the TJpg_Decoder
@@ -1267,6 +1278,22 @@ void setup() {
 
   LVGLManager::hideOptimizationScreen();
   tft.fillScreen(CTP_BASE);
+
+  // Fade out loading/optimization screen to black before rendering first image
+  if (bypassOptimization) {
+    fader.startFade(currentBrightness, 0, 250);
+    while (fader.getState() != BacklightFader::STATE_IDLE) {
+      int b = 0;
+      fader.update(millis(), b);
+#if defined(TFT_BL) && (TFT_BL >= 0)
+      analogWrite(TFT_BL, b);
+#endif
+      delay(10);
+    }
+#if defined(TFT_BL) && (TFT_BL >= 0)
+    analogWrite(TFT_BL, 0);
+#endif
+  }
 
   // Pause briefly in darkness for a smooth transition before loading the first photo
   delay(300);
