@@ -955,7 +955,7 @@ void setup() {
       fader.startFade(currentBrightness, currentBrightness, 0);
       LVGLManager::showAPModeScreen(wifiManager->getAPSSID().c_str(), wifiManager->getIPAddress().c_str());
 
-      while (wifiManager->getState() == WIFI_STATE_AP_MODE && currentState != STATE_SETTINGS) {
+      while (wifiManager->getState() == WIFI_STATE_AP_MODE) {
         wifiManager->update();
         LVGLManager::handle();
 
@@ -963,13 +963,23 @@ void setup() {
         analogWrite(TFT_BL, currentBrightness);
 #endif
 
+        if (pendingExitSettings) {
+          pendingExitSettings = false;
+          exitSettings();
+          if (wifiManager->getState() != WIFI_STATE_AP_MODE) {
+            break;
+          }
+          tft.fillScreen(CTP_BASE);
+          LVGLManager::showAPModeScreen(wifiManager->getAPSSID().c_str(), wifiManager->getIPAddress().c_str());
+        }
+
         bool touched = TouchManager::isTouched();
         if (touched) {
           int tx = 0, ty = 0;
           if (TouchManager::getTouchPoint(tx, ty)) {
             lastTouchTimeMs = millis();
             TouchZone zone = touchHandler.processTouch(touched, tx, ty, millis());
-            if (zone == TouchZone::LONG_PRESS_MID_CENTER) {
+            if (zone == TouchZone::LONG_PRESS_MID_CENTER && currentState != STATE_SETTINGS) {
               Serial.println("[Touch] Long Press Center in AP Mode - Entering Settings Menu");
               currentState = STATE_SETTINGS;
               led.setState(LedManager::STATE_SETTINGS);
@@ -977,12 +987,12 @@ void setup() {
               tft.fillScreen(CTP_BASE);
               LVGLManager::hideAPModeScreen();
               LVGLManager::showSettings();
-              break;
             }
           }
         }
         delay(5);
       }
+      LVGLManager::hideAPModeScreen();
     }
   }
 
