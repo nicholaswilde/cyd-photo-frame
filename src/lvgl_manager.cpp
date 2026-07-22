@@ -73,13 +73,6 @@ static void my_touchpad_read(lv_indev_drv_t *indev_driver, lv_indev_data_t *data
         data->state = LV_INDEV_STATE_PR;
         data->point.x = pixelX;
         data->point.y = pixelY;
-
-        static unsigned long lastPrintMs = 0;
-        if (millis() - lastPrintMs > 150) {
-            lastPrintMs = millis();
-            Serial.printf("[LVGL Touch] Raw: (%d, %d), Mapped: (%d, %d), Orientation: %d, Cap: %d\n",
-                          touchX, touchY, pixelX, pixelY, currentOrientation, isCapacitive);
-        }
     }
 }
 

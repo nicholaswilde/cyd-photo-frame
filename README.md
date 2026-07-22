@@ -70,7 +70,7 @@ The screen is divided into a 3x3 touch grid to control slideshow behavior and pa
 
 1. Open the **Settings** menu by long-pressing the center of the screen for 1.5 seconds.
 2. Toggle the **WiFi** switch to **ON**, then tap **Save & Exit**. The device will save your preference and reboot into Wi-Fi mode.
-3. If no network credentials are configured yet (or if the saved network is out of range), the frame enters **Access Point (AP) Mode** and displays the setup screen on the TFT display:
+3. If no network credentials are configured yet (or if the saved network is out of range), the frame enters **Access Point (AP) Mode** and displays the setup screen on the TFT display prior to running photo calculation and optimization:
    - **AP SSID:** `cyd-photo-frame-<mac>` *(where `<mac>` is the last 4 digits of the MAC address)*
    - **IP Address:** `192.168.4.1`
 4. Connect your phone or computer to the frame's Wi-Fi Access Point (`cyd-photo-frame-XXXX`).
