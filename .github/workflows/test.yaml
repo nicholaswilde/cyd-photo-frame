@@ -1,0 +1,83 @@
+---
+name: PlatformIO Test Build
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - '**.cpp'
+      - '**.h'
+      - '**.ini'
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        env:
+          - cyd_28r
+          - cyd_35c
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: 'true'
+
+  # 1. Install lcov utility
+      - name: Install lcov
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y lcov
+
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: Cache PlatformIO Core
+        uses: actions/cache@v4
+        with:
+          path: ~/.platformio/packages
+          key: ${{ runner.os }}-${{ hashFiles('**/platformio.ini') }}
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      # Install go-task
+      - name: Install Task
+        uses: go-task/setup-task@v2
+        
+      - name: Install PlatformIO Core
+        run: pip install --upgrade platformio
+
+      - name: Check Code
+        run: task check:${{ matrix.env }}
+
+      - name: Build Firmware
+        run: task build:${{ matrix.env }}
+        
+      - name: Run Tests
+        if: matrix.env == 'cyd_28r'
+        run: task test
+
+      # 6. Generate and clean the lcov.info report (with compatible LCOV 1.x flags)
+      - name: Generate Coverage Report
+        if: matrix.env == 'cyd_28r'
+        run: |
+          lcov --capture --base-directory . --directory .pio/build/native/ --output-file lcov_raw.info
+          lcov --remove lcov_raw.info '*/.pio/*' '*/tests/*' '*/tests/mocks/*' '/usr/*' -o lcov.info
+      
+      # 7. Upload coverage report directly to Coveralls.io
+      - name: Coveralls GitHub Action
+        if: matrix.env == 'cyd_28r'
+        uses: coverallsapp/github-action@v2
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }} # Automatically provided by GitHub Actions
+          file: lcov.info
+

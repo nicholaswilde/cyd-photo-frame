@@ -38,7 +38,7 @@ void test_touch_handler_zones(void) {
     // Debounce should prevent trigger at same time
     TEST_ASSERT_EQUAL(TouchZone::NONE, handler.processTouch(true, 2000, 2000, 1000));
     // After debounce interval
-    TEST_ASSERT_EQUAL(TouchZone::MID_CENTER, handler.processTouch(true, 2000, 2000, 1400));
+    TEST_ASSERT_EQUAL(TouchZone::MID_CENTER_DOWN, handler.processTouch(true, 2000, 2000, 1400));
     
     // Middle Right Zone (raw 3500, 2000 maps to pixel X=293, Y=120)
     TEST_ASSERT_EQUAL(TouchZone::MID_RIGHT, handler.processTouch(true, 3500, 2000, 1800));
@@ -59,7 +59,7 @@ void test_touch_handler_long_press(void) {
     TouchHandler handler(320, 240);
     
     // Start touch at T=1000ms
-    TEST_ASSERT_EQUAL(TouchZone::MID_CENTER, handler.processTouch(true, 2000, 2000, 1000));
+    TEST_ASSERT_EQUAL(TouchZone::MID_CENTER_DOWN, handler.processTouch(true, 2000, 2000, 1000));
     
     // Hold touch at T=1500ms (500ms elapsed) - should return NONE
     TEST_ASSERT_EQUAL(TouchZone::NONE, handler.processTouch(true, 2000, 2000, 1500));
@@ -82,7 +82,7 @@ void test_touch_handler_portrait_zones(void) {
     handler.setOrientation(2); // Portrait mode
     
     // Touch in physical middle of portrait screen (raw 2000, 2000)
-    TEST_ASSERT_EQUAL(TouchZone::MID_CENTER, handler.processTouch(true, 2000, 2000, 1000));
+    TEST_ASSERT_EQUAL(TouchZone::MID_CENTER_DOWN, handler.processTouch(true, 2000, 2000, 1000));
     
     // Hold long press at T=2500ms in portrait mode
     TEST_ASSERT_EQUAL(TouchZone::LONG_PRESS_MID_CENTER, handler.processTouch(true, 2000, 2000, 2500));

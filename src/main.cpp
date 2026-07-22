@@ -778,8 +778,29 @@ void saveConfig() {
 }
 
 bool pendingExitSettings = false;
-void triggerExitSettings() {
+
+void handleRebootConfirm() {
   pendingExitSettings = true;
+}
+
+void triggerExitSettings() {
+  int cachedTheme = 0;
+  int cachedOrientation = 1;
+  bool cachedWifiEnabled = false;
+  {
+    Preferences prefs;
+    prefs.begin("settings", false);
+    cachedTheme = (int)prefs.getUInt("cached_theme", 0);
+    cachedOrientation = (int)prefs.getInt("cached_rot", 1);
+    cachedWifiEnabled = prefs.getBool("cached_wifi", false);
+    prefs.end();
+  }
+
+  if (currentThemeFlavor != cachedTheme || currentOrientation != cachedOrientation || isWifiEnabled != cachedWifiEnabled) {
+      LVGLManager::showRebootConfirmDialog();
+  } else {
+      pendingExitSettings = true;
+  }
 }
 
 void exitSettings() {
@@ -998,6 +1019,7 @@ void setup() {
   // Initialize LVGL
   LVGLManager::init(tft.width(), tft.height());
   LVGLManager::setExitCallback(triggerExitSettings);
+  LVGLManager::setRebootConfirmCallback(handleRebootConfirm);
   LVGLManager::setClearCacheCallback(handleClearCache);
 
   if (!sdSuccess) {
@@ -1701,6 +1723,8 @@ void loop() {
           fader.startFade(currentBrightness, 0, 300);
           slideshowTimer.setPaused(true);
         }
+      } else if (zone == TouchZone::MID_CENTER_DOWN) {
+        showToastBanner("Hold screen for settings...", 1500);
       } else if (zone == TouchZone::MID_CENTER) {
         bool isPaused = !slideshowTimer.isPaused();
         slideshowTimer.setPaused(isPaused);

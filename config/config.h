@@ -50,8 +50,8 @@
 #define DEFAULT_SCREEN_ORIENTATION 1
 #endif
 
-// Catppuccin UI Theme Flavor (default: 0)
 // 0 = Mocha, 1 = Macchiato, 2 = Frappé, 3 = Latte
+// Catppuccin UI Theme Flavor (default: 0)
 #ifndef DEFAULT_THEME_FLAVOR
 #define DEFAULT_THEME_FLAVOR 0
 #endif

@@ -7,6 +7,7 @@ enum class TouchZone {
     TOP_CENTER,
     TOP_RIGHT,
     MID_LEFT,
+    MID_CENTER_DOWN,
     MID_CENTER,
     MID_RIGHT,
     BOTTOM_LEFT,

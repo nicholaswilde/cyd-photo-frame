@@ -7,7 +7,8 @@
 - Build firmware: `pio run -e cyd_28r` or `pio run -e cyd_35c`
 - Run host-native tests: `pio test -e native`
 
-## GitHub Operations
+## Git & GitHub Operations
+- When running `git` commands, **always prefix them with `rtk`** to save tokens (e.g., `rtk git status`, `rtk git diff`, `rtk git log`).
 - When interacting with the remote repository (e.g. retrieving issues, listing pull requests, checking workflow status), **always use the `gh` tool** (and prefix it with `rtk` to save tokens, e.g., `rtk gh issue list` or `rtk gh pr status`).
 - Always pipe `gh` commands to `cat` to bypass interactive pagers (e.g., `rtk gh issue list | cat`, `rtk gh issue view 1 | cat`).
 

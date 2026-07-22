@@ -13,8 +13,10 @@ public:
     static int getHeight();
     
     static void setExitCallback(void (*exit_cb)());
+    static void setRebootConfirmCallback(void (*reboot_cb)());
     static void showSettings();
     static void hideSettings();
+    static void showRebootConfirmDialog();
 
     static void showSDError();
     static void showNoPhotosWarning();

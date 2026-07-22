@@ -13,10 +13,14 @@ static int mapRangeClipped(int x, int in_min, int in_max, int out_max) {
 
 TouchZone TouchHandler::processTouch(bool isTouched, int rawX, int rawY, unsigned long currentTimeMs) {
     if (!isTouched) {
+        TouchZone returnZone = TouchZone::NONE;
+        if (m_wasTouched && m_touchStartZone == TouchZone::MID_CENTER && !m_longPressTriggered) {
+            returnZone = TouchZone::MID_CENTER;
+        }
         m_wasTouched = false;
         m_touchStartZone = TouchZone::NONE;
         m_longPressTriggered = false;
-        return TouchZone::NONE;
+        return returnZone;
     }
     
     int pixelX = 0;
@@ -57,6 +61,9 @@ TouchZone TouchHandler::processTouch(bool isTouched, int rawX, int rawY, unsigne
         m_touchStartZone = currentZone;
         m_longPressTriggered = false;
         m_lastTapTimeMs = currentTimeMs;
+        if (currentZone == TouchZone::MID_CENTER) {
+            return TouchZone::MID_CENTER_DOWN;
+        }
         return currentZone;
     } else {
         if (currentZone == m_touchStartZone && m_touchStartZone == TouchZone::MID_CENTER) {

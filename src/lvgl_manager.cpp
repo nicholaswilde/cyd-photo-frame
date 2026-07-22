@@ -78,8 +78,10 @@ static void my_touchpad_read(lv_indev_drv_t *indev_driver, lv_indev_data_t *data
 
 static void (*exitCallback)() = nullptr;
 static void (*clearCacheCallback)() = nullptr;
+static void (*rebootConfirmCallback)() = nullptr;
 static lv_obj_t* settings_screen = nullptr;
 static lv_obj_t* confirm_dialog = nullptr;
+static lv_obj_t* reboot_confirm_dialog = nullptr;
 static lv_obj_t* slider_bright_ptr = nullptr;
 static lv_obj_t* settings_wifi_icon = nullptr;
 static lv_obj_t* ap_screen = nullptr;
@@ -267,6 +269,76 @@ static void clear_cache_click_event_cb(lv_event_t * e) {
     lv_obj_set_style_text_color(lbl_cancel, get_lv_color(getCatppuccinFlavor(currentThemeFlavor).crust), 0);
     lv_obj_align(lbl_cancel, LV_ALIGN_CENTER, 0, 0);
 }
+
+static void confirm_reboot_cb(lv_event_t * e) {
+    if (reboot_confirm_dialog) {
+        lv_obj_del(reboot_confirm_dialog);
+        reboot_confirm_dialog = nullptr;
+    }
+    if (rebootConfirmCallback) {
+        rebootConfirmCallback();
+    }
+}
+
+static void cancel_reboot_cb(lv_event_t * e) {
+    if (reboot_confirm_dialog) {
+        lv_obj_del(reboot_confirm_dialog);
+        reboot_confirm_dialog = nullptr;
+    }
+}
+
+void LVGLManager::showRebootConfirmDialog() {
+    if (reboot_confirm_dialog != nullptr) return;
+
+    reboot_confirm_dialog = lv_obj_create(settings_screen);
+    lv_obj_set_size(reboot_confirm_dialog, LVGLManager::getWidth(), LVGLManager::getHeight());
+    lv_obj_align(reboot_confirm_dialog, LV_ALIGN_CENTER, 0, 0);
+    lv_obj_set_style_bg_color(reboot_confirm_dialog, get_lv_color(getCatppuccinFlavor(currentThemeFlavor).base), 0);
+    lv_obj_set_style_border_width(reboot_confirm_dialog, 0, 0);
+    lv_obj_clear_flag(reboot_confirm_dialog, LV_OBJ_FLAG_SCROLLABLE);
+
+    lv_obj_t * lbl_title = lv_label_create(reboot_confirm_dialog);
+    lv_label_set_text(lbl_title, "CYD Photo Frame");
+    lv_obj_set_style_text_font(lbl_title, &lv_font_montserrat_20, 0);
+    lv_obj_set_style_text_color(lbl_title, get_lv_color(getCatppuccinFlavor(currentThemeFlavor).text), 0);
+    lv_obj_align(lbl_title, LV_ALIGN_TOP_MID, 0, 15);
+
+    lv_obj_t * lbl_subtitle = lv_label_create(reboot_confirm_dialog);
+    lv_label_set_text(lbl_subtitle, "Reboot Required");
+    lv_obj_set_style_text_font(lbl_subtitle, &lv_font_montserrat_14, 0);
+    lv_obj_set_style_text_color(lbl_subtitle, get_lv_color(getCatppuccinFlavor(currentThemeFlavor).text), 0);
+    lv_obj_align(lbl_subtitle, LV_ALIGN_TOP_MID, 0, 50);
+
+    lv_obj_t * lbl_msg = lv_label_create(reboot_confirm_dialog);
+    lv_label_set_text(lbl_msg, "Settings changed. Photos\nwill be optimized again.");
+    lv_obj_set_style_text_align(lbl_msg, LV_TEXT_ALIGN_CENTER, 0);
+    lv_obj_set_style_text_color(lbl_msg, get_lv_color(getCatppuccinFlavor(currentThemeFlavor).text), 0);
+    lv_obj_align(lbl_msg, LV_ALIGN_TOP_MID, 0, 75);
+
+    // Confirm button
+    lv_obj_t * btn_confirm = lv_btn_create(reboot_confirm_dialog);
+    lv_obj_set_size(btn_confirm, 90, 32);
+    lv_obj_align(btn_confirm, LV_ALIGN_BOTTOM_LEFT, 20, -30);
+    lv_obj_set_style_bg_color(btn_confirm, get_lv_color(getCatppuccinFlavor(currentThemeFlavor).red), 0);
+    lv_obj_add_event_cb(btn_confirm, confirm_reboot_cb, LV_EVENT_CLICKED, NULL);
+
+    lv_obj_t * lbl_confirm = lv_label_create(btn_confirm);
+    lv_label_set_text(lbl_confirm, "Reboot");
+    lv_obj_set_style_text_color(lbl_confirm, get_lv_color(getCatppuccinFlavor(currentThemeFlavor).crust), 0);
+    lv_obj_align(lbl_confirm, LV_ALIGN_CENTER, 0, 0);
+
+    // Cancel button
+    lv_obj_t * btn_cancel = lv_btn_create(reboot_confirm_dialog);
+    lv_obj_set_size(btn_cancel, 90, 32);
+    lv_obj_align(btn_cancel, LV_ALIGN_BOTTOM_RIGHT, -20, -30);
+    lv_obj_set_style_bg_color(btn_cancel, get_lv_color(getCatppuccinFlavor(currentThemeFlavor).overlay), 0);
+    lv_obj_add_event_cb(btn_cancel, cancel_reboot_cb, LV_EVENT_CLICKED, NULL);
+
+    lv_obj_t * lbl_cancel = lv_label_create(btn_cancel);
+    lv_label_set_text(lbl_cancel, "Cancel");
+    lv_obj_set_style_text_color(lbl_cancel, get_lv_color(getCatppuccinFlavor(currentThemeFlavor).crust), 0);
+    lv_obj_align(lbl_cancel, LV_ALIGN_CENTER, 0, 0);
+}
 #endif
 
 static bool initialized = false;
@@ -349,6 +421,12 @@ int LVGLManager::getHeight() {
 void LVGLManager::setExitCallback(void (*exit_cb)()) {
 #if !defined(NATIVE_TEST)
     exitCallback = exit_cb;
+#endif
+}
+
+void LVGLManager::setRebootConfirmCallback(void (*reboot_cb)()) {
+#if !defined(NATIVE_TEST)
+    rebootConfirmCallback = reboot_cb;
 #endif
 }
 
@@ -824,7 +902,7 @@ void LVGLManager::showOptimizationScreen() {
     // Progress Bar
     opt_bar = lv_bar_create(opt_screen);
     lv_obj_set_size(opt_bar, LVGLManager::getWidth() - 80, 20);
-    lv_obj_align(opt_bar, LV_ALIGN_TOP_MID, 0, 110);
+    lv_obj_align(opt_bar, LV_ALIGN_TOP_MID, 0, 130);
     lv_obj_set_style_bg_color(opt_bar, get_lv_color(getCatppuccinFlavor(currentThemeFlavor).overlay), 0);
     lv_obj_set_style_bg_color(opt_bar, get_lv_color(getCatppuccinFlavor(currentThemeFlavor).green), LV_PART_INDICATOR);
     lv_bar_set_value(opt_bar, 0, LV_ANIM_OFF);
@@ -833,7 +911,7 @@ void LVGLManager::showOptimizationScreen() {
     opt_lbl_percent = lv_label_create(opt_screen);
     lv_label_set_text(opt_lbl_percent, "Calculating...");
     lv_obj_set_style_text_color(opt_lbl_percent, get_lv_color(getCatppuccinFlavor(currentThemeFlavor).text), 0);
-    lv_obj_align(opt_lbl_percent, LV_ALIGN_TOP_MID, 0, 140);
+    lv_obj_align(opt_lbl_percent, LV_ALIGN_TOP_MID, 0, 160);
     lv_obj_set_style_text_align(opt_lbl_percent, LV_TEXT_ALIGN_CENTER, 0);
 
     // Cancel Button
