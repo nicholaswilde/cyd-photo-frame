@@ -16,6 +16,9 @@ A digital photo frame for the ESP32 Cheap Yellow Device (CYD)
 - **Storage**: MicroSD card slot (SDHC up to 32 GB out-of-the-box; SDXC up to 2 TB supported when reformatted to FAT32).
 - Micro-USB / USB-C cable for power and programming.
 
+> [!WARNING]
+> Due to SPI bus timing and hardware characteristics on the CYD board, the SD card may intermittently fail to mount on boot. Resetting or power cycling the device usually resolves the issue. See [#15](https://github.com/nicholaswilde/cyd-photo-frame/issues/15) for more details.
+
 ## :star: Features
 
 - **High-Performance Caching:** Converts JPEGs to raw RGB565 images on boot, enabling under **60ms** rendering times.
