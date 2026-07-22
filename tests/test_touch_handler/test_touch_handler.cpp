@@ -77,6 +77,17 @@ void test_touch_handler_long_press(void) {
     TEST_ASSERT_EQUAL(TouchZone::NONE, handler.processTouch(false, 2000, 2000, 3000));
 }
 
+void test_touch_handler_portrait_zones(void) {
+    TouchHandler handler(320, 240);
+    handler.setOrientation(2); // Portrait mode
+    
+    // Touch in physical middle of portrait screen (raw 2000, 2000)
+    TEST_ASSERT_EQUAL(TouchZone::MID_CENTER, handler.processTouch(true, 2000, 2000, 1000));
+    
+    // Hold long press at T=2500ms in portrait mode
+    TEST_ASSERT_EQUAL(TouchZone::LONG_PRESS_MID_CENTER, handler.processTouch(true, 2000, 2000, 2500));
+}
+
 int main(int argc, char **argv) {
     UNITY_BEGIN();
     RUN_TEST(test_touch_handler_mapping_capacitive);
@@ -84,5 +95,6 @@ int main(int argc, char **argv) {
     RUN_TEST(test_touch_handler_zones);
     RUN_TEST(test_touch_handler_no_touch);
     RUN_TEST(test_touch_handler_long_press);
+    RUN_TEST(test_touch_handler_portrait_zones);
     return UNITY_END();
 }

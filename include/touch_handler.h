@@ -21,7 +21,18 @@ public:
     
     TouchZone processTouch(bool isTouched, int rawX, int rawY, unsigned long currentTimeMs);
     void mapCoordinates(int rawX, int rawY, int& pixelX, int& pixelY, bool isCapacitive);
-    void setOrientation(int orientation) { m_orientation = orientation; }
+    void setOrientation(int orientation) {
+        m_orientation = orientation;
+        int maxDim = m_displayWidth > m_displayHeight ? m_displayWidth : m_displayHeight;
+        int minDim = m_displayWidth < m_displayHeight ? m_displayWidth : m_displayHeight;
+        if (orientation == 0 || orientation == 2) {
+            m_displayWidth = minDim;
+            m_displayHeight = maxDim;
+        } else {
+            m_displayWidth = maxDim;
+            m_displayHeight = minDim;
+        }
+    }
 
 private:
     int m_displayWidth;
