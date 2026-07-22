@@ -1111,11 +1111,11 @@ void setup() {
   if (fileCache.isEmpty()) {
     Serial.println("Error: No images found on SD card.");
     led.setState(LedManager::STATE_ERROR);
-    tft.fillScreen(CTP_BASE);
-    tft.setTextColor(CTP_RED, CTP_BASE);
-    tft.setTextDatum(MC_DATUM);
-    tft.drawString("No Images Found", tft.width() / 2, tft.height() / 2, 4);
-    while(true) delay(1000); // Halt execution
+    LVGLManager::showNoPhotosWarning();
+    while(true) {
+      LVGLManager::handle();
+      delay(10);
+    }
   }
 
   // Ensure cache directory exists

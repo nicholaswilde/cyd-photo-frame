@@ -761,6 +761,35 @@ void LVGLManager::showSDError() {
 #endif
 }
 
+void LVGLManager::showNoPhotosWarning() {
+#if !defined(NATIVE_TEST)
+    lv_obj_t * warn_screen = lv_obj_create(NULL);
+    lv_obj_set_style_bg_color(warn_screen, get_lv_color(getCatppuccinFlavor(currentThemeFlavor).base), 0);
+    lv_obj_set_style_bg_opa(warn_screen, LV_OPA_COVER, 0);
+
+    lv_obj_t * lbl_title = lv_label_create(warn_screen);
+    lv_label_set_text(lbl_title, "CYD Photo Frame");
+    lv_obj_set_style_text_font(lbl_title, &lv_font_montserrat_20, 0);
+    lv_obj_set_style_text_color(lbl_title, get_lv_color(getCatppuccinFlavor(currentThemeFlavor).text), 0);
+    lv_obj_align(lbl_title, LV_ALIGN_TOP_MID, 0, 15);
+
+    lv_obj_t * lbl_err = lv_label_create(warn_screen);
+    lv_label_set_text(lbl_err, "NO PHOTOS FOUND");
+    lv_obj_set_style_text_color(lbl_err, get_lv_color(getCatppuccinFlavor(currentThemeFlavor).yellow), 0);
+    lv_obj_align(lbl_err, LV_ALIGN_TOP_MID, 0, 55);
+
+    lv_obj_t * lbl_inst = lv_label_create(warn_screen);
+    lv_label_set_text(lbl_inst, "Add JPEGs to SD card\nand reboot device.");
+    lv_obj_set_style_text_color(lbl_inst, get_lv_color(getCatppuccinFlavor(currentThemeFlavor).text), 0);
+    lv_obj_set_style_text_align(lbl_inst, LV_TEXT_ALIGN_CENTER, 0);
+    lv_obj_align(lbl_inst, LV_ALIGN_TOP_MID, 0, 95);
+
+    lv_scr_load(warn_screen);
+    lv_task_handler();
+#endif
+}
+
+
 void LVGLManager::showOptimizationScreen() {
 #if !defined(NATIVE_TEST)
     if (opt_screen != nullptr) return;
