@@ -213,3 +213,11 @@ bool TouchManager::getTouchPoint(int& x, int& y) {
     return s_lastTouched;
 }
 #endif
+
+bool TouchManager::isCapacitive() {
+#if defined(ST7796_DRIVER)
+    return true;
+#else
+    return false;
+#endif
+}

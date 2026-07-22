@@ -72,10 +72,10 @@ TouchZone TouchHandler::processTouch(bool isTouched, int rawX, int rawY, unsigne
 }
 
 void TouchHandler::mapCoordinates(int rawX, int rawY, int& pixelX, int& pixelY, bool isCapacitive) {
+    int w_land = m_displayWidth > m_displayHeight ? m_displayWidth : m_displayHeight;
+    int h_land = m_displayWidth < m_displayHeight ? m_displayWidth : m_displayHeight;
+
     if (isCapacitive) {
-        int w_land = m_displayWidth > m_displayHeight ? m_displayWidth : m_displayHeight;
-        int h_land = m_displayWidth < m_displayHeight ? m_displayWidth : m_displayHeight;
-        
         bool rawIsPortrait = (rawX <= h_land && rawY <= w_land);
         
         if (rawIsPortrait) {
@@ -125,15 +125,7 @@ void TouchHandler::mapCoordinates(int rawX, int rawY, int& pixelX, int& pixelY, 
                     break;
             }
         }
-        
-        if (pixelX < 0) pixelX = 0;
-        if (pixelX >= m_displayWidth) pixelX = m_displayWidth - 1;
-        if (pixelY < 0) pixelY = 0;
-        if (pixelY >= m_displayHeight) pixelY = m_displayHeight - 1;
     } else {
-        int w_land = m_displayWidth > m_displayHeight ? m_displayWidth : m_displayHeight;
-        int h_land = m_displayWidth < m_displayHeight ? m_displayWidth : m_displayHeight;
-        
         int lx = mapRangeClipped(rawX, 200, 3800, w_land);
         int ly = mapRangeClipped(rawY, 200, 3800, h_land);
         
@@ -160,4 +152,9 @@ void TouchHandler::mapCoordinates(int rawX, int rawY, int& pixelX, int& pixelY, 
                 break;
         }
     }
+
+    if (pixelX < 0) pixelX = 0;
+    if (pixelX >= m_displayWidth) pixelX = m_displayWidth - 1;
+    if (pixelY < 0) pixelY = 0;
+    if (pixelY >= m_displayHeight) pixelY = m_displayHeight - 1;
 }

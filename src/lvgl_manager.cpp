@@ -66,7 +66,7 @@ static void my_touchpad_read(lv_indev_drv_t *indev_driver, lv_indev_data_t *data
         int pixelY = 0;
         int disp_w = LVGLManager::getWidth();
         int disp_h = LVGLManager::getHeight();
-        bool isCapacitive = (touchX <= disp_w * 2 && touchY <= disp_h * 2);
+        bool isCapacitive = TouchManager::isCapacitive();
         
         touchHandler.mapCoordinates(touchX, touchY, pixelX, pixelY, isCapacitive);
         

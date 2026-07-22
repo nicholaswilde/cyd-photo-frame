@@ -6,6 +6,7 @@ public:
     static void begin();
     static bool isTouched();
     static bool getTouchPoint(int& x, int& y);
+    static bool isCapacitive();
 };
 
 #if defined(NATIVE_TEST)
