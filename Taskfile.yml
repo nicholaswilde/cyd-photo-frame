@@ -16,7 +16,7 @@ tasks:
       # 2. Extract and capture raw code coverage reports
       - lcov --capture --base-directory . --directory .pio/build/native/ --output-file lcov_raw.info
       # 3. Clean up the report by filtering out system and test files
-      - lcov --remove lcov_raw.info '*/.pio/*' '*/tests/*' '*/tests/mocks/*' '/usr/*' -o lcov.info
+      - lcov --remove lcov_raw.info '*/.pio/*' '*/tests/*' '*/tests/mocks/*' '/usr/*' -o lcov.info --ignore-errors unused
       - lcov --list lcov.info
       - defer: rm lcov.info lcov_raw.info
 
@@ -33,7 +33,7 @@ tasks:
       # 2. Extract and capture raw code coverage reports
       - lcov --capture --base-directory . --directory .pio/build/native/ --output-file lcov_raw.info
       # 3. Clean up the report by filtering out system and test files
-      - lcov --remove lcov_raw.info '*/.pio/*' '*/tests/*' '*/tests/mocks/*' '/usr/*' -o lcov.info
+      - lcov --remove lcov_raw.info '*/.pio/*' '*/tests/*' '*/tests/mocks/*' '/usr/*' -o lcov.info --ignore-errors unused
       # 4. Upload to coveralls using the CLI binary
       - coveralls report lcov.info -n -r $COVERALLS_REPO_TOKEN
       # 5. Clean up temporary local files

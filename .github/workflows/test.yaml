@@ -66,12 +66,11 @@ jobs:
         if: matrix.env == 'cyd_28r'
         run: task test
 
-      # 6. Generate and clean the lcov.info report (with compatible LCOV 1.x flags)
       - name: Generate Coverage Report
         if: matrix.env == 'cyd_28r'
         run: |
           lcov --capture --base-directory . --directory .pio/build/native/ --output-file lcov_raw.info
-          lcov --remove lcov_raw.info '*/.pio/*' '*/tests/*' '*/tests/mocks/*' '/usr/*' -o lcov.info
+          lcov --remove lcov_raw.info '*/.pio/*' '*/tests/*' '*/tests/mocks/*' '/usr/*' -o lcov.info --ignore-errors unused
       
       # 7. Upload coverage report directly to Coveralls.io
       - name: Coveralls GitHub Action
