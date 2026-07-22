@@ -23,6 +23,10 @@ public:
     static void setOptimizationCancelling();
     static void hideOptimizationScreen();
     static void setCancelCallback(void (*cancel_cb)());
+    static void setClearCacheCallback(void (*clear_cache_cb)());
+    static void showClearCacheScreen();
+    static void updateClearCacheProgress(size_t current, size_t total, const char* filename);
+    static void hideClearCacheScreen();
 };
 
 #endif // LVGL_MANAGER_H

@@ -43,6 +43,7 @@ bool isLedEnabled = DEFAULT_LED_ENABLED;
 bool isCancelButtonTouched(int touchX, int touchY);
 void drawCancellingFeedback();
 bool renderScaledJpg(const char* filename);
+void handleClearCache();
 
 #include "catppuccin.h"
 
@@ -772,6 +773,60 @@ void exitSettings() {
   fader.startFade(0, currentBrightness, 300);
 }
 
+void handleClearCache() {
+  Serial.println("[System] Clear cache requested. Commencing deletion...");
+  
+  std::vector<std::string> filesToDelete;
+  File cacheDir = SD.open("/cache");
+  if (cacheDir) {
+    File file = cacheDir.openNextFile();
+    while (file) {
+      if (!file.isDirectory()) {
+        filesToDelete.push_back(std::string(file.path()));
+      }
+      file.close();
+      file = cacheDir.openNextFile();
+    }
+    cacheDir.close();
+  }
+
+  size_t total = filesToDelete.size();
+  Serial.printf("[System] Found %zu files to delete from cache.\n", total);
+  
+  LVGLManager::showClearCacheScreen();
+  led.setState(LedManager::STATE_OPTIMIZING);
+
+  if (total == 0) {
+    LVGLManager::updateClearCacheProgress(0, 0, "No cached files found.");
+    delay(1500);
+  } else {
+    for (size_t i = 0; i < total; i++) {
+      const char* path = filesToDelete[i].c_str();
+      const char* displayName = strrchr(path, '/');
+      displayName = displayName ? displayName + 1 : path;
+      
+      LVGLManager::updateClearCacheProgress(i + 1, total, displayName);
+      
+      if (SD.exists(path)) {
+        SD.remove(path);
+      }
+      
+      // Delay slightly (e.g. 50ms) to show smooth progress UI
+      delay(50);
+    }
+    LVGLManager::updateClearCacheProgress(total, total, "Rebooting to rebuild cache...");
+    delay(1500);
+  }
+
+  LVGLManager::hideClearCacheScreen();
+  
+  Serial.println("[System] Cache cleared. Rebooting now...");
+  delay(100);
+#if !defined(NATIVE_TEST)
+  ESP.restart();
+#endif
+}
+
 void setup() {
   Serial.begin(115200);
   Serial.println("[System] Booting ESP32 CYD Photo Frame...");
@@ -857,6 +912,7 @@ void setup() {
   // Initialize LVGL
   LVGLManager::init(tft.width(), tft.height());
   LVGLManager::setExitCallback(triggerExitSettings);
+  LVGLManager::setClearCacheCallback(handleClearCache);
 
   if (!sdSuccess) {
     led.setState(LedManager::STATE_ERROR);

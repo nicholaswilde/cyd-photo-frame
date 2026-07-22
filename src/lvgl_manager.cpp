@@ -159,7 +159,9 @@ static void my_touchpad_read(lv_indev_drv_t *indev_driver, lv_indev_data_t *data
 }
 
 static void (*exitCallback)() = nullptr;
+static void (*clearCacheCallback)() = nullptr;
 static lv_obj_t* settings_screen = nullptr;
+static lv_obj_t* confirm_dialog = nullptr;
 static lv_obj_t* slider_bright_ptr = nullptr;
 
 extern int currentBrightness;
@@ -263,6 +265,70 @@ static void exit_button_event_cb(lv_event_t * e) {
         exitCallback();
     }
 }
+
+static void confirm_clear_cache_cb(lv_event_t * e) {
+    if (confirm_dialog) {
+        lv_obj_del(confirm_dialog);
+        confirm_dialog = nullptr;
+    }
+    if (clearCacheCallback) {
+        clearCacheCallback();
+    }
+}
+
+static void cancel_clear_cache_cb(lv_event_t * e) {
+    if (confirm_dialog) {
+        lv_obj_del(confirm_dialog);
+        confirm_dialog = nullptr;
+    }
+}
+
+static void clear_cache_click_event_cb(lv_event_t * e) {
+    if (confirm_dialog != nullptr) return;
+
+    confirm_dialog = lv_obj_create(settings_screen);
+    lv_obj_set_size(confirm_dialog, LVGLManager::getWidth(), LVGLManager::getHeight());
+    lv_obj_align(confirm_dialog, LV_ALIGN_CENTER, 0, 0);
+    lv_obj_set_style_bg_color(confirm_dialog, get_lv_color(getCatppuccinFlavor(currentThemeFlavor).base), 0);
+    lv_obj_set_style_border_width(confirm_dialog, 0, 0);
+    lv_obj_clear_flag(confirm_dialog, LV_OBJ_FLAG_SCROLLABLE);
+
+    lv_obj_t * lbl_title = lv_label_create(confirm_dialog);
+    lv_label_set_text(lbl_title, "Clear Cache?");
+    lv_obj_set_style_text_font(lbl_title, &lv_font_montserrat_14, 0);
+    lv_obj_set_style_text_color(lbl_title, get_lv_color(getCatppuccinFlavor(currentThemeFlavor).text), 0);
+    lv_obj_align(lbl_title, LV_ALIGN_TOP_MID, 0, 30);
+
+    lv_obj_t * lbl_msg = lv_label_create(confirm_dialog);
+    lv_label_set_text(lbl_msg, "Delete all cached photos?\nThey will be re-generated.");
+    lv_obj_set_style_text_align(lbl_msg, LV_TEXT_ALIGN_CENTER, 0);
+    lv_obj_set_style_text_color(lbl_msg, get_lv_color(getCatppuccinFlavor(currentThemeFlavor).text), 0);
+    lv_obj_align(lbl_msg, LV_ALIGN_TOP_MID, 0, 70);
+
+    // Confirm button
+    lv_obj_t * btn_confirm = lv_btn_create(confirm_dialog);
+    lv_obj_set_size(btn_confirm, 90, 32);
+    lv_obj_align(btn_confirm, LV_ALIGN_BOTTOM_LEFT, 20, -30);
+    lv_obj_set_style_bg_color(btn_confirm, get_lv_color(getCatppuccinFlavor(currentThemeFlavor).red), 0);
+    lv_obj_add_event_cb(btn_confirm, confirm_clear_cache_cb, LV_EVENT_CLICKED, NULL);
+
+    lv_obj_t * lbl_confirm = lv_label_create(btn_confirm);
+    lv_label_set_text(lbl_confirm, "Confirm");
+    lv_obj_set_style_text_color(lbl_confirm, get_lv_color(getCatppuccinFlavor(currentThemeFlavor).crust), 0);
+    lv_obj_align(lbl_confirm, LV_ALIGN_CENTER, 0, 0);
+
+    // Cancel button
+    lv_obj_t * btn_cancel = lv_btn_create(confirm_dialog);
+    lv_obj_set_size(btn_cancel, 90, 32);
+    lv_obj_align(btn_cancel, LV_ALIGN_BOTTOM_RIGHT, -20, -30);
+    lv_obj_set_style_bg_color(btn_cancel, get_lv_color(getCatppuccinFlavor(currentThemeFlavor).overlay), 0);
+    lv_obj_add_event_cb(btn_cancel, cancel_clear_cache_cb, LV_EVENT_CLICKED, NULL);
+
+    lv_obj_t * lbl_cancel = lv_label_create(btn_cancel);
+    lv_label_set_text(lbl_cancel, "Cancel");
+    lv_obj_set_style_text_color(lbl_cancel, get_lv_color(getCatppuccinFlavor(currentThemeFlavor).crust), 0);
+    lv_obj_align(lbl_cancel, LV_ALIGN_CENTER, 0, 0);
+}
 #endif
 
 static bool initialized = false;
@@ -330,6 +396,12 @@ int LVGLManager::getHeight() {
 void LVGLManager::setExitCallback(void (*exit_cb)()) {
 #if !defined(NATIVE_TEST)
     exitCallback = exit_cb;
+#endif
+}
+
+void LVGLManager::setClearCacheCallback(void (*clear_cache_cb)()) {
+#if !defined(NATIVE_TEST)
+    clearCacheCallback = clear_cache_cb;
 #endif
 }
 
@@ -571,6 +643,32 @@ void LVGLManager::showSettings() {
     lv_dropdown_set_selected(dd_orient, initial_dd);
     lv_obj_add_event_cb(dd_orient, orientation_dropdown_event_cb, LV_EVENT_VALUE_CHANGED, NULL);
 
+    // 8b. Storage / Clear Cache
+    lv_obj_t * row_cache = lv_obj_create(list);
+    lv_obj_clear_flag(row_cache, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_set_size(row_cache, LV_PCT(100), 40);
+    lv_obj_set_flex_flow(row_cache, LV_FLEX_FLOW_ROW);
+    lv_obj_set_flex_align(row_cache, LV_FLEX_ALIGN_SPACE_BETWEEN, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+    lv_obj_set_style_bg_color(row_cache, get_lv_color(getCatppuccinFlavor(currentThemeFlavor).mantle), 0);
+    lv_obj_set_style_border_width(row_cache, 0, 0);
+    lv_obj_set_style_pad_all(row_cache, 5, 0);
+
+    lv_obj_t * lbl_cache = lv_label_create(row_cache);
+    lv_label_set_text(lbl_cache, "Storage");
+    lv_obj_set_style_text_color(lbl_cache, get_lv_color(getCatppuccinFlavor(currentThemeFlavor).text), 0);
+
+    lv_obj_t * btn_cache = lv_btn_create(row_cache);
+    lv_obj_set_size(btn_cache, 90, 28);
+    lv_obj_set_style_bg_color(btn_cache, get_lv_color(getCatppuccinFlavor(currentThemeFlavor).red), 0);
+    lv_obj_set_style_pad_all(btn_cache, 0, 0);
+    
+    lv_obj_t * lbl_btn_cache = lv_label_create(btn_cache);
+    lv_label_set_text(lbl_btn_cache, "Clear Cache");
+    lv_obj_set_style_text_color(lbl_btn_cache, get_lv_color(getCatppuccinFlavor(currentThemeFlavor).crust), 0);
+    lv_obj_align(lbl_btn_cache, LV_ALIGN_CENTER, 0, 0);
+
+    lv_obj_add_event_cb(btn_cache, clear_cache_click_event_cb, LV_EVENT_CLICKED, NULL);
+
     // 9. Save & Exit Button
     lv_obj_t * btn_exit = lv_btn_create(settings_screen);
     lv_obj_set_size(btn_exit, 100, 30);
@@ -801,5 +899,70 @@ void LVGLManager::hideOptimizationScreen() {
         opt_bar = nullptr;
         opt_btn_cancel = nullptr;
     }
+#endif
+}
+
+void LVGLManager::showClearCacheScreen() {
+#if !defined(NATIVE_TEST)
+    if (opt_screen != nullptr) return;
+
+    showOptimizationScreen();
+
+    if (opt_lbl_status) {
+        lv_label_set_text(opt_lbl_status, "Clearing Cache...");
+    }
+    if (opt_lbl_file) {
+        lv_label_set_text(opt_lbl_file, "Scanning cache...");
+    }
+    if (opt_lbl_percent) {
+        lv_label_set_text(opt_lbl_percent, "Preparing...");
+    }
+    if (opt_bar) {
+        lv_bar_set_value(opt_bar, 0, LV_ANIM_OFF);
+    }
+    if (opt_btn_cancel) {
+        lv_obj_add_flag(opt_btn_cancel, LV_OBJ_FLAG_HIDDEN);
+    }
+
+    lv_task_handler();
+#endif
+}
+
+void LVGLManager::updateClearCacheProgress(size_t current, size_t total, const char* filename) {
+#if !defined(NATIVE_TEST)
+    if (opt_screen == nullptr) showClearCacheScreen();
+
+    if (opt_lbl_status) {
+        lv_label_set_text(opt_lbl_status, "Clearing Cache...");
+    }
+
+    if (opt_lbl_file && filename) {
+        char fileStr[128];
+        snprintf(fileStr, sizeof(fileStr), "Deleting: %s", filename);
+        lv_label_set_text(opt_lbl_file, fileStr);
+    }
+
+    int percentage = (total == 0) ? 0 : (current * 100) / total;
+    if (opt_bar) {
+        lv_bar_set_value(opt_bar, percentage, LV_ANIM_OFF);
+    }
+
+    if (opt_lbl_percent) {
+        char percentStr[64];
+        if (total == 0) {
+            snprintf(percentStr, sizeof(percentStr), "%s", filename);
+        } else {
+            snprintf(percentStr, sizeof(percentStr), "Cleared %zu/%zu (%d%%)", current, total, percentage);
+        }
+        lv_label_set_text(opt_lbl_percent, percentStr);
+    }
+
+    lv_task_handler();
+#endif
+}
+
+void LVGLManager::hideClearCacheScreen() {
+#if !defined(NATIVE_TEST)
+    hideOptimizationScreen();
 #endif
 }

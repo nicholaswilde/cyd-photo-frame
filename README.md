@@ -24,6 +24,7 @@ A digital photo frame for the ESP32 Cheap Yellow Device (CYD)
 - **Filename Banner Overlay:** Displays a clean, toggleable Catppuccin Mantle banner containing the current image name at the bottom of the screen.
 - **Touch Navigation Zones:** Easily navigate images and access settings by tapping designated screen areas.
 - **On-Screen Feedback Banners:** Displays a temporary top toast notification banner to confirm touch zone settings changes on-screen (e.g. brightness, delay, random mode, etc.) before auto-restoring the photo.
+- **Settings Storage Management:** Clear the on-device photo cache directly from the Settings menu with an interactive confirmation prompt and visual progress bar tracking cache folder deletion.
 
 ## :world_map: Touch Navigation Zones
 
@@ -62,7 +63,7 @@ The screen is divided into a 3x3 touch grid to control slideshow behavior and pa
 > [!NOTE]
 > **Display Orientation & Caching:**
 > The device now supports four orientations (Landscape, Portrait, Landscape Rev, Portrait Rev).
-> Cached images are stored per resolution (e.g., `_320x240.raw` for landscape modes and `_240x320.raw` for portrait modes), so switching between orientations no longer requires clearing the cache. Only a theme change clears the cache. 
+> Cached images are stored per resolution (e.g., `_320x240.raw` for landscape modes and `_240x320.raw` for portrait modes), so switching between orientations no longer requires clearing the cache. The cache can be manually cleared via the Settings menu or serial command, or automatically cleared upon theme flavor changes. 
 
 
 ## :electric_plug: Serial Commands
