@@ -1007,12 +1007,12 @@ void setup() {
     // Show calculating screen in darkness first
     drawCalculating();
     LVGLManager::handle();
-
-    // Now turn on backlight to reveal the optimization screen cleanly
-#if defined(TFT_BL) && (TFT_BL >= 0)
-    analogWrite(TFT_BL, currentBrightness);
-#endif
   }
+
+  // Turn on backlight now (whether or not optimization ran)
+#if defined(TFT_BL) && (TFT_BL >= 0)
+  analogWrite(TFT_BL, currentBrightness);
+#endif
 
   // Initialize the TJpg_Decoder
   TJpgDec.setCallback(tft_output);
