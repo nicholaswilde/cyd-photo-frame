@@ -81,7 +81,7 @@ void TouchHandler::mapCoordinates(int rawX, int rawY, int& pixelX, int& pixelY, 
         if (rawIsPortrait) {
             switch (m_orientation) {
                 case 0: // Portrait Rev / Native Portrait
-                    pixelX = h_land - rawX;
+                    pixelX = rawX;
                     pixelY = rawY;
                     break;
                 case 1: // Landscape
@@ -89,7 +89,7 @@ void TouchHandler::mapCoordinates(int rawX, int rawY, int& pixelX, int& pixelY, 
                     pixelY = h_land - rawX;
                     break;
                 case 2: // Portrait
-                    pixelX = rawX;
+                    pixelX = h_land - rawX;
                     pixelY = w_land - rawY;
                     break;
                 case 3: // Landscape Rev
@@ -104,7 +104,7 @@ void TouchHandler::mapCoordinates(int rawX, int rawY, int& pixelX, int& pixelY, 
         } else {
             switch (m_orientation) {
                 case 0: // Portrait
-                    pixelX = rawY;
+                    pixelX = h_land - rawY;
                     pixelY = w_land - rawX;
                     break;
                 case 1: // Landscape
@@ -112,7 +112,7 @@ void TouchHandler::mapCoordinates(int rawX, int rawY, int& pixelX, int& pixelY, 
                     pixelY = rawY;
                     break;
                 case 2: // Portrait Rev
-                    pixelX = h_land - rawY;
+                    pixelX = rawY;
                     pixelY = rawX;
                     break;
                 case 3: // Landscape Rev
