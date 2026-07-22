@@ -1038,19 +1038,22 @@ void setup() {
   }
 
   // Clean up any leftover temporary files from aborted runs
-  File cacheDir = SD.open("/cache");
-  if (cacheDir) {
-    File file = cacheDir.openNextFile();
-    while (file) {
-      String path = file.path();
-      file.close();
-      if (path.endsWith(".tmp")) {
-        Serial.printf("[System] Cleaning up orphaned temp file: %s\n", path.c_str());
-        SD.remove(path.c_str());
+  // (Only needed when optimization runs; bypass mode never creates .tmp files)
+  if (!bypassOptimization) {
+    File cacheDir = SD.open("/cache");
+    if (cacheDir) {
+      File file = cacheDir.openNextFile();
+      while (file) {
+        String path = file.path();
+        file.close();
+        if (path.endsWith(".tmp")) {
+          Serial.printf("[System] Cleaning up orphaned temp file: %s\n", path.c_str());
+          SD.remove(path.c_str());
+        }
+        file = cacheDir.openNextFile();
       }
-      file = cacheDir.openNextFile();
+      cacheDir.close();
     }
-    cacheDir.close();
   }
 
   // Clear cache if theme changed to regenerate cache files with correct background borders/colors
