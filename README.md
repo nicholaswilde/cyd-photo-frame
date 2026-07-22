@@ -58,8 +58,10 @@ The screen is divided into a 3x3 touch grid to control slideshow behavior and pa
 3. Plug the card into the CYD SD slot. On boot, the ESP32 will auto-detect any new JPEGs, scale them (downscaling larger images and upscaling smaller images) to fit the screen while keeping their aspect ratios, and cache them inside the `/cache/` directory.
 
 > [!WARNING]
-> **On-Device Optimization Speed:**
-> On-device JPEG scaling and caching on the ESP32 takes significant time (~1 minute per photo for high-resolution images from modern phone cameras; e.g., processing 235 photos on a CYD 2.8" device took ~3 hours 49 minutes). For large photo sets, pre-processing images on a computer using `scripts/prepare_images.py` before copying to the SD card is strongly recommended.
+> **On-Device Optimization Speed & Bypass Mode:**
+> On-device JPEG scaling and caching on the ESP32 takes significant time (~1 minute per photo for high-resolution images from modern phone cameras; e.g., processing 235 photos on a CYD 2.8" device took ~3 hours 49 minutes). 
+> 
+> You can **bypass this on-device optimization phase entirely** by toggling **Bypass Optimization** to **ON** in the Settings menu. When enabled, the device will skip boot-time scaling calculations and progress screens, booting directly into the slideshow. It is recommended to use the `scripts/prepare_images.py` script with the `--raw` flag to pre-generate and save raw RGB565 files directly into the SD card's `/cache` folder.
 
 > [!NOTE]
 > **Display Orientation & Caching:**
@@ -119,6 +121,9 @@ uv run scripts/prepare_images.py -i ~/Photos -o /mnt/sdcard --orientation both -
 
 # Override dimensions manually (e.g. CYD-35C landscape)
 uv run scripts/prepare_images.py -i ~/Photos -o /mnt/sdcard --width 480 --height 320
+
+# Pre-generate both JPEGs and raw RGB565 files for instant boot
+uv run scripts/prepare_images.py -i ~/Photos -o /mnt/sdcard --raw
 ```
 
 | Flag | Default | Description |
@@ -129,9 +134,10 @@ uv run scripts/prepare_images.py -i ~/Photos -o /mnt/sdcard --width 480 --height
 | `--width` | 320 / 240 | Override target width (ignored when `--orientation both`) |
 | `--height` | 240 / 320 | Override target height (ignored when `--orientation both`) |
 | `--fill` | off | Crop to fill instead of fitting with black bars |
+| `--raw` | off | Pre-generate raw RGB565 files directly into `/cache/` for instant boot slideshow |
 
 > [!TIP]
-> When using `--orientation both`, images are written into `landscape/` and `portrait/` subdirectories so you can copy only the set that matches your device's orientation setting.
+> When using `--orientation both`, images are written into `landscape/` and `portrait/` subdirectories so you can copy only the set that matches your device's orientation setting. When `--raw` is active, a `cache/` directory containing the raw RGB565 files is automatically created within each output directory.
 
 ## :computer: Development
 

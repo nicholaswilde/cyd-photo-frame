@@ -39,7 +39,8 @@ void loadSettings(Preferences& prefs,
                   bool& isLedEnabled,
                   bool& isWifiEnabled,
                   std::string& wifiSSID,
-                  std::string& wifiPassword) {
+                  std::string& wifiPassword,
+                  bool& bypassOptimization) {
     brightness = prefs.getUChar("bright", brightness);
     autoBright = prefs.getBool("autob", autoBright);
     delay = prefs.getULong("delay", delay);
@@ -53,6 +54,7 @@ void loadSettings(Preferences& prefs,
     isWifiEnabled = prefs.getBool("wifi_on", isWifiEnabled);
     wifiSSID = prefs.getString("wifi_ssid", wifiSSID.c_str()).c_str();
     wifiPassword = prefs.getString("wifi_pass", wifiPassword.c_str()).c_str();
+    bypassOptimization = prefs.getBool("bypass_opt", bypassOptimization);
 }
 
 void saveSettings(Preferences& prefs, 
@@ -68,7 +70,8 @@ void saveSettings(Preferences& prefs,
                   bool isLedEnabled,
                   bool isWifiEnabled,
                   const std::string& wifiSSID,
-                  const std::string& wifiPassword) {
+                  const std::string& wifiPassword,
+                  bool bypassOptimization) {
     prefs.putUChar("bright", (uint8_t)brightness);
     prefs.putBool("autob", autoBright);
     prefs.putULong("delay", (uint32_t)delay);
@@ -82,6 +85,7 @@ void saveSettings(Preferences& prefs,
     prefs.putBool("wifi_on", isWifiEnabled);
     prefs.putString("wifi_ssid", wifiSSID.c_str());
     prefs.putString("wifi_pass", wifiPassword.c_str());
+    prefs.putBool("bypass_opt", bypassOptimization);
 }
 
 } // namespace HardwareLogic

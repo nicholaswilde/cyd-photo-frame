@@ -85,6 +85,7 @@ static lv_obj_t* settings_wifi_icon = nullptr;
 static lv_obj_t* ap_screen = nullptr;
 
 extern bool isWifiEnabled;
+extern bool bypassOptimization;
 extern int currentBrightness;
 extern bool showFilename;
 extern bool isRandomMode;
@@ -159,6 +160,11 @@ static void inactivity_sleep_switch_event_cb(lv_event_t * e) {
 static void wifi_switch_event_cb(lv_event_t * e) {
     lv_obj_t * sw = lv_event_get_target(e);
     isWifiEnabled = lv_obj_has_state(sw, LV_STATE_CHECKED);
+}
+
+static void bypass_optimization_switch_event_cb(lv_event_t * e) {
+    lv_obj_t * sw = lv_event_get_target(e);
+    bypassOptimization = lv_obj_has_state(sw, LV_STATE_CHECKED);
 }
 
 static void delay_dropdown_event_cb(lv_event_t * e) {
@@ -583,6 +589,26 @@ void LVGLManager::showSettings() {
         lv_obj_add_state(sw_wifi, LV_STATE_CHECKED);
     }
     lv_obj_add_event_cb(sw_wifi, wifi_switch_event_cb, LV_EVENT_VALUE_CHANGED, NULL);
+
+    // 6c. Bypass Optimization Switch
+    lv_obj_t * row_bypass_opt = lv_obj_create(list);
+    lv_obj_clear_flag(row_bypass_opt, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_set_size(row_bypass_opt, LV_PCT(100), 40);
+    lv_obj_set_flex_flow(row_bypass_opt, LV_FLEX_FLOW_ROW);
+    lv_obj_set_flex_align(row_bypass_opt, LV_FLEX_ALIGN_SPACE_BETWEEN, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+    lv_obj_set_style_bg_color(row_bypass_opt, get_lv_color(getCatppuccinFlavor(currentThemeFlavor).mantle), 0);
+    lv_obj_set_style_border_width(row_bypass_opt, 0, 0);
+    lv_obj_set_style_pad_all(row_bypass_opt, 5, 0);
+
+    lv_obj_t * lbl_bypass_opt = lv_label_create(row_bypass_opt);
+    lv_label_set_text(lbl_bypass_opt, "Bypass Optimization");
+    lv_obj_set_style_text_color(lbl_bypass_opt, get_lv_color(getCatppuccinFlavor(currentThemeFlavor).text), 0);
+
+    lv_obj_t * sw_bypass_opt = lv_switch_create(row_bypass_opt);
+    if (bypassOptimization) {
+        lv_obj_add_state(sw_bypass_opt, LV_STATE_CHECKED);
+    }
+    lv_obj_add_event_cb(sw_bypass_opt, bypass_optimization_switch_event_cb, LV_EVENT_VALUE_CHANGED, NULL);
 
     // 7. Theme Flavor Dropdown
     lv_obj_t * row_theme = lv_obj_create(list);

@@ -18,7 +18,7 @@ LANDSCAPE_SIZE = (320, 240)
 PORTRAIT_SIZE  = (240, 320)
 
 
-def process_image(src_path, dest_path, width, height, crop_to_fill):
+def process_image(src_path, dest_path, width, height, crop_to_fill, generate_raw=False, cache_dir=None):
     try:
         with Image.open(src_path) as img:
             # Handle orientation from EXIF
@@ -42,17 +42,42 @@ def process_image(src_path, dest_path, width, height, crop_to_fill):
 
             # Save as standard (baseline) JPEG
             img.save(dest_path, "JPEG", quality=85, progressive=False)
+
+            # Save raw RGB565 file if requested
+            if generate_raw and cache_dir:
+                os.makedirs(cache_dir, exist_ok=True)
+                base_name = os.path.splitext(os.path.basename(dest_path))[0]
+                raw_filename = f"{base_name}_{width}x{height}.raw"
+                raw_path = os.path.join(cache_dir, raw_filename)
+                
+                # Convert pixel values to raw RGB565 bytes (big-endian)
+                pixels = list(img.getdata())
+                raw_bytes = bytearray(len(pixels) * 2)
+                idx = 0
+                for r, g, b in pixels:
+                    val = ((r >> 3) << 11) | ((g >> 2) << 5) | (b >> 3)
+                    raw_bytes[idx] = (val >> 8) & 0xFF
+                    raw_bytes[idx + 1] = val & 0xFF
+                    idx += 2
+                    
+                with open(raw_path, "wb") as f:
+                    f.write(raw_bytes)
+
             return True
     except Exception as e:
         print(f"Failed to process {src_path}: {e}")
         return False
 
 
-def run_batch(files, input_dir, output_dir, width, height, crop_to_fill, label):
+def run_batch(files, input_dir, output_dir, width, height, crop_to_fill, label, generate_raw=False):
     """Process a list of image files into output_dir at the given resolution."""
     os.makedirs(output_dir, exist_ok=True)
+    
+    cache_dir = os.path.join(output_dir, "cache") if generate_raw else None
 
     print(f"\n[{label}] {width}x{height} | Mode: {'Fill' if crop_to_fill else 'Fit'} | Output: {output_dir}")
+    if generate_raw:
+        print(f"[{label}] Raw Cache Output: {cache_dir}")
     print(f"Processing {len(files)} image(s)...")
 
     success_count = 0
@@ -67,11 +92,12 @@ def run_batch(files, input_dir, output_dir, width, height, crop_to_fill, label):
         orig_size = os.path.getsize(src_path)
         total_orig_bytes += orig_size
 
-        if process_image(src_path, dest_path, width, height, crop_to_fill):
+        if process_image(src_path, dest_path, width, height, crop_to_fill, generate_raw, cache_dir):
             new_size = os.path.getsize(dest_path)
             total_saved_bytes += (orig_size - new_size)
             success_count += 1
-            print(f"  [OK] {filename} -> {dest_filename} ({new_size / 1024:.1f} KB)")
+            raw_info = " + RAW" if generate_raw else ""
+            print(f"  [OK] {filename} -> {dest_filename} ({new_size / 1024:.1f} KB){raw_info}")
 
     print(f"\n--- {label} Summary ---")
     print(f"Successfully processed: {success_count}/{len(files)} images.")
@@ -116,6 +142,8 @@ the explicit dimensions override the defaults for that orientation.
                         help="Override target height (default: 240 for landscape, 320 for portrait).")
     parser.add_argument("--fill", action="store_true",
                         help="Crop images to fill the screen completely (default: fit with black bars).")
+    parser.add_argument("--raw", action="store_true",
+                        help="Generate raw RGB565 files directly in the '/cache' directory for instant boot slideshow.")
 
     args = parser.parse_args()
 
@@ -149,7 +177,7 @@ the explicit dimensions override the defaults for that orientation.
 
     total_success = 0
     for label, w, h, out_dir in jobs:
-        total_success += run_batch(files, args.input, out_dir, w, h, args.fill, label)
+        total_success += run_batch(files, args.input, out_dir, w, h, args.fill, label, generate_raw=args.raw)
 
     if len(jobs) > 1:
         print(f"\n{'='*40}")

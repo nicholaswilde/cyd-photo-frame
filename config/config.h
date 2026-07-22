@@ -20,6 +20,11 @@
 #define DEFAULT_SHOW_FILENAME true
 #endif
 
+// Bypass on-device photo optimization on boot (default: false)
+#ifndef DEFAULT_BYPASS_OPTIMIZATION
+#define DEFAULT_BYPASS_OPTIMIZATION false
+#endif
+
 // =============================================================================
 // Display & Backlight Defaults
 // =============================================================================

@@ -32,6 +32,7 @@ bool showFilename = DEFAULT_SHOW_FILENAME;
 bool isRandomMode = DEFAULT_RANDOM_MODE;
 bool isAutoBrightness = DEFAULT_AUTO_BRIGHTNESS;
 bool isInactivitySleep = DEFAULT_INACTIVITY_SLEEP;
+bool bypassOptimization = DEFAULT_BYPASS_OPTIMIZATION;
 bool optimizationCancelled = false;
 int currentOrientation = DEFAULT_SCREEN_ORIENTATION; // 1 = Landscape, 2 = Portrait, 3 = Landscape Rev, 4 = Portrait Rev
 
@@ -696,7 +697,7 @@ void populateCache() {
 void saveConfig() {
   Preferences prefs;
   prefs.begin("settings", false);
-  HardwareLogic::saveSettings(prefs, currentBrightness, isAutoBrightness, slideshowTimer.getInterval(), isRandomMode, showFilename, isInactivitySleep, currentThemeFlavor, currentOrientation, currentLedBrightness, isLedEnabled, isWifiEnabled, wifiSSID, wifiPassword);
+  HardwareLogic::saveSettings(prefs, currentBrightness, isAutoBrightness, slideshowTimer.getInterval(), isRandomMode, showFilename, isInactivitySleep, currentThemeFlavor, currentOrientation, currentLedBrightness, isLedEnabled, isWifiEnabled, wifiSSID, wifiPassword, bypassOptimization);
   prefs.end();
   Serial.println("[System] Settings saved to NVS.");
 }
@@ -890,14 +891,14 @@ void setup() {
     Preferences prefs;
     prefs.begin("settings", false);
     unsigned long loadedDelay = slideshowTimer.getInterval();
-    HardwareLogic::loadSettings(prefs, currentBrightness, isAutoBrightness, loadedDelay, isRandomMode, showFilename, isInactivitySleep, currentThemeFlavor, currentOrientation, currentLedBrightness, isLedEnabled, isWifiEnabled, wifiSSID, wifiPassword);
+    HardwareLogic::loadSettings(prefs, currentBrightness, isAutoBrightness, loadedDelay, isRandomMode, showFilename, isInactivitySleep, currentThemeFlavor, currentOrientation, currentLedBrightness, isLedEnabled, isWifiEnabled, wifiSSID, wifiPassword, bypassOptimization);
     slideshowTimer.setInterval(loadedDelay);
     cachedTheme = (int)prefs.getUInt("cached_theme", 0);
     cachedOrientation = (int)prefs.getInt("cached_rot", 1);
     cachedWifiEnabled = prefs.getBool("cached_wifi", false);
     prefs.end();
-    Serial.printf("[System] Settings loaded from NVS. Brightness: %d, Auto: %d, Delay: %lu ms, Random: %d, ShowFN: %d, Sleep: %d, Theme: %d, CachedTheme: %d, Orientation: %d, CachedOrientation: %d, LED Brightness: %d, LED Enabled: %d, WiFi: %d, CachedWiFi: %d\n",
-                  currentBrightness, isAutoBrightness, loadedDelay, isRandomMode, showFilename, isInactivitySleep, currentThemeFlavor, cachedTheme, currentOrientation, cachedOrientation, currentLedBrightness, isLedEnabled, isWifiEnabled, cachedWifiEnabled);
+    Serial.printf("[System] Settings loaded from NVS. Brightness: %d, Auto: %d, Delay: %lu ms, Random: %d, ShowFN: %d, Sleep: %d, Theme: %d, CachedTheme: %d, Orientation: %d, CachedOrientation: %d, LED Brightness: %d, LED Enabled: %d, WiFi: %d, CachedWiFi: %d, BypassOpt: %d\n",
+                  currentBrightness, isAutoBrightness, loadedDelay, isRandomMode, showFilename, isInactivitySleep, currentThemeFlavor, cachedTheme, currentOrientation, cachedOrientation, currentLedBrightness, isLedEnabled, isWifiEnabled, cachedWifiEnabled, bypassOptimization);
   }
 
   lastTouchTimeMs = millis();
@@ -1002,14 +1003,16 @@ void setup() {
   analogWrite(TFT_BL, 0);
 #endif
 
-  // Show calculating screen in darkness first
-  drawCalculating();
-  LVGLManager::handle();
+  if (!bypassOptimization) {
+    // Show calculating screen in darkness first
+    drawCalculating();
+    LVGLManager::handle();
 
-  // Now turn on backlight to reveal the optimization screen cleanly
+    // Now turn on backlight to reveal the optimization screen cleanly
 #if defined(TFT_BL) && (TFT_BL >= 0)
-  analogWrite(TFT_BL, currentBrightness);
+    analogWrite(TFT_BL, currentBrightness);
 #endif
+  }
 
   // Initialize the TJpg_Decoder
   TJpgDec.setCallback(tft_output);
@@ -1077,178 +1080,180 @@ void setup() {
     cachedTheme = currentThemeFlavor; // Sync local variable
     cachedOrientation = currentOrientation; // Sync local variable
     cachedWifiEnabled = isWifiEnabled; // Sync local variable
-  }  // Scan for files that need optimization/caching
-  std::vector<std::pair<std::string, std::string>> filesToCache;
-  unsigned long lastTouchCheckMs = 0;
-  size_t totalImages = fileCache.size();
-  size_t expectedCacheBytes = (size_t)(tft.width() * tft.height() * 2);
+  }  if (!bypassOptimization) {
+    // Scan for files that need optimization/caching
+    std::vector<std::pair<std::string, std::string>> filesToCache;
+    unsigned long lastTouchCheckMs = 0;
+    size_t totalImages = fileCache.size();
+    size_t expectedCacheBytes = (size_t)(tft.width() * tft.height() * 2);
 
-  Serial.printf("[System] Beginning SD Card image calculation phase for %zu total image(s) (%dx%d resolution, expected cache size: %zu bytes)...\n",
-                totalImages, tft.width(), tft.height(), expectedCacheBytes);
+    Serial.printf("[System] Beginning SD Card image calculation phase for %zu total image(s) (%dx%d resolution, expected cache size: %zu bytes)...\n",
+                  totalImages, tft.width(), tft.height(), expectedCacheBytes);
 
-  for (size_t i = 0; i < totalImages; i++) {
-    std::string originalPath = fileCache.getAt(i);
-    std::string cachePath = getCachePath(originalPath);
+    for (size_t i = 0; i < totalImages; i++) {
+      std::string originalPath = fileCache.getAt(i);
+      std::string cachePath = getCachePath(originalPath);
 
-    const char* displayName = strrchr(originalPath.c_str(), '/');
-    displayName = displayName ? displayName + 1 : originalPath.c_str();
+      const char* displayName = strrchr(originalPath.c_str(), '/');
+      displayName = displayName ? displayName + 1 : originalPath.c_str();
 
-    // Update screen labels & progress bar dynamically
-    LVGLManager::updateCalculationProgress(i + 1, totalImages, displayName, filesToCache.size());
+      // Update screen labels & progress bar dynamically
+      LVGLManager::updateCalculationProgress(i + 1, totalImages, displayName, filesToCache.size());
 
-    // Poll touch screen at most once every 50ms to prevent XPT2046 bus lockup
-    unsigned long loopNow = millis();
-    if (loopNow - lastTouchCheckMs >= 50) {
-      lastTouchCheckMs = loopNow;
-      LVGLManager::handle();
-      if (optimizationCancelled) {
-        Serial.println("[System] Optimization cancelled during calculation (via LVGL callback).");
-        drawCancellingFeedback();
-        restrictCacheToExisting();
-        filesToCache.clear();
-        break;
-      }
-      if (TouchManager::isTouched()) {
-        int tx = 0, ty = 0;
-        if (TouchManager::getTouchPoint(tx, ty)) {
-          Serial.printf("[Touch Debug] Touch detected during calculation: Raw X=%d, Y=%d\n", tx, ty);
-          if (isCancelButtonTouched(tx, ty)) {
-            Serial.println("[System] Optimization CANCELLED by user touch during calculation phase!");
-            optimizationCancelled = true;
-            drawCancellingFeedback();
-            restrictCacheToExisting();
-            filesToCache.clear();
-            break;
-          }
-        }
-      }
-    }
-
-    bool cacheValid = false;
-    size_t actualSize = 0;
-    if (SD.exists(cachePath.c_str())) {
-      File checkFile = SD.open(cachePath.c_str(), FILE_READ);
-      if (checkFile) {
-        actualSize = checkFile.size();
-        if (actualSize == expectedCacheBytes) {
-          cacheValid = true;
-        }
-        checkFile.close();
-      }
-      if (!cacheValid) {
-        Serial.printf("[System] [Calculation %zu/%zu] '%s': Stale/invalid cache size (%zu B vs expected %zu B). Removing...\n",
-                      i + 1, totalImages, displayName, actualSize, expectedCacheBytes);
-        SD.remove(cachePath.c_str());
-      }
-    }
-
-    if (!cacheValid) {
-      filesToCache.push_back({originalPath, cachePath});
-      Serial.printf("[System] [Calculation %zu/%zu] '%s' -> Cache MISS (Needs optimization) [Total needing opt: %zu]\n",
-                    i + 1, totalImages, displayName, filesToCache.size());
-    } else {
-      Serial.printf("[System] [Calculation %zu/%zu] '%s' -> Cache HIT (Valid %zu B raw file present)\n",
-                    i + 1, totalImages, displayName, actualSize);
-    }
-  }
-
-  Serial.printf("[System] Calculation phase complete! Scanned %zu images | %zu cached | %zu requiring optimization.\n",
-                totalImages, totalImages - filesToCache.size(), filesToCache.size());
-
-  // If there are files to cache, display progress bar and generate them silently
-  if (!filesToCache.empty()) {
-    Serial.printf("[System] Starting batch optimization phase for %zu photo(s)...\n", filesToCache.size());
-#if defined(TFT_BL) && (TFT_BL >= 0)
-    // Make sure backlight is on during progress bar display
-    analogWrite(TFT_BL, currentBrightness);
-#endif
-    
-    optimizationCancelled = false; // Reset before starting optimization loop
-    led.setState(LedManager::STATE_OPTIMIZING);
-    bool cancelled = false;
-    unsigned long lastOptTouchCheckMs = 0;
-    for (size_t i = 0; i < filesToCache.size(); i++) {
-      const char* displayName = strrchr(filesToCache[i].first.c_str(), '/');
-      displayName = displayName ? displayName + 1 : filesToCache[i].first.c_str();
-
-      // Update progress bar & labels
-      drawProgress(i, filesToCache.size(), displayName);
-      
-      // Poll touch screen between files (rate-limited to 50ms)
-      unsigned long optNow = millis();
-      if (optNow - lastOptTouchCheckMs >= 50) {
-        lastOptTouchCheckMs = optNow;
+      // Poll touch screen at most once every 50ms to prevent XPT2046 bus lockup
+      unsigned long loopNow = millis();
+      if (loopNow - lastTouchCheckMs >= 50) {
+        lastTouchCheckMs = loopNow;
         LVGLManager::handle();
         if (optimizationCancelled) {
-          Serial.println("[System] Optimization cancelled during optimization loop (via LVGL callback).");
-          cancelled = true;
+          Serial.println("[System] Optimization cancelled during calculation (via LVGL callback).");
           drawCancellingFeedback();
+          restrictCacheToExisting();
+          filesToCache.clear();
           break;
         }
         if (TouchManager::isTouched()) {
           int tx = 0, ty = 0;
           if (TouchManager::getTouchPoint(tx, ty)) {
-            Serial.printf("[Touch Debug] Touch detected during optimization loop: Raw X=%d, Y=%d\n", tx, ty);
+            Serial.printf("[Touch Debug] Touch detected during calculation: Raw X=%d, Y=%d\n", tx, ty);
             if (isCancelButtonTouched(tx, ty)) {
-              Serial.println("[System] Optimization CANCELLED by user touch during optimization phase!");
-              cancelled = true;
+              Serial.println("[System] Optimization CANCELLED by user touch during calculation phase!");
+              optimizationCancelled = true;
               drawCancellingFeedback();
+              restrictCacheToExisting();
+              filesToCache.clear();
               break;
             }
           }
         }
       }
 
-      if (optimizationCancelled) {
-        cancelled = true;
-        break;
+      bool cacheValid = false;
+      size_t actualSize = 0;
+      if (SD.exists(cachePath.c_str())) {
+        File checkFile = SD.open(cachePath.c_str(), FILE_READ);
+        if (checkFile) {
+          actualSize = checkFile.size();
+          if (actualSize == expectedCacheBytes) {
+            cacheValid = true;
+          }
+          checkFile.close();
+        }
+        if (!cacheValid) {
+          Serial.printf("[System] [Calculation %zu/%zu] '%s': Stale/invalid cache size (%zu B vs expected %zu B). Removing...\n",
+                        i + 1, totalImages, displayName, actualSize, expectedCacheBytes);
+          SD.remove(cachePath.c_str());
+        }
       }
-      
-      Serial.printf("[System] [Optimization %zu/%zu] Resizing & caching '%s' -> '%s'...\n",
-                    i + 1, filesToCache.size(), displayName, filesToCache[i].second.c_str());
 
-      unsigned long optStart = millis();
-      generateCache(filesToCache[i].first.c_str(), filesToCache[i].second.c_str());
-      unsigned long optElapsed = millis() - optStart;
-
-      Serial.printf("[System] [Optimization %zu/%zu] Completed '%s' in %lu ms.\n",
-                    i + 1, filesToCache.size(), displayName, optElapsed);
-
-      if (optimizationCancelled) {
-        cancelled = true;
-        break;
+      if (!cacheValid) {
+        filesToCache.push_back({originalPath, cachePath});
+        Serial.printf("[System] [Calculation %zu/%zu] '%s' -> Cache MISS (Needs optimization) [Total needing opt: %zu]\n",
+                      i + 1, totalImages, displayName, filesToCache.size());
+      } else {
+        Serial.printf("[System] [Calculation %zu/%zu] '%s' -> Cache HIT (Valid %zu B raw file present)\n",
+                      i + 1, totalImages, displayName, actualSize);
       }
     }
-    
-    if (cancelled) {
-      restrictCacheToExisting();
-      
-      tft.fillScreen(CTP_BASE);
-      tft.setTextColor(CTP_TEXT, CTP_BASE);
-      tft.setTextDatum(MC_DATUM);
-      tft.drawString("CYD Photo Frame", tft.width() / 2, tft.height() / 2 - 20, 4);
-      tft.setTextColor(CTP_RED, CTP_BASE);
-      tft.drawString("Optimization cancelled. Loading slideshow...", tft.width() / 2, tft.height() / 2 + 20, 2);
-      delay(1500);
-    } else {
-      drawProgress(filesToCache.size(), filesToCache.size(), "All Photos Optimized!");
-      delay(1500);
-    }
-  } else {
-    // If all photos were already cached, display completion status on screen for 1.5s
-    LVGLManager::updateCalculationProgress(totalImages, totalImages, "All Photos Ready!", 0);
-    delay(1500);
-  }
 
-  // Smoothly fade out optimization / progress screen to black before loading first image
-  fader.startFade(currentBrightness, 0, 250);
-  while (fader.getState() != BacklightFader::STATE_IDLE) {
-    int b = 0;
-    fader.update(millis(), b);
+    Serial.printf("[System] Calculation phase complete! Scanned %zu images | %zu cached | %zu requiring optimization.\n",
+                  totalImages, totalImages - filesToCache.size(), filesToCache.size());
+
+    // If there are files to cache, display progress bar and generate them silently
+    if (!filesToCache.empty()) {
+      Serial.printf("[System] Starting batch optimization phase for %zu photo(s)...\n", filesToCache.size());
 #if defined(TFT_BL) && (TFT_BL >= 0)
-    analogWrite(TFT_BL, b);
+      // Make sure backlight is on during progress bar display
+      analogWrite(TFT_BL, currentBrightness);
 #endif
-    delay(10);
+      
+      optimizationCancelled = false; // Reset before starting optimization loop
+      led.setState(LedManager::STATE_OPTIMIZING);
+      bool cancelled = false;
+      unsigned long lastOptTouchCheckMs = 0;
+      for (size_t i = 0; i < filesToCache.size(); i++) {
+        const char* displayName = strrchr(filesToCache[i].first.c_str(), '/');
+        displayName = displayName ? displayName + 1 : filesToCache[i].first.c_str();
+
+        // Update progress bar & labels
+        drawProgress(i, filesToCache.size(), displayName);
+        
+        // Poll touch screen between files (rate-limited to 50ms)
+        unsigned long optNow = millis();
+        if (optNow - lastOptTouchCheckMs >= 50) {
+          lastOptTouchCheckMs = optNow;
+          LVGLManager::handle();
+          if (optimizationCancelled) {
+            Serial.println("[System] Optimization cancelled during optimization loop (via LVGL callback).");
+            cancelled = true;
+            drawCancellingFeedback();
+            break;
+          }
+          if (TouchManager::isTouched()) {
+            int tx = 0, ty = 0;
+            if (TouchManager::getTouchPoint(tx, ty)) {
+              Serial.printf("[Touch Debug] Touch detected during optimization loop: Raw X=%d, Y=%d\n", tx, ty);
+              if (isCancelButtonTouched(tx, ty)) {
+                Serial.println("[System] Optimization CANCELLED by user touch during optimization phase!");
+                cancelled = true;
+                drawCancellingFeedback();
+                break;
+              }
+            }
+          }
+        }
+
+        if (optimizationCancelled) {
+          cancelled = true;
+          break;
+        }
+        
+        Serial.printf("[System] [Optimization %zu/%zu] Resizing & caching '%s' -> '%s'...\n",
+                      i + 1, filesToCache.size(), displayName, filesToCache[i].second.c_str());
+
+        unsigned long optStart = millis();
+        generateCache(filesToCache[i].first.c_str(), filesToCache[i].second.c_str());
+        unsigned long optElapsed = millis() - optStart;
+
+        Serial.printf("[System] [Optimization %zu/%zu] Completed '%s' in %lu ms.\n",
+                      i + 1, filesToCache.size(), displayName, optElapsed);
+
+        if (optimizationCancelled) {
+          cancelled = true;
+          break;
+        }
+      }
+      
+      if (cancelled) {
+        restrictCacheToExisting();
+        
+        tft.fillScreen(CTP_BASE);
+        tft.setTextColor(CTP_TEXT, CTP_BASE);
+        tft.setTextDatum(MC_DATUM);
+        tft.drawString("CYD Photo Frame", tft.width() / 2, tft.height() / 2 - 20, 4);
+        tft.setTextColor(CTP_RED, CTP_BASE);
+        tft.drawString("Optimization cancelled. Loading slideshow...", tft.width() / 2, tft.height() / 2 + 20, 2);
+        delay(1500);
+      } else {
+        drawProgress(filesToCache.size(), filesToCache.size(), "All Photos Optimized!");
+        delay(1500);
+      }
+    } else {
+      // If all photos were already cached, display completion status on screen for 1.5s
+      LVGLManager::updateCalculationProgress(totalImages, totalImages, "All Photos Ready!", 0);
+      delay(1500);
+    }
+
+    // Smoothly fade out optimization / progress screen to black before loading first image
+    fader.startFade(currentBrightness, 0, 250);
+    while (fader.getState() != BacklightFader::STATE_IDLE) {
+      int b = 0;
+      fader.update(millis(), b);
+#if defined(TFT_BL) && (TFT_BL >= 0)
+      analogWrite(TFT_BL, b);
+#endif
+      delay(10);
+    }
   }
 #if defined(TFT_BL) && (TFT_BL >= 0)
   analogWrite(TFT_BL, 0);

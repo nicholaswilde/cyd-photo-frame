@@ -31,7 +31,8 @@ namespace HardwareLogic {
                       bool& isLedEnabled,
                       bool& isWifiEnabled,
                       std::string& wifiSSID,
-                      std::string& wifiPassword);
+                      std::string& wifiPassword,
+                      bool& bypassOptimization);
 
     // Save settings to Preferences
     void saveSettings(Preferences& prefs, 
@@ -47,7 +48,8 @@ namespace HardwareLogic {
                       bool isLedEnabled,
                       bool isWifiEnabled,
                       const std::string& wifiSSID,
-                      const std::string& wifiPassword);
+                      const std::string& wifiPassword,
+                      bool bypassOptimization);
 }
 
 #endif // HARDWARE_LOGIC_H
