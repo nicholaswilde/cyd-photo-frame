@@ -934,6 +934,56 @@ void setup() {
   if (isWifiEnabled) {
     wifiManager = new WifiManager(wifiSSID, wifiPassword);
     wifiManager->begin();
+
+    // If attempting STA connection with credentials, wait briefly to check status
+    if (wifiManager->getState() == WIFI_STATE_CONNECTING) {
+      Serial.println("[WiFi] Connecting to Wi-Fi network before optimization phase...");
+      unsigned long wifiStart = millis();
+      while (wifiManager->getState() == WIFI_STATE_CONNECTING && millis() - wifiStart < 16000) {
+        wifiManager->update();
+        delay(20);
+      }
+    }
+
+    // If in AP Mode (no credentials or failed connection), show captive portal screen before photo calculation/optimization
+    if (wifiManager->getState() == WIFI_STATE_AP_MODE) {
+      Serial.println("[WiFi] Device in AP Mode. Showing Captive Portal screen before photo optimization...");
+#if defined(TFT_BL) && (TFT_BL >= 0)
+      pinMode(TFT_BL, OUTPUT);
+      analogWrite(TFT_BL, currentBrightness);
+#endif
+      fader.startFade(currentBrightness, currentBrightness, 0);
+      LVGLManager::showAPModeScreen(wifiManager->getAPSSID().c_str(), wifiManager->getIPAddress().c_str());
+
+      while (wifiManager->getState() == WIFI_STATE_AP_MODE && currentState != STATE_SETTINGS) {
+        wifiManager->update();
+        LVGLManager::handle();
+
+#if defined(TFT_BL) && (TFT_BL >= 0)
+        analogWrite(TFT_BL, currentBrightness);
+#endif
+
+        bool touched = TouchManager::isTouched();
+        if (touched) {
+          int tx = 0, ty = 0;
+          if (TouchManager::getTouchPoint(tx, ty)) {
+            lastTouchTimeMs = millis();
+            TouchZone zone = touchHandler.processTouch(touched, tx, ty, millis());
+            if (zone == TouchZone::LONG_PRESS_MID_CENTER) {
+              Serial.println("[Touch] Long Press Center in AP Mode - Entering Settings Menu");
+              currentState = STATE_SETTINGS;
+              led.setState(LedManager::STATE_SETTINGS);
+              slideshowTimer.setPaused(true);
+              tft.fillScreen(CTP_BASE);
+              LVGLManager::hideAPModeScreen();
+              LVGLManager::showSettings();
+              break;
+            }
+          }
+        }
+        delay(5);
+      }
+    }
   }
 
   // Keep backlight OFF initially so optimization screen renders silently without flashing leftover image
