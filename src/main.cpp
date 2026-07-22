@@ -1019,7 +1019,9 @@ void setup() {
   TJpgDec.setSwapBytes(true);
 
   // Populate cache
+  Serial.println("[System] Populating file cache from SD root...");
   populateCache();
+  Serial.printf("[System] File cache populated: %zu image(s) found.\n", fileCache.size());
   if (fileCache.isEmpty()) {
     Serial.println("Error: No images found on SD card.");
     led.setState(LedManager::STATE_ERROR);
@@ -1266,6 +1268,7 @@ void setup() {
   // Pause briefly in darkness for a smooth transition before loading the first photo
   delay(300);
 
+  Serial.printf("[System] Rendering first image (bypass=%d, cache=%zu)...\n", bypassOptimization, fileCache.size());
   // Find and render the first valid image in complete darkness (no line scan or flashing!)
   bool success = false;
   size_t attempts = 0;
