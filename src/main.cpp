@@ -844,7 +844,7 @@ void setup() {
 #if defined(SD_CS_PIN) && (SD_CS_PIN >= 0)
   pinMode(SD_CS_PIN, OUTPUT);
   digitalWrite(SD_CS_PIN, HIGH);
-  delay(200); // Allow SD card power rails & internal controller to stabilize on cold boot
+  delay(800); // Allow SD card power rails & internal controller to stabilize on cold boot
 #endif
 
   // Initialize SD Card FIRST (before TFT, Touch, and LVGL SPI bus initialization)
