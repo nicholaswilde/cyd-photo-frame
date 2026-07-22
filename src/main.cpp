@@ -798,7 +798,7 @@ void handleClearCache() {
 
   if (total == 0) {
     LVGLManager::updateClearCacheProgress(0, 0, "No cached files found.");
-    delay(1500);
+    delay(3000);
   } else {
     for (size_t i = 0; i < total; i++) {
       const char* path = filesToDelete[i].c_str();
@@ -815,7 +815,7 @@ void handleClearCache() {
       delay(50);
     }
     LVGLManager::updateClearCacheProgress(total, total, "Rebooting to rebuild cache...");
-    delay(1500);
+    delay(3000);
   }
 
   LVGLManager::hideClearCacheScreen();
