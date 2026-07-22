@@ -49,6 +49,12 @@ void handleClearCache();
 
 int currentThemeFlavor = DEFAULT_THEME_FLAVOR;
 
+bool isWifiEnabled = false;
+std::string wifiSSID = DEFAULT_WIFI_SSID;
+std::string wifiPassword = DEFAULT_WIFI_PASSWORD;
+#include "wifi_manager.h"
+WifiManager* wifiManager = nullptr;
+
 #include "app_state.h"
 AppState currentState = STATE_SLIDESHOW;
 
@@ -690,7 +696,7 @@ void populateCache() {
 void saveConfig() {
   Preferences prefs;
   prefs.begin("settings", false);
-  HardwareLogic::saveSettings(prefs, currentBrightness, isAutoBrightness, slideshowTimer.getInterval(), isRandomMode, showFilename, isInactivitySleep, currentThemeFlavor, currentOrientation, currentLedBrightness, isLedEnabled);
+  HardwareLogic::saveSettings(prefs, currentBrightness, isAutoBrightness, slideshowTimer.getInterval(), isRandomMode, showFilename, isInactivitySleep, currentThemeFlavor, currentOrientation, currentLedBrightness, isLedEnabled, isWifiEnabled, wifiSSID, wifiPassword);
   prefs.end();
   Serial.println("[System] Settings saved to NVS.");
 }
@@ -703,19 +709,21 @@ void triggerExitSettings() {
 void exitSettings() {
   int cachedTheme = 0;
   int cachedOrientation = 1;
+  bool cachedWifiEnabled = false;
   {
     Preferences prefs;
     prefs.begin("settings", false);
     cachedTheme = (int)prefs.getUInt("cached_theme", 0);
     cachedOrientation = (int)prefs.getInt("cached_rot", 1);
+    cachedWifiEnabled = prefs.getBool("cached_wifi", false);
     prefs.end();
   }
 
   saveConfig();
 
 #if !defined(NATIVE_TEST)
-  if (currentThemeFlavor != cachedTheme || currentOrientation != cachedOrientation) {
-    Serial.println("[System] Theme flavor or orientation changed. Rebooting to update display and regenerate cache...");
+  if (currentThemeFlavor != cachedTheme || currentOrientation != cachedOrientation || isWifiEnabled != cachedWifiEnabled) {
+    Serial.println("[System] Theme flavor, orientation, or WiFi setting changed. Rebooting...");
     delay(500);
     ESP.restart();
   }
@@ -877,17 +885,19 @@ void setup() {
   // Load settings from NVS
   int cachedTheme = 0;
   int cachedOrientation = 1;
+  bool cachedWifiEnabled = false;
   {
     Preferences prefs;
     prefs.begin("settings", false);
     unsigned long loadedDelay = slideshowTimer.getInterval();
-    HardwareLogic::loadSettings(prefs, currentBrightness, isAutoBrightness, loadedDelay, isRandomMode, showFilename, isInactivitySleep, currentThemeFlavor, currentOrientation, currentLedBrightness, isLedEnabled);
+    HardwareLogic::loadSettings(prefs, currentBrightness, isAutoBrightness, loadedDelay, isRandomMode, showFilename, isInactivitySleep, currentThemeFlavor, currentOrientation, currentLedBrightness, isLedEnabled, isWifiEnabled, wifiSSID, wifiPassword);
     slideshowTimer.setInterval(loadedDelay);
     cachedTheme = (int)prefs.getUInt("cached_theme", 0);
     cachedOrientation = (int)prefs.getInt("cached_rot", 1);
+    cachedWifiEnabled = prefs.getBool("cached_wifi", false);
     prefs.end();
-    Serial.printf("[System] Settings loaded from NVS. Brightness: %d, Auto: %d, Delay: %lu ms, Random: %d, ShowFN: %d, Sleep: %d, Theme: %d, CachedTheme: %d, Orientation: %d, CachedOrientation: %d, LED Brightness: %d, LED Enabled: %d\n",
-                  currentBrightness, isAutoBrightness, loadedDelay, isRandomMode, showFilename, isInactivitySleep, currentThemeFlavor, cachedTheme, currentOrientation, cachedOrientation, currentLedBrightness, isLedEnabled);
+    Serial.printf("[System] Settings loaded from NVS. Brightness: %d, Auto: %d, Delay: %lu ms, Random: %d, ShowFN: %d, Sleep: %d, Theme: %d, CachedTheme: %d, Orientation: %d, CachedOrientation: %d, LED Brightness: %d, LED Enabled: %d, WiFi: %d, CachedWiFi: %d\n",
+                  currentBrightness, isAutoBrightness, loadedDelay, isRandomMode, showFilename, isInactivitySleep, currentThemeFlavor, cachedTheme, currentOrientation, cachedOrientation, currentLedBrightness, isLedEnabled, isWifiEnabled, cachedWifiEnabled);
   }
 
   lastTouchTimeMs = millis();
@@ -919,6 +929,12 @@ void setup() {
     showSDError(); // Blocks execution here if failed
   }
   Serial.println("SD Card mounted successfully.");
+
+  // Initialize and begin WiFi Manager if enabled
+  if (isWifiEnabled) {
+    wifiManager = new WifiManager(wifiSSID, wifiPassword);
+    wifiManager->begin();
+  }
 
   // Keep backlight OFF initially so optimization screen renders silently without flashing leftover image
 #if defined(TFT_BL) && (TFT_BL >= 0)
@@ -990,15 +1006,17 @@ void setup() {
     }
   }
   
-  // Save new cached values in NVS if theme or orientation changed
-  if (currentThemeFlavor != cachedTheme || currentOrientation != cachedOrientation) {
+  // Save new cached values in NVS if theme, orientation, or WiFi changed
+  if (currentThemeFlavor != cachedTheme || currentOrientation != cachedOrientation || isWifiEnabled != cachedWifiEnabled) {
     Preferences prefs;
     prefs.begin("settings", false);
     prefs.putUInt("cached_theme", (uint32_t)currentThemeFlavor);
     prefs.putInt("cached_rot", currentOrientation);
+    prefs.putBool("cached_wifi", isWifiEnabled);
     prefs.end();
     cachedTheme = currentThemeFlavor; // Sync local variable
     cachedOrientation = currentOrientation; // Sync local variable
+    cachedWifiEnabled = isWifiEnabled; // Sync local variable
   }  // Scan for files that need optimization/caching
   std::vector<std::pair<std::string, std::string>> filesToCache;
   unsigned long lastTouchCheckMs = 0;
@@ -1269,6 +1287,10 @@ void showPreviousImage() {
 }
 
 void loop() {
+  if (wifiManager != nullptr) {
+    wifiManager->update();
+  }
+
   if (pendingExitSettings) {
     pendingExitSettings = false;
     exitSettings();

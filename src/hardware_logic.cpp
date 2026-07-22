@@ -36,7 +36,10 @@ void loadSettings(Preferences& prefs,
                   int& themeFlavor,
                   int& screenOrientation,
                   int& ledBrightness,
-                  bool& isLedEnabled) {
+                  bool& isLedEnabled,
+                  bool& isWifiEnabled,
+                  std::string& wifiSSID,
+                  std::string& wifiPassword) {
     brightness = prefs.getUChar("bright", brightness);
     autoBright = prefs.getBool("autob", autoBright);
     delay = prefs.getULong("delay", delay);
@@ -47,6 +50,9 @@ void loadSettings(Preferences& prefs,
     screenOrientation = (int)prefs.getUInt("screen_rot", (uint32_t)screenOrientation);
     ledBrightness = (int)prefs.getUChar("led_bright", (uint8_t)ledBrightness);
     isLedEnabled = prefs.getBool("led_on", isLedEnabled);
+    isWifiEnabled = prefs.getBool("wifi_on", isWifiEnabled);
+    wifiSSID = prefs.getString("wifi_ssid", wifiSSID.c_str()).c_str();
+    wifiPassword = prefs.getString("wifi_pass", wifiPassword.c_str()).c_str();
 }
 
 void saveSettings(Preferences& prefs, 
@@ -59,7 +65,10 @@ void saveSettings(Preferences& prefs,
                   int themeFlavor,
                   int screenOrientation,
                   int ledBrightness,
-                  bool isLedEnabled) {
+                  bool isLedEnabled,
+                  bool isWifiEnabled,
+                  const std::string& wifiSSID,
+                  const std::string& wifiPassword) {
     prefs.putUChar("bright", (uint8_t)brightness);
     prefs.putBool("autob", autoBright);
     prefs.putULong("delay", (uint32_t)delay);
@@ -70,6 +79,9 @@ void saveSettings(Preferences& prefs,
     prefs.putUInt("screen_rot", (uint32_t)screenOrientation);
     prefs.putUChar("led_bright", (uint8_t)ledBrightness);
     prefs.putBool("led_on", isLedEnabled);
+    prefs.putBool("wifi_on", isWifiEnabled);
+    prefs.putString("wifi_ssid", wifiSSID.c_str());
+    prefs.putString("wifi_pass", wifiPassword.c_str());
 }
 
 } // namespace HardwareLogic

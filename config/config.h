@@ -93,4 +93,17 @@
 // #define SD_MISO_PIN 19
 // #define SD_MOSI_PIN 23
 
+// =============================================================================
+// WiFi Defaults
+// =============================================================================
+
+// Default Wi-Fi credentials for Station Mode (SSID & Password)
+#ifndef DEFAULT_WIFI_SSID
+#define DEFAULT_WIFI_SSID ""
+#endif
+
+#ifndef DEFAULT_WIFI_PASSWORD
+#define DEFAULT_WIFI_PASSWORD ""
+#endif
+
 #endif // CONFIG_H

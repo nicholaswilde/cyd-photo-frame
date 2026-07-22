@@ -87,6 +87,20 @@ public:
         }
         return (uint32_t)std::stoul(_storage[fullKey]);
     }
+
+    size_t putString(const char* key, const char* value) {
+        std::string fullKey = _namespace + "_" + key;
+        _storage[fullKey] = value;
+        return _storage[fullKey].length();
+    }
+
+    std::string getString(const char* key, const char* defaultValue = "") {
+        std::string fullKey = _namespace + "_" + key;
+        if (_storage.find(fullKey) == _storage.end()) {
+            return defaultValue;
+        }
+        return _storage[fullKey];
+    }
 };
 
 #endif // MOCK_PREFERENCES_H

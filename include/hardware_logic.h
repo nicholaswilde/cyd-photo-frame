@@ -2,6 +2,7 @@
 #define HARDWARE_LOGIC_H
 
 #include <stdint.h>
+#include <string>
 
 #if defined(NATIVE_TEST)
 #include "mocks/Preferences.h"
@@ -27,7 +28,10 @@ namespace HardwareLogic {
                       int& themeFlavor,
                       int& screenOrientation,
                       int& ledBrightness,
-                      bool& isLedEnabled);
+                      bool& isLedEnabled,
+                      bool& isWifiEnabled,
+                      std::string& wifiSSID,
+                      std::string& wifiPassword);
 
     // Save settings to Preferences
     void saveSettings(Preferences& prefs, 
@@ -40,7 +44,10 @@ namespace HardwareLogic {
                       int themeFlavor,
                       int screenOrientation,
                       int ledBrightness,
-                      bool isLedEnabled);
+                      bool isLedEnabled,
+                      bool isWifiEnabled,
+                      const std::string& wifiSSID,
+                      const std::string& wifiPassword);
 }
 
 #endif // HARDWARE_LOGIC_H
