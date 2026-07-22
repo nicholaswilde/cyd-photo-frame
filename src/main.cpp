@@ -4,6 +4,7 @@
 #include <SD.h>
 #include <TFT_eSPI.h>
 #include <TJpg_Decoder.h>
+#include <unordered_map>
 #include "config/config.h"
 #include "file_cache.h"
 #include "slideshow_timer.h"
@@ -69,6 +70,17 @@ int16_t current_y_offset = 0;
 // SD Card Chip Select for CYD
 // const uint8_t SD_CS_PIN = 5;
 
+// FNV-1a 64-bit hash for memory-efficient cache inventory filename lookups.
+// Prevents dynamic string heap allocations and fragmentation under high file counts.
+inline uint64_t fnv1a_hash(const char* str) {
+  uint64_t hash = 14695981039346656037ULL;
+  while (*str) {
+    hash ^= (uint64_t)(unsigned char)*str++;
+    hash *= 1099511628211ULL;
+  }
+  return hash;
+}
+
 // Dynamic RGB888 to RGB565 conversion macro
 #define RGB888_TO_RGB565(c) ((((c) & 0xF80000) >> 8) | (((c) & 0xFC00) >> 5) | (((c) & 0xF8) >> 3))
 
@@ -120,6 +132,10 @@ bool renderRawImage(const char* filename) {
 
 File cacheFile;
 bool cacheFileActive = false;
+// PSRAM-backed frame buffer used during cache generation.
+// Decoded into RAM, then flushed in one sequential write — avoids per-row SD seeks.
+uint16_t* g_frameBuffer = nullptr;
+size_t    g_frameBufferSize = 0;
 
 /**
  * @brief Callback function required by TJpg_Decoder.
@@ -191,7 +207,13 @@ bool tft_output(int16_t x, int16_t y, uint16_t w, uint16_t h, uint16_t* bitmap) 
     if (!cacheFileActive) {
       tft.pushImage(dest_x, dest_y, w_visible, h_visible, bitmap, w);
     } else {
-      if (cacheFile) {
+      if (g_frameBuffer) {
+        // Fast path: copy directly into the PSRAM frame buffer (no SD I/O).
+        for (int row = 0; row < h_visible; row++) {
+          size_t fbOffset = (size_t)(dest_y + row) * tft.width() + dest_x;
+          memcpy(g_frameBuffer + fbOffset, bitmap + row * w, w_visible * 2);
+        }
+      } else if (cacheFile) {
         for (int row = 0; row < h_visible; row++) {
           unsigned long fileOffset = ((dest_y + row) * tft.width() + dest_x) * 2;
           cacheFile.seek(fileOffset);
@@ -223,7 +245,11 @@ bool tft_output(int16_t x, int16_t y, uint16_t w, uint16_t h, uint16_t* bitmap) 
     if (!cacheFileActive) {
       tft.pushImage(dest_x, dest_y + row, safe_w_visible, 1, line_buffer);
     } else {
-      if (cacheFile) {
+      if (g_frameBuffer) {
+        // Fast path: copy scaled row into the PSRAM frame buffer.
+        size_t fbOffset = (size_t)(dest_y + row) * tft.width() + dest_x;
+        memcpy(g_frameBuffer + fbOffset, line_buffer, safe_w_visible * 2);
+      } else if (cacheFile) {
         unsigned long fileOffset = ((dest_y + row) * tft.width() + dest_x) * 2;
         cacheFile.seek(fileOffset);
         cacheFile.write((uint8_t*)line_buffer, safe_w_visible * 2);
@@ -236,39 +262,64 @@ bool tft_output(int16_t x, int16_t y, uint16_t w, uint16_t h, uint16_t* bitmap) 
 bool generateCache(const char* jpgFilename, const char* rawFilename) {
   Serial.printf("[System] Optimizing: %s\n", jpgFilename);
   std::string tempFilename = std::string(rawFilename) + ".tmp";
-  if (SD.exists(tempFilename.c_str())) {
-    SD.remove(tempFilename.c_str()); // Clean start
-  }
-  cacheFile = SD.open(tempFilename.c_str(), FILE_WRITE);
-  if (!cacheFile) {
-    Serial.printf("Failed to create cache file: %s\n", tempFilename.c_str());
-    return false;
+
+  // ------------------------------------------------------------------
+  // Allocate a PSRAM-backed full-frame buffer so the entire image can
+  // be decoded into RAM and then written to the SD card in a single
+  // sequential write — avoiding hundreds of per-row seek+write calls.
+  // ------------------------------------------------------------------
+  const size_t frameBytes = (size_t)tft.width() * (size_t)tft.height() * 2;
+  if (g_frameBuffer == nullptr || g_frameBufferSize != frameBytes) {
+    if (g_frameBuffer) { free(g_frameBuffer); g_frameBuffer = nullptr; }
+    // Prefer PSRAM (ps_malloc) for the large frame buffer; fall back to heap.
+    g_frameBuffer = (uint16_t*)ps_malloc(frameBytes);
+    if (!g_frameBuffer) {
+      g_frameBuffer = (uint16_t*)malloc(frameBytes);
+    }
+    if (g_frameBuffer) { g_frameBufferSize = frameBytes; }
   }
 
-  // Pre-allocate and fill with background color using a dynamic heap buffer to prevent stack overflow
-  const size_t rowSize = tft.width();
-  uint16_t* rowBuffer = (uint16_t*)malloc(rowSize * sizeof(uint16_t));
-  if (!rowBuffer) {
-    Serial.println("Failed to allocate preallocation row buffer!");
-    cacheFile.close();
-    return false;
+  const bool useFrameBuf = (g_frameBuffer != nullptr);
+
+  if (useFrameBuf) {
+    // Pre-fill frame buffer with the background color.
+    uint16_t swapped_base = (CTP_BASE >> 8) | (CTP_BASE << 8);
+    uint16_t* p = g_frameBuffer;
+    uint16_t* end = p + (frameBytes / 2);
+    while (p < end) { *p++ = swapped_base; }
+  } else {
+    // Fallback: write directly to SD (original row-by-row method).
+    Serial.println("[System] WARNING: No RAM for frame buffer; falling back to SD seek-writes.");
+    if (SD.exists(tempFilename.c_str())) {
+      SD.remove(tempFilename.c_str());
+    }
+    cacheFile = SD.open(tempFilename.c_str(), FILE_WRITE);
+    if (!cacheFile) {
+      Serial.printf("Failed to create cache file: %s\n", tempFilename.c_str());
+      return false;
+    }
+    const size_t rowSize = tft.width();
+    uint16_t* rowBuffer = (uint16_t*)malloc(rowSize * sizeof(uint16_t));
+    if (!rowBuffer) {
+      Serial.println("Failed to allocate preallocation row buffer!");
+      cacheFile.close();
+      return false;
+    }
+    uint16_t swapped_base = (CTP_BASE >> 8) | (CTP_BASE << 8);
+    for (size_t i = 0; i < rowSize; i++) { rowBuffer[i] = swapped_base; }
+    for (int i = 0; i < tft.height(); i++) {
+      cacheFile.write((uint8_t*)rowBuffer, rowSize * sizeof(uint16_t));
+    }
+    free(rowBuffer);
   }
-  uint16_t swapped_base = (CTP_BASE >> 8) | (CTP_BASE << 8);
-  for (size_t i = 0; i < rowSize; i++) {
-    rowBuffer[i] = swapped_base;
-  }
-  for (int i = 0; i < tft.height(); i++) {
-    cacheFile.write((uint8_t*)rowBuffer, rowSize * sizeof(uint16_t));
-  }
-  free(rowBuffer);
 
   uint16_t img_w = 0, img_h = 0;
   uint16_t result = TJpgDec.getSdJpgSize(&img_w, &img_h, jpgFilename);
   if (result != 0) {
     Serial.printf("Failed to read header for caching: %s\n", jpgFilename);
-    cacheFile.close();
-    if (SD.exists(tempFilename.c_str())) {
-      SD.remove(tempFilename.c_str());
+    if (!useFrameBuf) {
+      cacheFile.close();
+      if (SD.exists(tempFilename.c_str())) { SD.remove(tempFilename.c_str()); }
     }
     return false;
   }
@@ -307,14 +358,38 @@ bool generateCache(const char* jpgFilename, const char* rawFilename) {
   uint16_t drawResult = TJpgDec.drawSdJpg(0, 0, jpgFilename);
   cacheFileActive = false;
 
-  cacheFile.close();
+  if (!useFrameBuf) {
+    cacheFile.close();
+  }
 
   if (drawResult != 0 && drawResult != 1) {
     Serial.printf("Error during caching decode: %d\n", drawResult);
-    if (SD.exists(tempFilename.c_str())) {
+    if (!useFrameBuf && SD.exists(tempFilename.c_str())) {
       SD.remove(tempFilename.c_str());
     }
     return false;
+  }
+
+  if (useFrameBuf) {
+    // Write the fully-decoded frame buffer to SD in one sequential pass.
+    if (SD.exists(tempFilename.c_str())) {
+      SD.remove(tempFilename.c_str());
+    }
+    File outFile = SD.open(tempFilename.c_str(), FILE_WRITE);
+    if (!outFile) {
+      Serial.printf("Failed to create cache file: %s\n", tempFilename.c_str());
+      return false;
+    }
+    const size_t chunkBytes = 4096;
+    const uint8_t* src = (const uint8_t*)g_frameBuffer;
+    size_t remaining = frameBytes;
+    while (remaining > 0) {
+      size_t toWrite = remaining < chunkBytes ? remaining : chunkBytes;
+      outFile.write(src, toWrite);
+      src += toWrite;
+      remaining -= toWrite;
+    }
+    outFile.close();
   }
 
   // Rename temp file to final destination
@@ -850,7 +925,7 @@ void setup() {
   // Initialize SD Card FIRST (before TFT, Touch, and LVGL SPI bus initialization)
   Serial.println("Mounting SD Card...");
   bool sdSuccess = false;
-  uint32_t frequencies[] = {20000000UL, 10000000UL, 4000000UL};
+  uint32_t frequencies[] = {25000000UL, 20000000UL, 10000000UL, 4000000UL};
   
 #if defined(SD_SCK_PIN) && defined(SD_MISO_PIN) && defined(SD_MOSI_PIN) && defined(SD_CS_PIN)
   SPI.begin(SD_SCK_PIN, SD_MISO_PIN, SD_MOSI_PIN, SD_CS_PIN);
@@ -868,7 +943,7 @@ void setup() {
 
   for (uint32_t freq : frequencies) {
     for (int retry = 1; retry <= 2; retry++) {
-      if (SD.begin(SD_CS_PIN, SPI, freq, "/sd", 5, true)) {
+      if (SD.begin(SD_CS_PIN, SPI, freq, "/sd", 10, true)) {
         sdSuccess = true;
         Serial.printf("[SD] Mounted successfully at %lu MHz.\n", freq / 1000000UL);
         break;
@@ -1048,43 +1123,60 @@ void setup() {
     SD.mkdir("/cache");
   }
 
-  // Clean up any leftover temporary files from aborted runs
-  // (Only needed when optimization runs; bypass mode never creates .tmp files)
-  if (!bypassOptimization) {
+  // ------------------------------------------------------------------
+  // Single-pass /cache sweep:
+  // 1. Clears cache if the theme changed.
+  // 2. Deletes leftover temporary (.tmp) files.
+  // 3. Populates cacheInventory (filename -> size) with valid cache files.
+  // This reduces up to three separate slow directory sweeps down to one.
+  // ------------------------------------------------------------------
+  std::vector<std::pair<uint64_t, size_t>> cacheInventory;
+  cacheInventory.reserve(fileCache.size() + 20); // Pre-allocate to prevent mid-scan heap allocation/fragmentation
+
+  bool themeChanged = (currentThemeFlavor != cachedTheme);
+  if (themeChanged) {
+    Serial.println("[System] Theme flavor changed. Clearing cache...");
+  } else if (!bypassOptimization) {
+    Serial.println("[System] Scanning /cache inventory...");
+  }
+
+  {
     File cacheDir = SD.open("/cache");
     if (cacheDir) {
       File file = cacheDir.openNextFile();
       while (file) {
-        String path = file.path();
-        file.close();
-        if (path.endsWith(".tmp")) {
-          Serial.printf("[System] Cleaning up orphaned temp file: %s\n", path.c_str());
-          SD.remove(path.c_str());
+        if (!file.isDirectory()) {
+          String path = file.path();
+          size_t fileSize = (size_t)file.size();
+          file.close();
+
+          bool deleted = false;
+          if (themeChanged) {
+            SD.remove(path.c_str());
+            deleted = true;
+          } else if (!bypassOptimization && path.endsWith(".tmp")) {
+            Serial.printf("[System] Cleaning up orphaned temp file: %s\n", path.c_str());
+            SD.remove(path.c_str());
+            deleted = true;
+          }
+
+          if (!deleted && !bypassOptimization) {
+            uint64_t h = fnv1a_hash(path.c_str());
+            cacheInventory.push_back({h, fileSize});
+          }
+        } else {
+          file.close();
         }
         file = cacheDir.openNextFile();
       }
       cacheDir.close();
+    }
+    if (!bypassOptimization && !themeChanged) {
+      std::sort(cacheInventory.begin(), cacheInventory.end());
+      Serial.printf("[System] Cache inventory built: %zu file(s) found in /cache.\n", cacheInventory.size());
     }
   }
 
-  // Clear cache if theme changed to regenerate cache files with correct background borders/colors
-  if (currentThemeFlavor != cachedTheme) {
-    Serial.println("[System] Theme flavor changed. Clearing cache...");
-    File cacheDir = SD.open("/cache");
-    if (cacheDir) {
-      File file = cacheDir.openNextFile();
-      while (file) {
-        String path = file.path();
-        file.close();
-        if (SD.exists(path.c_str())) {
-          SD.remove(path.c_str());
-        }
-        file = cacheDir.openNextFile();
-      }
-      cacheDir.close();
-    }
-  }
-  
   // Save new cached values in NVS if theme, orientation, or WiFi changed
   if (currentThemeFlavor != cachedTheme || currentOrientation != cachedOrientation || isWifiEnabled != cachedWifiEnabled) {
     Preferences prefs;
@@ -1096,11 +1188,15 @@ void setup() {
     cachedTheme = currentThemeFlavor; // Sync local variable
     cachedOrientation = currentOrientation; // Sync local variable
     cachedWifiEnabled = isWifiEnabled; // Sync local variable
-  }  if (!bypassOptimization) {
+  }
+
+  if (!bypassOptimization) {
     // Scan for files that need optimization/caching
-    std::vector<std::pair<std::string, std::string>> filesToCache;
-    unsigned long lastTouchCheckMs = 0;
     size_t totalImages = fileCache.size();
+    std::vector<size_t> filesToCache;
+    filesToCache.reserve(totalImages); // Pre-allocate to prevent heap allocation/fragmentation during calculations
+
+    unsigned long lastTouchCheckMs = 0;
     size_t expectedCacheBytes = (size_t)(tft.width() * tft.height() * 2);
 
     Serial.printf("[System] Beginning SD Card image calculation phase for %zu total image(s) (%dx%d resolution, expected cache size: %zu bytes)...\n",
@@ -1144,18 +1240,22 @@ void setup() {
         }
       }
 
+      // Look up this image in the pre-built inventory (zero SD I/O).
       bool cacheValid = false;
       size_t actualSize = 0;
-      if (SD.exists(cachePath.c_str())) {
-        File checkFile = SD.open(cachePath.c_str(), FILE_READ);
-        if (checkFile) {
-          actualSize = checkFile.size();
-          if (actualSize == expectedCacheBytes) {
-            cacheValid = true;
-          }
-          checkFile.close();
-        }
-        if (!cacheValid) {
+      uint64_t h = fnv1a_hash(cachePath.c_str());
+
+      auto it = std::lower_bound(cacheInventory.begin(), cacheInventory.end(), std::make_pair(h, (size_t)0),
+                                 [](const std::pair<uint64_t, size_t>& a, const std::pair<uint64_t, size_t>& b) {
+                                   return a.first < b.first;
+                                 });
+
+      if (it != cacheInventory.end() && it->first == h) {
+        actualSize = it->second;
+        if (actualSize == expectedCacheBytes) {
+          cacheValid = true;
+        } else {
+          // Stale/wrong-size cache file — remove it from SD.
           Serial.printf("[System] [Calculation %zu/%zu] '%s': Stale/invalid cache size (%zu B vs expected %zu B). Removing...\n",
                         i + 1, totalImages, displayName, actualSize, expectedCacheBytes);
           SD.remove(cachePath.c_str());
@@ -1163,7 +1263,7 @@ void setup() {
       }
 
       if (!cacheValid) {
-        filesToCache.push_back({originalPath, cachePath});
+        filesToCache.push_back(i);
         Serial.printf("[System] [Calculation %zu/%zu] '%s' -> Cache MISS (Needs optimization) [Total needing opt: %zu]\n",
                       i + 1, totalImages, displayName, filesToCache.size());
       } else {
@@ -1188,8 +1288,12 @@ void setup() {
       bool cancelled = false;
       unsigned long lastOptTouchCheckMs = 0;
       for (size_t i = 0; i < filesToCache.size(); i++) {
-        const char* displayName = strrchr(filesToCache[i].first.c_str(), '/');
-        displayName = displayName ? displayName + 1 : filesToCache[i].first.c_str();
+        size_t fileIdx = filesToCache[i];
+        std::string originalPath = fileCache.getAt(fileIdx);
+        std::string cachePath = getCachePath(originalPath);
+
+        const char* displayName = strrchr(originalPath.c_str(), '/');
+        displayName = displayName ? displayName + 1 : originalPath.c_str();
 
         // Update progress bar & labels
         drawProgress(i, filesToCache.size(), displayName);
@@ -1225,10 +1329,10 @@ void setup() {
         }
         
         Serial.printf("[System] [Optimization %zu/%zu] Resizing & caching '%s' -> '%s'...\n",
-                      i + 1, filesToCache.size(), displayName, filesToCache[i].second.c_str());
+                      i + 1, filesToCache.size(), displayName, cachePath.c_str());
 
         unsigned long optStart = millis();
-        generateCache(filesToCache[i].first.c_str(), filesToCache[i].second.c_str());
+        generateCache(originalPath.c_str(), cachePath.c_str());
         unsigned long optElapsed = millis() - optStart;
 
         Serial.printf("[System] [Optimization %zu/%zu] Completed '%s' in %lu ms.\n",
