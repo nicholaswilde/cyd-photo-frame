@@ -294,16 +294,22 @@ static void clear_cache_click_event_cb(lv_event_t * e) {
     lv_obj_clear_flag(confirm_dialog, LV_OBJ_FLAG_SCROLLABLE);
 
     lv_obj_t * lbl_title = lv_label_create(confirm_dialog);
-    lv_label_set_text(lbl_title, "Clear Cache?");
-    lv_obj_set_style_text_font(lbl_title, &lv_font_montserrat_14, 0);
+    lv_label_set_text(lbl_title, "CYD Photo Frame");
+    lv_obj_set_style_text_font(lbl_title, &lv_font_montserrat_20, 0);
     lv_obj_set_style_text_color(lbl_title, get_lv_color(getCatppuccinFlavor(currentThemeFlavor).text), 0);
-    lv_obj_align(lbl_title, LV_ALIGN_TOP_MID, 0, 30);
+    lv_obj_align(lbl_title, LV_ALIGN_TOP_MID, 0, 15);
+
+    lv_obj_t * lbl_subtitle = lv_label_create(confirm_dialog);
+    lv_label_set_text(lbl_subtitle, "Clear Cache?");
+    lv_obj_set_style_text_font(lbl_subtitle, &lv_font_montserrat_14, 0);
+    lv_obj_set_style_text_color(lbl_subtitle, get_lv_color(getCatppuccinFlavor(currentThemeFlavor).text), 0);
+    lv_obj_align(lbl_subtitle, LV_ALIGN_TOP_MID, 0, 50);
 
     lv_obj_t * lbl_msg = lv_label_create(confirm_dialog);
     lv_label_set_text(lbl_msg, "Delete all cached photos?\nThey will be re-generated.");
     lv_obj_set_style_text_align(lbl_msg, LV_TEXT_ALIGN_CENTER, 0);
     lv_obj_set_style_text_color(lbl_msg, get_lv_color(getCatppuccinFlavor(currentThemeFlavor).text), 0);
-    lv_obj_align(lbl_msg, LV_ALIGN_TOP_MID, 0, 70);
+    lv_obj_align(lbl_msg, LV_ALIGN_TOP_MID, 0, 75);
 
     // Confirm button
     lv_obj_t * btn_confirm = lv_btn_create(confirm_dialog);
