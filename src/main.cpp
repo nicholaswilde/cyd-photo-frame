@@ -1007,12 +1007,12 @@ void setup() {
     // Show calculating screen in darkness first
     drawCalculating();
     LVGLManager::handle();
-  }
 
-  // Turn on backlight now (whether or not optimization ran)
+    // Now turn on backlight to reveal the optimization screen cleanly
 #if defined(TFT_BL) && (TFT_BL >= 0)
-  analogWrite(TFT_BL, currentBrightness);
+    analogWrite(TFT_BL, currentBrightness);
 #endif
+  }
 
   // Initialize the TJpg_Decoder
   TJpgDec.setCallback(tft_output);
@@ -1254,10 +1254,11 @@ void setup() {
 #endif
       delay(10);
     }
-  }
+    // Ensure backlight is off before rendering first image in darkness
 #if defined(TFT_BL) && (TFT_BL >= 0)
-  analogWrite(TFT_BL, 0);
+    analogWrite(TFT_BL, 0);
 #endif
+  }
 
   LVGLManager::hideOptimizationScreen();
   tft.fillScreen(CTP_BASE);
