@@ -1302,9 +1302,17 @@ void loop() {
     if (!apScreenShown) {
       apScreenShown = true;
       LVGLManager::showAPModeScreen(wifiManager->getAPSSID().c_str(), wifiManager->getIPAddress().c_str());
+#if defined(TFT_BL) && (TFT_BL >= 0)
+      analogWrite(TFT_BL, currentBrightness);
+#endif
+      fader.startFade(currentBrightness, currentBrightness, 0);
     }
 
     LVGLManager::handle();
+
+#if defined(TFT_BL) && (TFT_BL >= 0)
+    analogWrite(TFT_BL, currentBrightness);
+#endif
 
     // Check for touch input to go to settings in AP Mode
     bool touched = TouchManager::isTouched();
