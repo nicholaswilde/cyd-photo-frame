@@ -21,6 +21,7 @@ A digital photo frame for the ESP32 Cheap Yellow Device (CYD)
 - **High-Performance Caching:** Converts JPEGs to raw RGB565 images on boot, enabling under **60ms** rendering times.
 - **Catppuccin Theme Flavors:** Fully dynamic Settings panel and slideshow background borders in Mocha, Macchiato, Frappé, or Latte.
 - **Auto-Brightness (LDR Sensor):** Automatically adjusts LCD backlight brightness depending on ambient room light levels.
+- **Wi-Fi & Captive Portal Manager:** Toggleable Wi-Fi support with automated Access Point fallback (`cyd-photo-frame-<mac>`) and Captive Portal configuration webpage (`192.168.4.1`) for setting network credentials. Includes dynamic connection status icon in the Settings panel header.
 - **Filename Banner Overlay:** Displays a clean, toggleable Catppuccin Mantle banner containing the current image name at the bottom of the screen.
 - **Touch Navigation Zones:** Easily navigate images and access settings by tapping designated screen areas.
 - **On-Screen Feedback Banners:** Displays a temporary top toast notification banner to confirm touch zone settings changes on-screen (e.g. brightness, delay, random mode, etc.) before auto-restoring the photo.
@@ -65,6 +66,20 @@ The screen is divided into a 3x3 touch grid to control slideshow behavior and pa
 > The device now supports four orientations (Landscape, Portrait, Landscape Rev, Portrait Rev).
 > Cached images are stored per resolution (e.g., `_320x240.raw` for landscape modes and `_240x320.raw` for portrait modes), so switching between orientations no longer requires clearing the cache. The cache can be manually cleared via the Settings menu or serial command, or automatically cleared upon theme flavor changes. 
 
+## :signal_strength: Wi-Fi Setup & Captive Portal
+
+1. Open the **Settings** menu by long-pressing the center of the screen for 1.5 seconds.
+2. Toggle the **WiFi** switch to **ON**, then tap **Save & Exit**. The device will save your preference and reboot into Wi-Fi mode.
+3. If no network credentials are configured yet (or if the saved network is out of range), the frame enters **Access Point (AP) Mode** and displays the setup screen on the TFT display:
+   - **AP SSID:** `cyd-photo-frame-<mac>` *(where `<mac>` is the last 4 digits of the MAC address)*
+   - **IP Address:** `192.168.4.1`
+4. Connect your phone or computer to the frame's Wi-Fi Access Point (`cyd-photo-frame-XXXX`).
+5. A captive portal page will pop up automatically (or navigate to `http://192.168.4.1/`), allowing you to scan local Wi-Fi networks and save your SSID and password.
+6. Upon saving, credentials persist to NVS and the device reboots to connect to your network.
+7. Wi-Fi status is displayed in real-time in the top-right header of the Settings menu:
+   - **Green Icon:** Connected to Wi-Fi.
+   - **Yellow Icon:** Connecting or AP Mode active.
+   - **Red Icon:** Disconnected or connection failed.
 
 ## :electric_plug: Serial Commands
 
