@@ -790,6 +790,7 @@ void LVGLManager::showOptimizationScreen() {
     lv_label_set_text(opt_lbl_file, "Analyzing SD Card...");
     lv_obj_set_style_text_color(opt_lbl_file, get_lv_color(getCatppuccinFlavor(currentThemeFlavor).blue), 0);
     lv_obj_align(opt_lbl_file, LV_ALIGN_TOP_MID, 0, 80);
+    lv_obj_set_style_text_align(opt_lbl_file, LV_TEXT_ALIGN_CENTER, 0);
 
     // Progress Bar
     opt_bar = lv_bar_create(opt_screen);
@@ -804,6 +805,7 @@ void LVGLManager::showOptimizationScreen() {
     lv_label_set_text(opt_lbl_percent, "Calculating...");
     lv_obj_set_style_text_color(opt_lbl_percent, get_lv_color(getCatppuccinFlavor(currentThemeFlavor).text), 0);
     lv_obj_align(opt_lbl_percent, LV_ALIGN_TOP_MID, 0, 140);
+    lv_obj_set_style_text_align(opt_lbl_percent, LV_TEXT_ALIGN_CENTER, 0);
 
     // Cancel Button
     opt_btn_cancel = lv_btn_create(opt_screen);
@@ -833,7 +835,7 @@ void LVGLManager::updateCalculationProgress(size_t current, size_t total, const 
 
     if (opt_lbl_file && filename) {
         char fileStr[128];
-        snprintf(fileStr, sizeof(fileStr), "Checking: %s", filename);
+        snprintf(fileStr, sizeof(fileStr), "Checking:\n%s", filename);
         lv_label_set_text(opt_lbl_file, fileStr);
     }
 
@@ -845,9 +847,9 @@ void LVGLManager::updateCalculationProgress(size_t current, size_t total, const 
     if (opt_lbl_percent) {
         char percentStr[64];
         if (needsOptCount == 1) {
-            snprintf(percentStr, sizeof(percentStr), "%d%% (%zu/%zu) - 1 needs optimization", percentage, current, total);
+            snprintf(percentStr, sizeof(percentStr), "%d%% (%zu/%zu)\n1 needs optimization", percentage, current, total);
         } else {
-            snprintf(percentStr, sizeof(percentStr), "%d%% (%zu/%zu) - %zu need optimization", percentage, current, total, needsOptCount);
+            snprintf(percentStr, sizeof(percentStr), "%d%% (%zu/%zu)\n%zu need optimization", percentage, current, total, needsOptCount);
         }
         lv_label_set_text(opt_lbl_percent, percentStr);
     }
@@ -866,7 +868,7 @@ void LVGLManager::updateOptimizationProgress(size_t current, size_t total, const
 
     if (opt_lbl_file && filename) {
         char fileStr[128];
-        snprintf(fileStr, sizeof(fileStr), "Optimizing: %s", filename);
+        snprintf(fileStr, sizeof(fileStr), "Optimizing:\n%s", filename);
         lv_label_set_text(opt_lbl_file, fileStr);
     }
 
@@ -949,7 +951,7 @@ void LVGLManager::updateClearCacheProgress(size_t current, size_t total, const c
 
     if (opt_lbl_file && filename) {
         char fileStr[128];
-        snprintf(fileStr, sizeof(fileStr), "Deleting: %s", filename);
+        snprintf(fileStr, sizeof(fileStr), "Deleting:\n%s", filename);
         lv_label_set_text(opt_lbl_file, fileStr);
     }
 
