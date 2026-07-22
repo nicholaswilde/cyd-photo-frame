@@ -88,6 +88,26 @@ void test_touch_handler_portrait_zones(void) {
     TEST_ASSERT_EQUAL(TouchZone::LONG_PRESS_MID_CENTER, handler.processTouch(true, 2000, 2000, 2500));
 }
 
+void test_touch_handler_portrait_resistive_mapping(void) {
+    TouchHandler handler(240, 320); // Portrait width=240, height=320
+    int px = -1, py = -1;
+    
+    // Orientation 2 (Portrait):
+    // px = ly, py = 320 - lx
+    handler.setOrientation(2);
+    // rawX = 2000 maps to lx = 160, rawY = 1100 maps to ly = 60
+    handler.mapCoordinates(2000, 1100, px, py, false);
+    TEST_ASSERT_INT_WITHIN(5, 60, px);
+    TEST_ASSERT_INT_WITHIN(5, 160, py);
+    
+    // Orientation 0 (Portrait Rev):
+    // px = 240 - ly, py = lx
+    handler.setOrientation(0);
+    handler.mapCoordinates(2000, 1100, px, py, false);
+    TEST_ASSERT_INT_WITHIN(5, 180, px);
+    TEST_ASSERT_INT_WITHIN(5, 160, py);
+}
+
 int main(int argc, char **argv) {
     UNITY_BEGIN();
     RUN_TEST(test_touch_handler_mapping_capacitive);
@@ -96,5 +116,6 @@ int main(int argc, char **argv) {
     RUN_TEST(test_touch_handler_no_touch);
     RUN_TEST(test_touch_handler_long_press);
     RUN_TEST(test_touch_handler_portrait_zones);
+    RUN_TEST(test_touch_handler_portrait_resistive_mapping);
     return UNITY_END();
 }
