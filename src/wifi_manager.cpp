@@ -11,6 +11,35 @@
 #include "screenshot_manager.h"
 #include "lvgl_manager.h"
 
+static void configureStaticIP() {
+#ifndef NATIVE_TEST
+#ifdef STATIC_IP
+    IPAddress local_ip;
+    if (local_ip.fromString(STATIC_IP)) {
+        IPAddress gateway_ip;
+        IPAddress subnet_ip;
+        IPAddress dns_ip;
+
+        #ifdef STATIC_GATEWAY
+        gateway_ip.fromString(STATIC_GATEWAY);
+        #endif
+        #ifdef STATIC_SUBNET
+        subnet_ip.fromString(STATIC_SUBNET);
+        #endif
+        #ifdef STATIC_DNS
+        dns_ip.fromString(STATIC_DNS);
+        #endif
+
+        if (WiFi.config(local_ip, gateway_ip, subnet_ip, dns_ip)) {
+            Serial.println("[WiFi] Static IP configured successfully.");
+        } else {
+            Serial.println("[WiFi] Failed to configure Static IP.");
+        }
+    }
+#endif
+#endif
+}
+
 WifiManager::WifiManager(const std::string& ssid, const std::string& password)
     : _ssid(ssid), _password(password), _state(WIFI_STATE_DISCONNECTED), _lastReconnectAttempt(0), _connectionStartTime(0) {}
 
@@ -24,6 +53,7 @@ void WifiManager::begin() {
         Serial.println("[WiFi] No credentials configured. Launching AP mode directly...");
         startAPMode();
     } else {
+        configureStaticIP();
         WiFi.begin(_ssid.c_str(), _password.c_str());
         _state = WIFI_STATE_CONNECTING;
         _connectionStartTime = millis();
@@ -32,7 +62,7 @@ void WifiManager::begin() {
 }
 
 void WifiManager::stop() {
-    _state = WIFI_STATE_DISCONNECTED;
+    _state = WIFI_STATE_STOPPED;
     if (_dnsServer) {
         ((DNSServer*)_dnsServer)->stop();
     }
@@ -54,10 +84,15 @@ void WifiManager::update() {
             if (millis() - _lastReconnectAttempt > _reconnectInterval) {
                 _lastReconnectAttempt = millis();
                 Serial.println("[WiFi] Reconnecting...");
+                configureStaticIP();
                 WiFi.begin(_ssid.c_str(), _password.c_str());
                 _state = WIFI_STATE_CONNECTING;
                 _connectionStartTime = millis();
             }
+            break;
+
+        case WIFI_STATE_STOPPED:
+            // Do nothing when stopped
             break;
 
         case WIFI_STATE_CONNECTING:
