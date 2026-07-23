@@ -52,12 +52,13 @@ void test_preferences_persistence(void) {
     int ledBrightness = 200;
     bool isLedEnabled = true;
     bool isWifiEnabled = true;
-    std::string wifiSSID = "TestWiFi";
-    std::string wifiPassword = "SecretPassword";
-    bool bypassOptimization = true;
+    bool isMqttEnabled = false;
+    std::string wifiSSID = "testSSID";
+    std::string wifiPassword = "testPassword";
+    bool bypassOptimization = false;
     
     // Save settings
-    HardwareLogic::saveSettings(prefs, brightness, autoBright, delay, randomMode, showFilename, inactivitySleep, themeFlavor, screenOrientation, ledBrightness, isLedEnabled, isWifiEnabled, wifiSSID, wifiPassword, bypassOptimization);
+    HardwareLogic::saveSettings(prefs, brightness, autoBright, delay, randomMode, showFilename, inactivitySleep, themeFlavor, screenOrientation, ledBrightness, isLedEnabled, isWifiEnabled, isMqttEnabled, wifiSSID, wifiPassword, bypassOptimization);
     
     // Modify local variables to verify they load correctly
     int testBrightness = 0;
@@ -71,12 +72,13 @@ void test_preferences_persistence(void) {
     int testLedBrightness = 0;
     bool testIsLedEnabled = false;
     bool testIsWifiEnabled = false;
+    bool testIsMqttEnabled = false;
     std::string testWifiSSID = "";
     std::string testWifiPassword = "";
-    bool testBypassOptimization = false;
+    bool testBypassOptimization = true;
     
     // Load settings
-    HardwareLogic::loadSettings(prefs, testBrightness, testAutoBright, testDelay, testRandomMode, testShowFilename, testInactivitySleep, testThemeFlavor, testScreenOrientation, testLedBrightness, testIsLedEnabled, testIsWifiEnabled, testWifiSSID, testWifiPassword, testBypassOptimization);
+    HardwareLogic::loadSettings(prefs, testBrightness, testAutoBright, testDelay, testRandomMode, testShowFilename, testInactivitySleep, testThemeFlavor, testScreenOrientation, testLedBrightness, testIsLedEnabled, testIsWifiEnabled, testIsMqttEnabled, testWifiSSID, testWifiPassword, testBypassOptimization);
     
     // Verify loaded values match saved values
     TEST_ASSERT_EQUAL_INT(brightness, testBrightness);
@@ -90,6 +92,7 @@ void test_preferences_persistence(void) {
     TEST_ASSERT_EQUAL_INT(ledBrightness, testLedBrightness);
     TEST_ASSERT_EQUAL(isLedEnabled, testIsLedEnabled);
     TEST_ASSERT_EQUAL(isWifiEnabled, testIsWifiEnabled);
+    TEST_ASSERT_EQUAL(isMqttEnabled, testIsMqttEnabled);
     TEST_ASSERT_EQUAL_STRING(wifiSSID.c_str(), testWifiSSID.c_str());
     TEST_ASSERT_EQUAL_STRING(wifiPassword.c_str(), testWifiPassword.c_str());
     TEST_ASSERT_EQUAL(bypassOptimization, testBypassOptimization);
@@ -106,26 +109,28 @@ void test_preferences_persistence(void) {
     bool fallbackSleep = false;
     int fallbackTheme = 1;
     int fallbackOrientation = 2;
-    int fallbackLedBrightness = 128;
+    int fallbackLedBrightness = 25;
     bool fallbackIsLedEnabled = true;
-    bool fallbackIsWifiEnabled = false;
-    std::string fallbackWifiSSID = "FallbackSSID";
-    std::string fallbackWifiPassword = "FallbackPassword";
-    bool fallbackBypassOptimization = false;
+    bool fallbackIsWifiEnabled = true;
+    bool fallbackIsMqttEnabled = true;
+    std::string fallbackWifiSSID = "fallback";
+    std::string fallbackWifiPassword = "fallbackPass";
+    bool fallbackBypassOptimization = true;
     
-    HardwareLogic::loadSettings(freshPrefs, fallbackBrightness, fallbackAutoBright, fallbackDelay, fallbackRandom, fallbackShowFn, fallbackSleep, fallbackTheme, fallbackOrientation, fallbackLedBrightness, fallbackIsLedEnabled, fallbackIsWifiEnabled, fallbackWifiSSID, fallbackWifiPassword, fallbackBypassOptimization);
+    HardwareLogic::loadSettings(freshPrefs, fallbackBrightness, fallbackAutoBright, fallbackDelay, fallbackRandom, fallbackShowFn, fallbackSleep, fallbackTheme, fallbackOrientation, fallbackLedBrightness, fallbackIsLedEnabled, fallbackIsWifiEnabled, fallbackIsMqttEnabled, fallbackWifiSSID, fallbackWifiPassword, fallbackBypassOptimization);
     
     TEST_ASSERT_EQUAL_INT(200, fallbackBrightness);
     TEST_ASSERT_EQUAL(true, fallbackAutoBright);
     TEST_ASSERT_EQUAL_UINT32(10000, fallbackDelay);
     TEST_ASSERT_EQUAL_INT(1, fallbackTheme);
     TEST_ASSERT_EQUAL_INT(2, fallbackOrientation);
-    TEST_ASSERT_EQUAL_INT(128, fallbackLedBrightness);
+    TEST_ASSERT_EQUAL(25, fallbackLedBrightness);
     TEST_ASSERT_EQUAL(true, fallbackIsLedEnabled);
-    TEST_ASSERT_EQUAL(false, fallbackIsWifiEnabled);
-    TEST_ASSERT_EQUAL_STRING("FallbackSSID", fallbackWifiSSID.c_str());
-    TEST_ASSERT_EQUAL_STRING("FallbackPassword", fallbackWifiPassword.c_str());
-    TEST_ASSERT_EQUAL(false, fallbackBypassOptimization);
+    TEST_ASSERT_EQUAL(true, fallbackIsWifiEnabled);
+    TEST_ASSERT_EQUAL(true, fallbackIsMqttEnabled);
+    TEST_ASSERT_EQUAL_STRING("fallback", fallbackWifiSSID.c_str());
+    TEST_ASSERT_EQUAL_STRING("fallbackPass", fallbackWifiPassword.c_str());
+    TEST_ASSERT_EQUAL(true, fallbackBypassOptimization);
 }
 
 int main(int argc, char **argv) {

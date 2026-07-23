@@ -30,6 +30,7 @@ namespace HardwareLogic {
                       int& ledBrightness,
                       bool& isLedEnabled,
                       bool& isWifiEnabled,
+                      bool& isMqttEnabled,
                       std::string& wifiSSID,
                       std::string& wifiPassword,
                       bool& bypassOptimization);
@@ -47,6 +48,7 @@ namespace HardwareLogic {
                       int ledBrightness,
                       bool isLedEnabled,
                       bool isWifiEnabled,
+                      bool isMqttEnabled,
                       const std::string& wifiSSID,
                       const std::string& wifiPassword,
                       bool bypassOptimization);

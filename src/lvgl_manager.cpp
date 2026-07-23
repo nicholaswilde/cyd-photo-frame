@@ -14,6 +14,7 @@ extern WifiManager* wifiManager;
 #include <Arduino.h>
 #include <lvgl.h>
 #include <TFT_eSPI.h>
+#include <WiFi.h>
 #include "touch_manager.h"
 #include "slideshow_timer.h"
 #include "app_state.h"
@@ -82,14 +83,17 @@ static void (*rebootConfirmCallback)() = nullptr;
 static lv_obj_t* settings_screen = nullptr;
 static lv_obj_t* confirm_dialog = nullptr;
 static lv_obj_t* reboot_confirm_dialog = nullptr;
+static lv_obj_t* wifi_info_dialog = nullptr;
 static lv_obj_t* slider_bright_ptr = nullptr;
 static lv_obj_t* settings_wifi_icon = nullptr;
 static lv_obj_t* ap_screen = nullptr;
 
 extern bool isWifiEnabled;
+extern bool isMqttEnabled;
 extern bool bypassOptimization;
 extern int currentBrightness;
 extern bool showFilename;
+extern bool pendingExitSettings;
 extern bool isRandomMode;
 extern bool isAutoBrightness;
 extern bool isInactivitySleep;
@@ -164,6 +168,11 @@ static void wifi_switch_event_cb(lv_event_t * e) {
     isWifiEnabled = lv_obj_has_state(sw, LV_STATE_CHECKED);
 }
 
+static void mqtt_switch_event_cb(lv_event_t * e) {
+    lv_obj_t * sw = lv_event_get_target(e);
+    isMqttEnabled = lv_obj_has_state(sw, LV_STATE_CHECKED);
+}
+
 static void bypass_optimization_switch_event_cb(lv_event_t * e) {
     lv_obj_t * sw = lv_event_get_target(e);
     bypassOptimization = lv_obj_has_state(sw, LV_STATE_CHECKED);
@@ -235,7 +244,6 @@ static void clear_cache_click_event_cb(lv_event_t * e) {
 
     lv_obj_t * lbl_subtitle = lv_label_create(confirm_dialog);
     lv_label_set_text(lbl_subtitle, "Clear Cache?");
-    lv_obj_set_style_text_font(lbl_subtitle, &lv_font_montserrat_14, 0);
     lv_obj_set_style_text_color(lbl_subtitle, get_lv_color(getCatppuccinFlavor(currentThemeFlavor).text), 0);
     lv_obj_align(lbl_subtitle, LV_ALIGN_TOP_MID, 0, 50);
 
@@ -243,7 +251,7 @@ static void clear_cache_click_event_cb(lv_event_t * e) {
     lv_label_set_text(lbl_msg, "Delete all cached photos?\nThey will be re-generated.");
     lv_obj_set_style_text_align(lbl_msg, LV_TEXT_ALIGN_CENTER, 0);
     lv_obj_set_style_text_color(lbl_msg, get_lv_color(getCatppuccinFlavor(currentThemeFlavor).text), 0);
-    lv_obj_align(lbl_msg, LV_ALIGN_TOP_MID, 0, 75);
+    lv_obj_align(lbl_msg, LV_ALIGN_TOP_MID, 0, 80);
 
     // Confirm button
     lv_obj_t * btn_confirm = lv_btn_create(confirm_dialog);
@@ -305,7 +313,6 @@ void LVGLManager::showRebootConfirmDialog() {
 
     lv_obj_t * lbl_subtitle = lv_label_create(reboot_confirm_dialog);
     lv_label_set_text(lbl_subtitle, "Reboot Required");
-    lv_obj_set_style_text_font(lbl_subtitle, &lv_font_montserrat_14, 0);
     lv_obj_set_style_text_color(lbl_subtitle, get_lv_color(getCatppuccinFlavor(currentThemeFlavor).text), 0);
     lv_obj_align(lbl_subtitle, LV_ALIGN_TOP_MID, 0, 50);
 
@@ -313,7 +320,7 @@ void LVGLManager::showRebootConfirmDialog() {
     lv_label_set_text(lbl_msg, "Settings changed. Photos\nwill be optimized again.");
     lv_obj_set_style_text_align(lbl_msg, LV_TEXT_ALIGN_CENTER, 0);
     lv_obj_set_style_text_color(lbl_msg, get_lv_color(getCatppuccinFlavor(currentThemeFlavor).text), 0);
-    lv_obj_align(lbl_msg, LV_ALIGN_TOP_MID, 0, 75);
+    lv_obj_align(lbl_msg, LV_ALIGN_TOP_MID, 0, 80);
 
     // Confirm button
     lv_obj_t * btn_confirm = lv_btn_create(reboot_confirm_dialog);
@@ -436,6 +443,67 @@ void LVGLManager::setClearCacheCallback(void (*clear_cache_cb)()) {
 #endif
 }
 
+#if !defined(NATIVE_TEST)
+static void close_wifi_info_cb(lv_event_t * e) {
+    if (wifi_info_dialog) {
+        lv_obj_del(wifi_info_dialog);
+        wifi_info_dialog = nullptr;
+    }
+}
+
+static void wifi_icon_click_cb(lv_event_t * e) {
+    if (wifiManager == nullptr) return;
+    if (wifiManager->getState() != WIFI_STATE_CONNECTED) return;
+    if (wifi_info_dialog != nullptr) return;
+
+    wifi_info_dialog = lv_obj_create(settings_screen);
+    lv_obj_set_size(wifi_info_dialog, LVGLManager::getWidth(), LVGLManager::getHeight());
+    lv_obj_align(wifi_info_dialog, LV_ALIGN_CENTER, 0, 0);
+    lv_obj_set_style_bg_color(wifi_info_dialog, get_lv_color(getCatppuccinFlavor(currentThemeFlavor).base), 0);
+    lv_obj_set_style_border_width(wifi_info_dialog, 0, 0);
+    lv_obj_clear_flag(wifi_info_dialog, LV_OBJ_FLAG_SCROLLABLE);
+
+    // Title label
+    lv_obj_t * lbl_title = lv_label_create(wifi_info_dialog);
+    lv_label_set_text(lbl_title, "WiFi Info");
+    lv_obj_set_style_text_font(lbl_title, &lv_font_montserrat_20, 0);
+    lv_obj_set_style_text_color(lbl_title, get_lv_color(getCatppuccinFlavor(currentThemeFlavor).text), 0);
+    lv_obj_align(lbl_title, LV_ALIGN_TOP_MID, 0, 15);
+
+    // Status label
+    lv_obj_t * lbl_status = lv_label_create(wifi_info_dialog);
+    lv_label_set_text(lbl_status, "Connected");
+    lv_obj_set_style_text_color(lbl_status, get_lv_color(getCatppuccinFlavor(currentThemeFlavor).green), 0);
+    lv_obj_align(lbl_status, LV_ALIGN_TOP_MID, 0, 50);
+
+    // Info details
+    lv_obj_t * lbl_info = lv_label_create(wifi_info_dialog);
+    char infoBuf[256];
+    snprintf(infoBuf, sizeof(infoBuf), 
+             "SSID: %s\nIP: %s\nMAC: %s\nRSSI: %d dBm", 
+             WiFi.SSID().c_str(), 
+             WiFi.localIP().toString().c_str(), 
+             WiFi.macAddress().c_str(), 
+             WiFi.RSSI());
+    lv_label_set_text(lbl_info, infoBuf);
+    lv_obj_set_style_text_align(lbl_info, LV_TEXT_ALIGN_CENTER, 0);
+    lv_obj_set_style_text_color(lbl_info, get_lv_color(getCatppuccinFlavor(currentThemeFlavor).text), 0);
+    lv_obj_align(lbl_info, LV_ALIGN_TOP_MID, 0, 80);
+
+    // Close Button
+    lv_obj_t * btn_close = lv_btn_create(wifi_info_dialog);
+    lv_obj_set_size(btn_close, 100, 32);
+    lv_obj_align(btn_close, LV_ALIGN_BOTTOM_MID, 0, -15);
+    lv_obj_set_style_bg_color(btn_close, get_lv_color(getCatppuccinFlavor(currentThemeFlavor).overlay), 0);
+    lv_obj_add_event_cb(btn_close, close_wifi_info_cb, LV_EVENT_CLICKED, NULL);
+
+    lv_obj_t * lbl_close = lv_label_create(btn_close);
+    lv_label_set_text(lbl_close, "Close");
+    lv_obj_set_style_text_color(lbl_close, get_lv_color(getCatppuccinFlavor(currentThemeFlavor).crust), 0);
+    lv_obj_align(lbl_close, LV_ALIGN_CENTER, 0, 0);
+}
+#endif
+
 void LVGLManager::showSettings() {
 #if !defined(NATIVE_TEST)
     if (settings_screen != nullptr) {
@@ -448,13 +516,16 @@ void LVGLManager::showSettings() {
     lv_obj_t * title = lv_label_create(settings_screen);
     lv_label_set_text(title, "Settings");
     lv_obj_set_style_text_color(title, get_lv_color(getCatppuccinFlavor(currentThemeFlavor).text), 0);
-    lv_obj_set_style_text_font(title, &lv_font_montserrat_14, 0);
-    lv_obj_align(title, LV_ALIGN_TOP_MID, 0, 10);
+    lv_obj_set_style_text_font(title, &lv_font_montserrat_20, 0);
+    lv_obj_align(title, LV_ALIGN_TOP_MID, 0, 15);
 
     // WiFi status icon in top right
     settings_wifi_icon = lv_label_create(settings_screen);
     lv_label_set_text(settings_wifi_icon, LV_SYMBOL_WIFI);
-    lv_obj_align(settings_wifi_icon, LV_ALIGN_TOP_RIGHT, -15, 10);
+    lv_obj_align(settings_wifi_icon, LV_ALIGN_TOP_RIGHT, -15, 15);
+    lv_obj_add_flag(settings_wifi_icon, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_set_ext_click_area(settings_wifi_icon, 15);
+    lv_obj_add_event_cb(settings_wifi_icon, wifi_icon_click_cb, LV_EVENT_CLICKED, NULL);
     if (wifiManager == nullptr) {
         lv_obj_add_flag(settings_wifi_icon, LV_OBJ_FLAG_HIDDEN);
     } else {
@@ -470,7 +541,7 @@ void LVGLManager::showSettings() {
     
     lv_obj_t * list = lv_obj_create(settings_screen);
     lv_obj_set_size(list, LV_PCT(95), LV_PCT(74));
-    lv_obj_align(list, LV_ALIGN_TOP_MID, 0, 35);
+    lv_obj_align(list, LV_ALIGN_TOP_MID, 0, 50);
     lv_obj_set_flex_flow(list, LV_FLEX_FLOW_COLUMN);
     lv_obj_set_style_bg_color(list, get_lv_color(getCatppuccinFlavor(currentThemeFlavor).base), 0);
     lv_obj_set_style_border_width(list, 0, 0);
@@ -668,7 +739,27 @@ void LVGLManager::showSettings() {
     }
     lv_obj_add_event_cb(sw_wifi, wifi_switch_event_cb, LV_EVENT_VALUE_CHANGED, NULL);
 
-    // 6c. Bypass Optimization Switch
+    // 6c. Enable MQTT Switch
+    lv_obj_t * row_mqtt = lv_obj_create(list);
+    lv_obj_clear_flag(row_mqtt, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_set_size(row_mqtt, LV_PCT(100), 40);
+    lv_obj_set_flex_flow(row_mqtt, LV_FLEX_FLOW_ROW);
+    lv_obj_set_flex_align(row_mqtt, LV_FLEX_ALIGN_SPACE_BETWEEN, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+    lv_obj_set_style_bg_color(row_mqtt, get_lv_color(getCatppuccinFlavor(currentThemeFlavor).mantle), 0);
+    lv_obj_set_style_border_width(row_mqtt, 0, 0);
+    lv_obj_set_style_pad_all(row_mqtt, 5, 0);
+
+    lv_obj_t * lbl_mqtt = lv_label_create(row_mqtt);
+    lv_label_set_text(lbl_mqtt, "MQTT");
+    lv_obj_set_style_text_color(lbl_mqtt, get_lv_color(getCatppuccinFlavor(currentThemeFlavor).text), 0);
+
+    lv_obj_t * sw_mqtt = lv_switch_create(row_mqtt);
+    if (isMqttEnabled) {
+        lv_obj_add_state(sw_mqtt, LV_STATE_CHECKED);
+    }
+    lv_obj_add_event_cb(sw_mqtt, mqtt_switch_event_cb, LV_EVENT_VALUE_CHANGED, NULL);
+
+    // 6d. Bypass Optimization Switch
     lv_obj_t * row_bypass_opt = lv_obj_create(list);
     lv_obj_clear_flag(row_bypass_opt, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_set_size(row_bypass_opt, LV_PCT(100), 40);
@@ -854,13 +945,13 @@ void LVGLManager::showNoPhotosWarning() {
     lv_obj_t * lbl_err = lv_label_create(warn_screen);
     lv_label_set_text(lbl_err, "NO PHOTOS FOUND");
     lv_obj_set_style_text_color(lbl_err, get_lv_color(getCatppuccinFlavor(currentThemeFlavor).yellow), 0);
-    lv_obj_align(lbl_err, LV_ALIGN_TOP_MID, 0, 55);
+    lv_obj_align(lbl_err, LV_ALIGN_TOP_MID, 0, 50);
 
     lv_obj_t * lbl_inst = lv_label_create(warn_screen);
     lv_label_set_text(lbl_inst, "Add JPEGs to SD card\nand reboot device.");
     lv_obj_set_style_text_color(lbl_inst, get_lv_color(getCatppuccinFlavor(currentThemeFlavor).text), 0);
     lv_obj_set_style_text_align(lbl_inst, LV_TEXT_ALIGN_CENTER, 0);
-    lv_obj_align(lbl_inst, LV_ALIGN_TOP_MID, 0, 95);
+    lv_obj_align(lbl_inst, LV_ALIGN_TOP_MID, 0, 80);
 
     lv_scr_load(warn_screen);
     lv_task_handler();
@@ -1087,6 +1178,16 @@ void LVGLManager::hideClearCacheScreen() {
 #endif
 }
 
+#if !defined(NATIVE_TEST)
+static void ap_disable_btn_event_cb(lv_event_t * e) {
+    isWifiEnabled = false;
+    if (wifiManager != nullptr) {
+        wifiManager->stop();
+    }
+    pendingExitSettings = true;
+}
+#endif
+
 void LVGLManager::showAPModeScreen(const char* apSSID, const char* ipAddress) {
 #if !defined(NATIVE_TEST)
     if (ap_screen != nullptr) return;
@@ -1104,7 +1205,6 @@ void LVGLManager::showAPModeScreen(const char* apSSID, const char* ipAddress) {
     // Status label
     lv_obj_t * lbl_status = lv_label_create(ap_screen);
     lv_label_set_text(lbl_status, "Captive Portal Active");
-    lv_obj_set_style_text_font(lbl_status, &lv_font_montserrat_14, 0);
     lv_obj_set_style_text_color(lbl_status, get_lv_color(getCatppuccinFlavor(currentThemeFlavor).mauve), 0);
     lv_obj_align(lbl_status, LV_ALIGN_TOP_MID, 0, 50);
 
@@ -1117,7 +1217,19 @@ void LVGLManager::showAPModeScreen(const char* apSSID, const char* ipAddress) {
     lv_label_set_text(lbl_info, infoBuf);
     lv_obj_set_style_text_align(lbl_info, LV_TEXT_ALIGN_CENTER, 0);
     lv_obj_set_style_text_color(lbl_info, get_lv_color(getCatppuccinFlavor(currentThemeFlavor).text), 0);
-    lv_obj_align(lbl_info, LV_ALIGN_CENTER, 0, 15);
+    lv_obj_align(lbl_info, LV_ALIGN_TOP_MID, 0, 80);
+
+    // Disable WiFi Button
+    lv_obj_t * btn_disable = lv_btn_create(ap_screen);
+    lv_obj_set_size(btn_disable, 200, 50);
+    lv_obj_align(btn_disable, LV_ALIGN_BOTTOM_MID, 0, -20);
+    lv_obj_set_style_bg_color(btn_disable, get_lv_color(getCatppuccinFlavor(currentThemeFlavor).red), 0);
+    lv_obj_add_event_cb(btn_disable, ap_disable_btn_event_cb, LV_EVENT_CLICKED, NULL);
+
+    lv_obj_t * lbl_btn = lv_label_create(btn_disable);
+    lv_label_set_text(lbl_btn, "Disable WiFi");
+    lv_obj_set_style_text_font(lbl_btn, &lv_font_montserrat_20, 0);
+    lv_obj_center(lbl_btn);
 
     lv_scr_load(ap_screen);
     lv_task_handler();

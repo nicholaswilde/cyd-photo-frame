@@ -89,3 +89,4 @@ lcov_raw.info
 
 # Raw BMP screenshots from CYD device (convert to PNG with scripts/convert_screenshots.py)
 screenshots/*.bmp
+include/secrets.h

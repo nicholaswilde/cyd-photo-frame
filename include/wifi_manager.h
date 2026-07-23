@@ -15,6 +15,7 @@ public:
     WifiManager(const std::string& ssid, const std::string& password);
     void begin();
     void update();
+    void stop();
     WifiState getState() const;
     std::string getIPAddress() const;
     std::string getAPSSID() const;

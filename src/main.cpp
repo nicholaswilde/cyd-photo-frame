@@ -52,10 +52,20 @@ void handleClearCache();
 int currentThemeFlavor = DEFAULT_THEME_FLAVOR;
 
 bool isWifiEnabled = false;
+bool isMqttEnabled = false;
 std::string wifiSSID = DEFAULT_WIFI_SSID;
 std::string wifiPassword = DEFAULT_WIFI_PASSWORD;
 #include "wifi_manager.h"
 WifiManager* wifiManager = nullptr;
+
+#if __has_include("secrets.h")
+#include "secrets.h"
+#endif
+
+#if defined(MQTT_SERVER)
+#include "mqtt_manager.h"
+MqttManager* mqttManager = nullptr;
+#endif
 
 #include "app_state.h"
 AppState currentState = STATE_SLIDESHOW;
@@ -727,6 +737,11 @@ bool renderScaledJpg(const char* filename) {
         drawFilenameBanner(filename);
       }
       drawToastBannerIfNeeded();
+#if defined(MQTT_SERVER)
+      if (isMqttEnabled && mqttManager != nullptr) {
+          mqttManager->publish("cyd/photo-frame/filename", filename);
+      }
+#endif
       return true;
     }
     
@@ -772,7 +787,7 @@ void populateCache() {
 void saveConfig() {
   Preferences prefs;
   prefs.begin("settings", false);
-  HardwareLogic::saveSettings(prefs, currentBrightness, isAutoBrightness, slideshowTimer.getInterval(), isRandomMode, showFilename, isInactivitySleep, currentThemeFlavor, currentOrientation, currentLedBrightness, isLedEnabled, isWifiEnabled, wifiSSID, wifiPassword, bypassOptimization);
+  HardwareLogic::saveSettings(prefs, currentBrightness, isAutoBrightness, slideshowTimer.getInterval(), isRandomMode, showFilename, isInactivitySleep, currentThemeFlavor, currentOrientation, currentLedBrightness, isLedEnabled, isWifiEnabled, isMqttEnabled, wifiSSID, wifiPassword, bypassOptimization);
   prefs.end();
   Serial.println("[System] Settings saved to NVS.");
 }
@@ -932,6 +947,23 @@ void handleClearCache() {
 #endif
 }
 
+// --- Wi-Fi Event Handlers ---
+#if defined(MQTT_SERVER)
+void onWiFiGotIP(WiFiEvent_t event, WiFiEventInfo_t info) {
+    if (isMqttEnabled && isWifiEnabled && mqttManager != nullptr) {
+        Serial.println("[System] Wi-Fi connected with IP! Signaling MQTT Manager...");
+        mqttManager->onNetworkAvailable();
+    }
+}
+
+void onWiFiDisconnect(WiFiEvent_t event, WiFiEventInfo_t info) {
+    if (mqttManager != nullptr) {
+        Serial.println("[System] Wi-Fi disconnected! Signaling MQTT Manager...");
+        mqttManager->onNetworkDisconnected();
+    }
+}
+#endif
+
 void setup() {
   Serial.begin(115200);
   Serial.println("[System] Booting ESP32 CYD Photo Frame...");
@@ -987,7 +1019,7 @@ void setup() {
     Preferences prefs;
     prefs.begin("settings", false);
     unsigned long loadedDelay = slideshowTimer.getInterval();
-    HardwareLogic::loadSettings(prefs, currentBrightness, isAutoBrightness, loadedDelay, isRandomMode, showFilename, isInactivitySleep, currentThemeFlavor, currentOrientation, currentLedBrightness, isLedEnabled, isWifiEnabled, wifiSSID, wifiPassword, bypassOptimization);
+    HardwareLogic::loadSettings(prefs, currentBrightness, isAutoBrightness, loadedDelay, isRandomMode, showFilename, isInactivitySleep, currentThemeFlavor, currentOrientation, currentLedBrightness, isLedEnabled, isWifiEnabled, isMqttEnabled, wifiSSID, wifiPassword, bypassOptimization);
     slideshowTimer.setInterval(loadedDelay);
     cachedTheme = (int)prefs.getUInt("cached_theme", 0);
     cachedOrientation = (int)prefs.getInt("cached_rot", 1);
@@ -1031,6 +1063,12 @@ void setup() {
   // Initialize and begin WiFi Manager if enabled
   if (isWifiEnabled) {
     wifiManager = new WifiManager(wifiSSID, wifiPassword);
+#if defined(MQTT_SERVER)
+    WiFi.onEvent(onWiFiGotIP, WiFiEvent_t::ARDUINO_EVENT_WIFI_STA_GOT_IP);
+    WiFi.onEvent(onWiFiDisconnect, WiFiEvent_t::ARDUINO_EVENT_WIFI_STA_DISCONNECTED);
+    mqttManager = new MqttManager(MQTT_SERVER, MQTT_PORT, MQTT_USER, MQTT_PASSWORD);
+    mqttManager->begin();
+#endif
     wifiManager->begin();
 
     // If attempting STA connection with credentials, wait briefly to check status

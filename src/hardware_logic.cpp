@@ -38,6 +38,7 @@ void loadSettings(Preferences& prefs,
                   int& ledBrightness,
                   bool& isLedEnabled,
                   bool& isWifiEnabled,
+                  bool& isMqttEnabled,
                   std::string& wifiSSID,
                   std::string& wifiPassword,
                   bool& bypassOptimization) {
@@ -52,6 +53,7 @@ void loadSettings(Preferences& prefs,
     ledBrightness = (int)prefs.getUChar("led_bright", (uint8_t)ledBrightness);
     isLedEnabled = prefs.getBool("led_on", isLedEnabled);
     isWifiEnabled = prefs.getBool("wifi_on", isWifiEnabled);
+    isMqttEnabled = prefs.getBool("mqtt_on", isMqttEnabled);
     wifiSSID = prefs.getString("wifi_ssid", wifiSSID.c_str()).c_str();
     wifiPassword = prefs.getString("wifi_pass", wifiPassword.c_str()).c_str();
     bypassOptimization = prefs.getBool("bypass_opt", bypassOptimization);
@@ -69,6 +71,7 @@ void saveSettings(Preferences& prefs,
                   int ledBrightness,
                   bool isLedEnabled,
                   bool isWifiEnabled,
+                  bool isMqttEnabled,
                   const std::string& wifiSSID,
                   const std::string& wifiPassword,
                   bool bypassOptimization) {
@@ -83,6 +86,7 @@ void saveSettings(Preferences& prefs,
     prefs.putUChar("led_bright", (uint8_t)ledBrightness);
     prefs.putBool("led_on", isLedEnabled);
     prefs.putBool("wifi_on", isWifiEnabled);
+    prefs.putBool("mqtt_on", isMqttEnabled);
     prefs.putString("wifi_ssid", wifiSSID.c_str());
     prefs.putString("wifi_pass", wifiPassword.c_str());
     prefs.putBool("bypass_opt", bypassOptimization);

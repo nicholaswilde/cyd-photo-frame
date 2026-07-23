@@ -31,6 +31,21 @@ void WifiManager::begin() {
     }
 }
 
+void WifiManager::stop() {
+    _state = WIFI_STATE_DISCONNECTED;
+    if (_dnsServer) {
+        ((DNSServer*)_dnsServer)->stop();
+    }
+    if (_webServer) {
+        ((WebServer*)_webServer)->stop();
+    }
+    stopScreenshotServer();
+    WiFi.softAPdisconnect(true);
+    WiFi.disconnect(true);
+    WiFi.mode(WIFI_OFF);
+    Serial.println("[WiFi] Wi-Fi stopped.");
+}
+
 void WifiManager::update() {
     wl_status_t status = WiFi.status();
 
@@ -393,6 +408,10 @@ WifiManager::WifiManager(const std::string& ssid, const std::string& password)
 
 void WifiManager::begin() {
     _state = WIFI_STATE_CONNECTED;
+}
+
+void WifiManager::stop() {
+    _state = WIFI_STATE_DISCONNECTED;
 }
 
 void WifiManager::update() {}

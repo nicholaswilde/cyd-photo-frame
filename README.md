@@ -24,7 +24,8 @@ A digital photo frame for the ESP32 Cheap Yellow Device (CYD)
 - **High-Performance Caching:** Converts JPEGs to raw RGB565 images on boot, enabling under **60ms** rendering times.
 - **Catppuccin Theme Flavors:** Fully dynamic Settings panel and slideshow background borders in Mocha, Macchiato, Frappé, or Latte.
 - **Auto-Brightness (LDR Sensor):** Automatically adjusts LCD backlight brightness depending on ambient room light levels.
-- **Wi-Fi & Captive Portal Manager:** Toggleable Wi-Fi support with automated Access Point fallback (`cyd-photo-frame-<mac>`) and Captive Portal configuration webpage (`192.168.4.1`) for setting network credentials. Includes dynamic connection status icon in the Settings panel header.
+- **Wi-Fi & Captive Portal Manager:** Toggleable Wi-Fi support with automated Access Point fallback (`cyd-photo-frame-<mac>`) and Captive Portal configuration webpage (`192.168.4.1`) for setting network credentials. Includes dynamic connection status icon in the Settings panel header which opens a detailed Wi-Fi Info modal (SSID, IP, MAC address, RSSI) when tapped.
+- **Unified Screen Design:** Consistent header typography, Catppuccin color palette, and structured vertical label layout across all system screens (Settings, Optimization, Wi-Fi Setup, SD Card Errors, Warnings, and confirmation modals).
 - **Filename Banner Overlay:** Displays a clean, toggleable Catppuccin Mantle banner containing the current image name at the bottom of the screen.
 - **Touch Navigation Zones:** Easily navigate images and access settings by tapping designated screen areas.
 - **On-Screen Feedback Banners:** Displays a temporary top toast notification banner to confirm touch zone settings changes on-screen (e.g. brightness, delay, random mode, etc.) before auto-restoring the photo.
@@ -82,11 +83,29 @@ The screen is divided into a 3x3 touch grid to control slideshow behavior and pa
 5. A captive portal page will pop up automatically (or navigate to `http://192.168.4.1/`), allowing you to scan local Wi-Fi networks and save your SSID and password.
 6. Upon saving, credentials persist to NVS and the device reboots to connect to your network.
 7. Wi-Fi status is displayed in real-time in the top-right header of the Settings menu:
-   - **Green Icon:** Connected to Wi-Fi.
+   - **Green Icon:** Connected to Wi-Fi. Tapping the icon opens an interactive **Wi-Fi Info** screen displaying current network SSID, IP address, MAC address, and signal strength (RSSI).
    - **Yellow Icon:** Connecting or AP Mode active.
    - **Red Icon:** Disconnected or connection failed.
 
-## :electric_plug: Serial Commands
+## :camera: Screenshots
+
+The device supports capturing the current screen as a standard 24-bit BMP image via HTTP or serial commands.
+
+### Remote HTTP API & Screen Capture
+
+> [!NOTE]
+> Wi-Fi must be enabled and connected. The device IP is printed to serial on boot or displayed in the Settings screen Wi-Fi info modal.
+
+**Capture Screenshot via HTTP:**
+```bash
+# Save directly to file
+curl http://<CYD_DEVICE_IP>/screenshot -o screenshot.bmp
+
+# Or run via Taskfile (requires CYD_DEVICE_IP in .env)
+task screenshots
+```
+
+### Serial Commands
 
 If the CYD is plugged into your computer via USB:
 1. Open the PlatformIO Serial Device Monitor (at `115200` baud).
@@ -143,6 +162,35 @@ uv run scripts/prepare_images.py -i ~/Photos -o /mnt/sdcard --raw
 > When using `--orientation both`, images are written into `landscape/` and `portrait/` subdirectories so you can copy only the set that matches your device's orientation setting. When `--raw` is active, a `cache/` directory containing the raw RGB565 files is automatically created within each output directory.
 
 ## :computer: Development
+
+### Environment Setup (`.env` and `secrets.h`)
+
+Initialize local environment configuration by copying the templates:
+
+```bash
+task init
+# Or manually:
+# cp .env.example .env
+# cp include/secrets.h.example include/secrets.h
+```
+
+#### Configurable Variables in `.env`:
+| Variable | Default | Description |
+|---|---|---|
+| `PIO_ENV` | `cyd_28r` | Default PlatformIO target environment (`cyd_28r` or `cyd_35c`) |
+| `CYD_DEVICE_IP` | `192.168.1.100` | Local network IP address of the CYD device (used for `task screenshots`) |
+| `COVERALLS_REPO_TOKEN` | *(optional)* | Token for uploading coverage reports to Coveralls (`task coverage:upload`) |
+
+#### MQTT Configuration (`include/secrets.h`)
+To enable MQTT features (e.g. broadcasting the currently displayed filename or device status), edit `include/secrets.h` and configure your MQTT broker details:
+```cpp
+#define MQTT_SERVER   "192.168.1.100" // Your broker IP or hostname
+#define MQTT_PORT     1883
+#define MQTT_USER     "my_mqtt_username"
+#define MQTT_PASSWORD "my_secure_password"
+```
+
+If `MQTT_SERVER` is defined, the device will publish its status to `cyd/photo-frame/status` upon connection, and publish the current picture filename to `cyd/photo-frame/filename` during the slideshow.
 
 
 ### Compiling & Flashing
