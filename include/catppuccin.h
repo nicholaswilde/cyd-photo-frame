@@ -4,10 +4,10 @@
 #include <stdint.h>
 
 // Catppuccin Flavor Definitions
-#define CATPPUCCIN_MOCHA      1
-#define CATPPUCCIN_MACCHIATO  2
-#define CATPPUCCIN_FRAPPE     3
-#define CATPPUCCIN_LATTE      4
+#define CATPPUCCIN_MOCHA      0
+#define CATPPUCCIN_MACCHIATO  1
+#define CATPPUCCIN_FRAPPE     2
+#define CATPPUCCIN_LATTE      3
 
 struct CatppuccinColors {
     uint32_t base;

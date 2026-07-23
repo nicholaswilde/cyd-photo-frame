@@ -51,8 +51,19 @@ static void my_disp_flush(lv_disp_drv_t *disp_drv, const lv_area_t *area, lv_col
 
 extern TouchHandler touchHandler;
 
+static void (*exitCallback)() = nullptr;
+static void (*clearCacheCallback)() = nullptr;
+static void (*rebootConfirmCallback)() = nullptr;
+static lv_obj_t* settings_screen = nullptr;
+static lv_obj_t* confirm_dialog = nullptr;
+static lv_obj_t* reboot_confirm_dialog = nullptr;
+static lv_obj_t* wifi_info_dialog = nullptr;
+static lv_obj_t* slider_bright_ptr = nullptr;
+static lv_obj_t* settings_wifi_icon = nullptr;
+static lv_obj_t* ap_screen = nullptr;
+
 static void my_touchpad_read(lv_indev_drv_t *indev_driver, lv_indev_data_t *data) {
-    if (currentState != STATE_SETTINGS) {
+    if (currentState != STATE_SETTINGS && ap_screen == nullptr) {
         data->state = LV_INDEV_STATE_REL;
         return;
     }
@@ -76,17 +87,6 @@ static void my_touchpad_read(lv_indev_drv_t *indev_driver, lv_indev_data_t *data
         data->point.y = pixelY;
     }
 }
-
-static void (*exitCallback)() = nullptr;
-static void (*clearCacheCallback)() = nullptr;
-static void (*rebootConfirmCallback)() = nullptr;
-static lv_obj_t* settings_screen = nullptr;
-static lv_obj_t* confirm_dialog = nullptr;
-static lv_obj_t* reboot_confirm_dialog = nullptr;
-static lv_obj_t* wifi_info_dialog = nullptr;
-static lv_obj_t* slider_bright_ptr = nullptr;
-static lv_obj_t* settings_wifi_icon = nullptr;
-static lv_obj_t* ap_screen = nullptr;
 
 extern bool isWifiEnabled;
 extern bool isMqttEnabled;
@@ -166,6 +166,16 @@ static void inactivity_sleep_switch_event_cb(lv_event_t * e) {
 static void wifi_switch_event_cb(lv_event_t * e) {
     lv_obj_t * sw = lv_event_get_target(e);
     isWifiEnabled = lv_obj_has_state(sw, LV_STATE_CHECKED);
+    lv_obj_t * mqtt_sw = (lv_obj_t *)lv_event_get_user_data(e);
+    if (mqtt_sw) {
+        if (isWifiEnabled) {
+            lv_obj_clear_state(mqtt_sw, LV_STATE_DISABLED);
+        } else {
+            lv_obj_add_state(mqtt_sw, LV_STATE_DISABLED);
+            lv_obj_clear_state(mqtt_sw, LV_STATE_CHECKED);
+            isMqttEnabled = false;
+        }
+    }
 }
 
 static void mqtt_switch_event_cb(lv_event_t * e) {
@@ -190,7 +200,7 @@ static void delay_dropdown_event_cb(lv_event_t * e) {
 
 static void theme_dropdown_event_cb(lv_event_t * e) {
     lv_obj_t * dropdown = lv_event_get_target(e);
-    currentThemeFlavor = (int)lv_dropdown_get_selected(dropdown) + 1;
+    currentThemeFlavor = (int)lv_dropdown_get_selected(dropdown);
 }
 
 static const int dropdown_to_rotation[] = {1, 2, 3, 0};
@@ -737,7 +747,6 @@ void LVGLManager::showSettings() {
     if (isWifiEnabled) {
         lv_obj_add_state(sw_wifi, LV_STATE_CHECKED);
     }
-    lv_obj_add_event_cb(sw_wifi, wifi_switch_event_cb, LV_EVENT_VALUE_CHANGED, NULL);
 
     // 6c. Enable MQTT Switch
     lv_obj_t * row_mqtt = lv_obj_create(list);
@@ -757,7 +766,13 @@ void LVGLManager::showSettings() {
     if (isMqttEnabled) {
         lv_obj_add_state(sw_mqtt, LV_STATE_CHECKED);
     }
+    if (!isWifiEnabled) {
+        lv_obj_add_state(sw_mqtt, LV_STATE_DISABLED);
+    }
     lv_obj_add_event_cb(sw_mqtt, mqtt_switch_event_cb, LV_EVENT_VALUE_CHANGED, NULL);
+    
+    // Attach event callback to WiFi switch, passing MQTT switch as user_data
+    lv_obj_add_event_cb(sw_wifi, wifi_switch_event_cb, LV_EVENT_VALUE_CHANGED, sw_mqtt);
 
     // 6d. Bypass Optimization Switch
     lv_obj_t * row_bypass_opt = lv_obj_create(list);
@@ -795,7 +810,7 @@ void LVGLManager::showSettings() {
 
     lv_obj_t * dd_theme = lv_dropdown_create(row_theme);
     lv_dropdown_set_options(dd_theme, "Mocha\nMacchiato\nFrappe\nLatte");
-    lv_dropdown_set_selected(dd_theme, currentThemeFlavor - 1);
+    lv_dropdown_set_selected(dd_theme, currentThemeFlavor);
     lv_obj_add_event_cb(dd_theme, theme_dropdown_event_cb, LV_EVENT_VALUE_CHANGED, NULL);
 
     // 8. Screen Orientation Dropdown
