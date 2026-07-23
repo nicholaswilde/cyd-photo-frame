@@ -6,7 +6,10 @@
 #include <DNSServer.h>
 #include <WebServer.h>
 #include <Preferences.h>
+#include <SD.h>
 #include "config/config.h"
+#include "screenshot_manager.h"
+#include "lvgl_manager.h"
 
 WifiManager::WifiManager(const std::string& ssid, const std::string& password)
     : _ssid(ssid), _password(password), _state(WIFI_STATE_DISCONNECTED), _lastReconnectAttempt(0), _connectionStartTime(0) {}
@@ -47,6 +50,7 @@ void WifiManager::update() {
                 _state = WIFI_STATE_CONNECTED;
                 Serial.print("[WiFi] Connected! IP address: ");
                 Serial.println(WiFi.localIP());
+                startScreenshotServer();
             } else if (status == WL_CONNECT_FAILED || status == WL_NO_SSID_AVAIL || (millis() - _connectionStartTime > _connectionTimeout)) {
                 Serial.println("[WiFi] Connection failed or timed out. Transitioning to AP Mode...");
                 startAPMode();
@@ -58,6 +62,7 @@ void WifiManager::update() {
                 _state = WIFI_STATE_DISCONNECTED;
                 _lastReconnectAttempt = millis();
                 Serial.println("[WiFi] Connection lost.");
+                stopScreenshotServer();
             } else if (_webServer) {
                 ((WebServer*)_webServer)->handleClient();
             }
@@ -81,6 +86,7 @@ void WifiManager::update() {
                 _state = WIFI_STATE_CONNECTED;
                 Serial.print("[WiFi] Connected! IP address: ");
                 Serial.println(WiFi.localIP());
+                startScreenshotServer();
             } else {
                 if (_dnsServer) ((DNSServer*)_dnsServer)->processNextRequest();
                 if (_webServer) ((WebServer*)_webServer)->handleClient();
@@ -288,6 +294,96 @@ void WifiManager::handleNotFound() {
     server->sendHeader("Location", "http://192.168.4.1/", true);
     server->send(302, "text/plain", "");
 }
+
+void WifiManager::startScreenshotServer() {
+    if (_webServer) {
+        stopScreenshotServer();
+    }
+    WebServer* server = new WebServer(80);
+    server->on("/screenshot", [this]() { handleScreenshot(); });
+    server->on("/api/orientation", HTTP_POST, [this]() { handleOrientation(); });
+    server->on("/api/screen", HTTP_POST, [this]() { handleScreen(); });
+    server->begin();
+    _webServer = server;
+    Serial.println("[WiFi] Screenshot server started on port 80.");
+}
+
+void WifiManager::stopScreenshotServer() {
+    if (_webServer) {
+        ((WebServer*)_webServer)->stop();
+        delete (WebServer*)_webServer;
+        _webServer = nullptr;
+        Serial.println("[WiFi] Screenshot server stopped.");
+    }
+}
+
+void WifiManager::handleScreenshot() {
+    WebServer* server = (WebServer*)_webServer;
+    const char* tmpPath = "/~scr_tmp.bmp";
+
+    if (!ScreenshotManager::captureToSD(tmpPath)) {
+        server->send(500, "text/plain", "Error: Screenshot capture failed");
+        return;
+    }
+
+    File f = SD.open(tmpPath, FILE_READ);
+    if (!f) {
+        server->send(500, "text/plain", "Error: Cannot open temp screenshot file");
+        SD.remove(tmpPath);
+        return;
+    }
+
+    const uint32_t totalSize = f.size();
+    server->setContentLength(totalSize);
+    server->send(200, "image/bmp", "");
+
+    WiFiClient client = server->client();
+    uint8_t xferBuf[512];
+    while (f.available()) {
+        size_t n = f.read(xferBuf, sizeof(xferBuf));
+        if (n > 0) {
+            client.write(xferBuf, n);
+        }
+    }
+
+    f.close();
+    SD.remove(tmpPath);
+    Serial.println("[WiFi] Screenshot streamed to remote client.");
+}
+
+void WifiManager::handleOrientation() {
+    WebServer* server = (WebServer*)_webServer;
+    if (server->hasArg("val")) {
+        int rot = server->arg("val").toInt();
+        Preferences prefs;
+        prefs.begin("settings", false);
+        prefs.putInt("orientation", rot);
+        prefs.putInt("cached_rot", rot);
+        prefs.end();
+        server->send(200, "text/plain", "Orientation set. Rebooting...");
+        delay(1000);
+        ESP.restart();
+    } else {
+        server->send(400, "text/plain", "Missing 'val' argument");
+    }
+}
+
+void WifiManager::handleScreen() {
+    WebServer* server = (WebServer*)_webServer;
+    if (server->hasArg("index")) {
+        String tab = server->arg("index");
+        if (tab == "settings") LVGLManager::showSettings();
+        else if (tab == "sd_error") LVGLManager::showSDError();
+        else if (tab == "warn") LVGLManager::showNoPhotosWarning();
+        else if (tab == "opt") LVGLManager::showOptimizationScreen();
+        else if (tab == "ap") LVGLManager::showAPModeScreen("TEST_AP", "192.168.4.1");
+        else if (tab == "clear_cache") LVGLManager::showClearCacheScreen();
+        server->send(200, "text/plain", "Screen switched.");
+    } else {
+        server->send(400, "text/plain", "Missing 'index' argument");
+    }
+}
+
 #else
 // Mock implementation for host-native tests
 #include <string>
@@ -317,4 +413,9 @@ void WifiManager::startAPMode() {}
 void WifiManager::handleRoot() {}
 void WifiManager::handleSave() {}
 void WifiManager::handleNotFound() {}
+void WifiManager::startScreenshotServer() {}
+void WifiManager::stopScreenshotServer() {}
+void WifiManager::handleScreenshot() {}
+void WifiManager::handleOrientation() {}
+void WifiManager::handleScreen() {}
 #endif

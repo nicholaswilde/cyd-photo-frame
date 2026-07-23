@@ -24,6 +24,12 @@ private:
     void handleRoot();
     void handleSave();
     void handleNotFound();
+    
+    void startScreenshotServer();
+    void stopScreenshotServer();
+    void handleScreenshot();
+    void handleOrientation();
+    void handleScreen();
 
     std::string _ssid;
     std::string _password;

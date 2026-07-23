@@ -21,6 +21,7 @@ static File     _captureFile;
 static bool     _captureInProgress = false;
 static uint32_t _captureWidth  = 320;
 static uint32_t _captureHeight = 240;
+static uint8_t  _captureBuf[480 * 3];
 
 // --- BMP pixel data begins at byte 54 ---
 static const uint32_t BMP_HEADER_SIZE = 54;
@@ -157,10 +158,10 @@ bool ScreenshotManager::beginCapture(const char* filepath) {
     _captureFile.write(header.bytes, sizeof(header.bytes));
 
     // Pre-fill entire pixel area with zeros so seek+write calls land in bounds
-    uint8_t zeroBuf[320 * 3];
-    memset(zeroBuf, 0, sizeof(zeroBuf));
+    memset(_captureBuf, 0, sizeof(_captureBuf));
+    uint32_t rowLen = (_captureWidth > 480 ? 480 : _captureWidth) * 3;
     for (uint32_t row = 0; row < _captureHeight; row++) {
-        _captureFile.write(zeroBuf, _captureWidth * 3);
+        _captureFile.write(_captureBuf, rowLen);
     }
 
     _captureInProgress = true;
@@ -177,8 +178,7 @@ void ScreenshotManager::onFlushTile(int32_t x1, int32_t y1, int32_t x2, int32_t 
 
     uint32_t tileW = (uint32_t)(x2 - x1 + 1);
     uint32_t tileH = (uint32_t)(y2 - y1 + 1);
-
-    uint8_t rowBuf[320 * 3];
+    if (tileW > 480) tileW = 480; // safety
 
     for (uint32_t row = 0; row < tileH; row++) {
         const uint16_t* srcRow = pixels + row * tileW;
@@ -186,15 +186,15 @@ void ScreenshotManager::onFlushTile(int32_t x1, int32_t y1, int32_t x2, int32_t 
         for (uint32_t col = 0; col < tileW; col++) {
             uint8_t r, g, b;
             convertRGB565ToBGR24(srcRow[col], r, g, b);
-            rowBuf[col * 3]     = b; // BGR order
-            rowBuf[col * 3 + 1] = g;
-            rowBuf[col * 3 + 2] = r;
+            _captureBuf[col * 3]     = b; // BGR order
+            _captureBuf[col * 3 + 1] = g;
+            _captureBuf[col * 3 + 2] = r;
         }
 
         uint32_t absRow  = (uint32_t)y1 + row;
         uint32_t fileOff = BMP_HEADER_SIZE + absRow * _captureWidth * 3 + (uint32_t)x1 * 3;
         _captureFile.seek(fileOff);
-        _captureFile.write(rowBuf, tileW * 3);
+        _captureFile.write(_captureBuf, tileW * 3);
     }
 }
 
