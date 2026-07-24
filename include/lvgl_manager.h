@@ -20,6 +20,8 @@ public:
 
     static void showSDError();
     static void showNoPhotosWarning();
+    static void showLoadingSlideshowScreen(const char* message, bool isError = false);
+    static void hideLoadingSlideshowScreen();
     static void showOptimizationScreen();
     static void updateCalculationProgress(size_t current, size_t total, const char* filename, size_t needsOptCount);
     static void updateOptimizationProgress(size_t current, size_t total, const char* filename);

@@ -61,6 +61,7 @@ static lv_obj_t* wifi_info_dialog = nullptr;
 static lv_obj_t* slider_bright_ptr = nullptr;
 static lv_obj_t* settings_wifi_icon = nullptr;
 static lv_obj_t* ap_screen = nullptr;
+static lv_obj_t* loading_slideshow_screen = nullptr;
 
 static void my_touchpad_read(lv_indev_drv_t *indev_driver, lv_indev_data_t *data) {
     if (currentState != STATE_SETTINGS && ap_screen == nullptr) {
@@ -973,6 +974,53 @@ void LVGLManager::showNoPhotosWarning() {
 #endif
 }
 
+void LVGLManager::showLoadingSlideshowScreen(const char* message, bool isError) {
+#if !defined(NATIVE_TEST)
+    if (loading_slideshow_screen != nullptr) {
+        lv_obj_del(loading_slideshow_screen);
+        loading_slideshow_screen = nullptr;
+    }
+
+    loading_slideshow_screen = lv_obj_create(NULL);
+    lv_obj_set_style_bg_color(loading_slideshow_screen, get_lv_color(getCatppuccinFlavor(currentThemeFlavor).base), 0);
+    lv_obj_set_style_bg_opa(loading_slideshow_screen, LV_OPA_COVER, 0);
+
+    // Title label
+    lv_obj_t * lbl_title = lv_label_create(loading_slideshow_screen);
+    lv_label_set_text(lbl_title, "CYD Photo Frame");
+    lv_obj_set_style_text_font(lbl_title, &lv_font_montserrat_20, 0);
+    lv_obj_set_style_text_color(lbl_title, get_lv_color(getCatppuccinFlavor(currentThemeFlavor).text), 0);
+    lv_obj_align(lbl_title, LV_ALIGN_TOP_MID, 0, 15);
+
+    // Message label
+    lv_obj_t * lbl_msg = lv_label_create(loading_slideshow_screen);
+    lv_label_set_text(lbl_msg, message);
+    if (isError) {
+        lv_obj_set_style_text_color(lbl_msg, get_lv_color(getCatppuccinFlavor(currentThemeFlavor).red), 0);
+    } else {
+        lv_obj_set_style_text_color(lbl_msg, get_lv_color(getCatppuccinFlavor(currentThemeFlavor).green), 0);
+    }
+    // Match the vertical position of the optimize photos screen
+    lv_obj_align(lbl_msg, LV_ALIGN_TOP_MID, 0, 80);
+    lv_obj_set_style_text_align(lbl_msg, LV_TEXT_ALIGN_CENTER, 0);
+
+    lv_scr_load(loading_slideshow_screen);
+    lv_task_handler();
+#endif
+}
+
+void LVGLManager::hideLoadingSlideshowScreen() {
+#if !defined(NATIVE_TEST)
+    if (loading_slideshow_screen != nullptr) {
+        lv_obj_t * old_scr = loading_slideshow_screen;
+        lv_obj_t * blank_scr = lv_obj_create(NULL);
+        lv_obj_set_style_bg_opa(blank_scr, LV_OPA_TRANSP, 0);
+        lv_scr_load(blank_scr);
+        lv_obj_del(old_scr);
+        loading_slideshow_screen = nullptr;
+    }
+#endif
+}
 
 void LVGLManager::showOptimizationScreen() {
 #if !defined(NATIVE_TEST)

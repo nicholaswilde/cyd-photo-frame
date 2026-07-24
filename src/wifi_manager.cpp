@@ -428,6 +428,8 @@ void WifiManager::handleScreen() {
         else if (tab == "opt") LVGLManager::showOptimizationScreen();
         else if (tab == "ap") LVGLManager::showAPModeScreen("TEST_AP", "192.168.4.1");
         else if (tab == "clear_cache") LVGLManager::showClearCacheScreen();
+        else if (tab == "loading") LVGLManager::showLoadingSlideshowScreen("Loading slideshow...", false);
+        else if (tab == "resuming") LVGLManager::showLoadingSlideshowScreen("Resuming slideshow...", false);
         server->send(200, "text/plain", "Screen switched.");
     } else {
         server->send(400, "text/plain", "Missing 'index' argument");

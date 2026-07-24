@@ -859,12 +859,7 @@ void exitSettings() {
   Serial.println("[System] Exiting settings menu. Resuming slideshow.");
 
   // Render transition screen
-  tft.fillScreen(CTP_BASE);
-  tft.setTextColor(CTP_TEXT, CTP_BASE);
-  tft.setTextDatum(MC_DATUM);
-  tft.drawString("CYD Photo Frame", tft.width() / 2, tft.height() / 2 - 20, 4);
-  tft.setTextColor(CTP_GREEN, CTP_BASE);
-  tft.drawString("Resuming slideshow...", tft.width() / 2, tft.height() / 2 + 20, 2);
+  LVGLManager::showLoadingSlideshowScreen("Resuming slideshow...", false);
 
   delay(500);
 
@@ -883,6 +878,7 @@ void exitSettings() {
 #endif
 
   // Render the photo in complete darkness (no line scan visible!)
+  LVGLManager::hideLoadingSlideshowScreen();
   tft.fillScreen(CTP_BASE);
   if (!fileCache.isEmpty()) {
     renderScaledJpg(fileCache.getCurrent().c_str());
@@ -1149,12 +1145,7 @@ void setup() {
 #endif
   } else {
     // Bypass: show a brief loading splash so the user knows the device is booting
-    tft.fillScreen(CTP_BASE);
-    tft.setTextColor(CTP_TEXT, CTP_BASE);
-    tft.setTextDatum(MC_DATUM);
-    tft.drawString("CYD Photo Frame", tft.width() / 2, tft.height() / 2 - 20, 4);
-    tft.setTextColor(CTP_GREEN, CTP_BASE);
-    tft.drawString("Loading slideshow...", tft.width() / 2, tft.height() / 2 + 20, 2);
+    LVGLManager::showLoadingSlideshowScreen("Loading slideshow...", false);
 #if defined(TFT_BL) && (TFT_BL >= 0)
     analogWrite(TFT_BL, currentBrightness);
 #endif
@@ -1407,12 +1398,7 @@ void setup() {
       if (cancelled) {
         restrictCacheToExisting();
         
-        tft.fillScreen(CTP_BASE);
-        tft.setTextColor(CTP_TEXT, CTP_BASE);
-        tft.setTextDatum(MC_DATUM);
-        tft.drawString("CYD Photo Frame", tft.width() / 2, tft.height() / 2 - 20, 4);
-        tft.setTextColor(CTP_RED, CTP_BASE);
-        tft.drawString("Optimization cancelled. Loading slideshow...", tft.width() / 2, tft.height() / 2 + 20, 2);
+        LVGLManager::showLoadingSlideshowScreen("Optimization cancelled.\nLoading slideshow...", true);
         delay(1500);
       } else {
         drawProgress(filesToCache.size(), filesToCache.size(), "All Photos Optimized!");
@@ -1441,6 +1427,7 @@ void setup() {
   }
 
   LVGLManager::hideOptimizationScreen();
+  LVGLManager::hideLoadingSlideshowScreen();
   tft.fillScreen(CTP_BASE);
 
   // Fade out loading/optimization screen to black before rendering first image

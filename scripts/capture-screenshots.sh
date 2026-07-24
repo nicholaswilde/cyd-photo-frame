@@ -91,6 +91,8 @@ function capture_all_screens() {
   capture_screen "${ip}" "${rot_name}" "warn"
   capture_screen "${ip}" "${rot_name}" "opt"
   capture_screen "${ip}" "${rot_name}" "clear_cache"
+  capture_screen "${ip}" "${rot_name}" "loading"
+  capture_screen "${ip}" "${rot_name}" "resuming"
 }
 
 function main() {
