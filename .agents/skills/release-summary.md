@@ -31,8 +31,9 @@ This skill retrieves the git commit logs for a specified range (or defaults to t
      - Ensure the first letter of each bullet is capitalized.
      - Use backticks for technical terms (e.g., `TFT_eSPI`, `LVGL`, `ArduinoJson`, `AsyncTCP`, `AsyncMqttClient`, `DNSServer`, `WebServer`, `esptool`).
    - Format restrictions:
+     - Always wrap the entire final output in a single markdown code block (```markdown ... ```) so the user can easily copy and paste the raw text.
      - Do not include line numbers in the output.
-     - Use standard triple backticks (```) for any code blocks.
+     - Use standard triple backticks (```) for any code blocks within the summary.
      - Omit sections that have no matching changes.
      - Do not include git commit hashes.
      - Maintain a direct, professional, and technical tone.
