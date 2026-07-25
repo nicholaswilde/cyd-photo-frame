@@ -865,11 +865,10 @@ void populateCache() {
   File file = root.openNextFile();
   while (file) {
     if (!file.isDirectory()) {
-      String filePath = String(file.path());
-      String fileNameLower = filePath;
-      fileNameLower.toLowerCase();
-      if (fileNameLower.endsWith(".jpg") || fileNameLower.endsWith(".jpeg")) {
-        if (!fileCache.addFile(filePath.c_str())) {
+      const char* path = file.path();
+      size_t len = strlen(path);
+      if (len > 4 && (strcasecmp(&path[len - 4], ".jpg") == 0 || (len > 5 && strcasecmp(&path[len - 5], ".jpeg") == 0))) {
+        if (!fileCache.addFile(path)) {
           Serial.println("[Cache] Full.");
           file.close();
           break;
@@ -1290,7 +1289,7 @@ void setup() {
     Serial.println("[System] Scanning /cache inventory...");
   }
 
-  {
+  if (themeChanged || !bypassOptimization) {
     File cacheDir = SD.open("/cache");
     if (cacheDir) {
       File file = cacheDir.openNextFile();
