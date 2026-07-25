@@ -1,7 +1,7 @@
 [project]
 name = "cyd-photo-frame"
-version = "0.1.0"
-description = "Image preparation tools for the CYD Photo Frame"
+version = "0.1.2"
+description = "Tools for CYD Photo Frame"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
