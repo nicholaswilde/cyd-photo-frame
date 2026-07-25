@@ -21,7 +21,7 @@ jobs:
     steps:
       - name: "Create filename"
         run: |
-          VAR="cyn-photo-frame-${{ github.ref_name }}-${{ matrix.env }}"
+          VAR="cyd-photo-frame-${{ github.ref_name }}-${{ matrix.env }}"
           echo "BASENAME=${VAR,,}" >> $GITHUB_ENV
 
       - name: "Checkout repository"
@@ -84,7 +84,7 @@ jobs:
       - name: "Download all artifacts"
         uses: actions/download-artifact@v4
         with:
-          pattern: "cyn-photo-frame-*"
+          pattern: "cyd-photo-frame-*"
           path: dist
                   
       - name: "Create Draft Release"

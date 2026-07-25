@@ -192,7 +192,7 @@ uv run scripts/prepare_images.py -i ~/Photos -o /mnt/sdcard --raw
 
 ## :computer: Development
 
-### Environment Setup (`.env` and `secrets.h`)
+### Environment Setup (`.env` and `config/secrets.h`)
 
 Initialize local environment configuration by copying the templates:
 
@@ -200,7 +200,7 @@ Initialize local environment configuration by copying the templates:
 task init
 # Or manually:
 # cp .env.example .env
-# cp include/secrets.h.example include/secrets.h
+# cp config/secrets.h.example config/secrets.h
 ```
 
 #### Configurable Variables in `.env`:
@@ -210,8 +210,8 @@ task init
 | `CYD_DEVICE_IP` | `192.168.1.100` | Local network IP address of the CYD device (used for `task screenshots`) |
 | `COVERALLS_REPO_TOKEN` | *(optional)* | Token for uploading coverage reports to Coveralls (`task coverage:upload`) |
 
-#### MQTT Configuration (`include/secrets.h`)
-To enable MQTT features (e.g. broadcasting the currently displayed filename or device status), edit `include/secrets.h` and configure your MQTT broker details:
+#### MQTT Configuration (`config/secrets.h`)
+To enable MQTT features (e.g. broadcasting the currently displayed filename or device status), edit `config/secrets.h` and configure your MQTT broker details:
 ```cpp
 #define MQTT_SERVER   "192.168.1.100" // Your broker IP or hostname
 #define MQTT_PORT     1883
@@ -224,13 +224,19 @@ If `MQTT_SERVER` is defined, the device will publish its status to `cyd/photo-fr
 
 ### Flashing Pre-compiled Binaries
 
-You can download the latest `.bin` files directly from the [Releases](https://github.com/nicholaswilde/cyd-photo-frame/releases) page and flash them using `esptool`. 
+1. **Download and Flash using the remote script:**
+   You can flash the device directly from your terminal using the provided flash script. Replace `/dev/ttyUSB0` with your actual serial port. By default, it flashes the `cyd_28r` version, but you can specify the device as the first argument.
 
-Similar to the process used in [frame-fi](https://github.com/nicholaswilde/frame-fi), download the firmware binary and flash it to your device using the following command (replacing `/dev/ttyUSB0` with your actual serial port):
+   ```bash
+   # Flash the default cyd_28r
+   bash -c "$(curl -fsSL https://raw.githubusercontent.com/nicholaswilde/cyd-photo-frame/main/scripts/flash.sh)" _ cyd_28r /dev/ttyUSB0
 
-```bash
-esptool.py --chip esp32 --port /dev/ttyUSB0 --baud 921600 --before default_reset --after hard_reset write_flash -z --flash_mode dio --flash_freq 40m --flash_size detect 0x10000 firmware.bin
-```
+   # Or flash the cyd_35c version
+   bash -c "$(curl -fsSL https://raw.githubusercontent.com/nicholaswilde/cyd-photo-frame/main/scripts/flash.sh)" _ cyd_35c /dev/ttyUSB0
+   ```
+
+   > [!WARNING]
+   > Running a script directly from the internet with `bash -c "$(curl...)"` is a potential security risk. Always review the script's source code before executing it to ensure it is safe. You can view the script [here](https://github.com/nicholaswilde/cyd-photo-frame/blob/main/scripts/flash.sh).
 
 *(For more detailed flashing instructions, you can reference the [frame-fi flashing guide](https://nicholaswilde.io/frame-fi/flashing-firmware/)).*
 
