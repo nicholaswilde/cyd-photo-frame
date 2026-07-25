@@ -1059,6 +1059,8 @@ void LVGLManager::showOptimizationScreen() {
 
     // Filename / Status detail label
     opt_lbl_file = lv_label_create(opt_screen);
+    lv_obj_set_width(opt_lbl_file, 280); // Prevent overflow on 320px wide screen
+    lv_label_set_long_mode(opt_lbl_file, LV_LABEL_LONG_DOT);
     lv_label_set_text(opt_lbl_file, "Analyzing SD Card...");
     lv_obj_set_style_text_color(opt_lbl_file, get_lv_color(getCatppuccinFlavor(currentThemeFlavor).blue), 0);
     lv_obj_align(opt_lbl_file, LV_ALIGN_TOP_MID, 0, 80);
