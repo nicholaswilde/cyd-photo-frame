@@ -58,8 +58,8 @@ std::string wifiPassword = DEFAULT_WIFI_PASSWORD;
 #include "wifi_manager.h"
 WifiManager* wifiManager = nullptr;
 
-#if __has_include("secrets.h")
-#include "secrets.h"
+#if __has_include("config/secrets.h")
+#include "config/secrets.h"
 #endif
 
 #if defined(MQTT_SERVER)

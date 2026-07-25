@@ -39,9 +39,13 @@ static void updateTouchSample() {
 
     if (touch.touched()) {
         TS_Point p = touch.getPoint();
-        s_lastX = p.x;
-        s_lastY = p.y;
-        s_lastTouched = true;
+        if (p.x == 0 && p.y == 0) {
+            s_lastTouched = false; // Ignore phantom touches
+        } else {
+            s_lastX = p.x;
+            s_lastY = p.y;
+            s_lastTouched = true;
+        }
     } else {
         s_lastTouched = false;
     }

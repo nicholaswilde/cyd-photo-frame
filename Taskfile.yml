@@ -12,13 +12,13 @@ tasks:
     desc: Initialize project environment file and secrets
     status:
       - test -f .env
-      - test -f include/secrets.h
+      - test -f config/secrets.h
     preconditions:
       - test -f .env.example
-      - test -f include/secrets.h.example
+      - test -f config/secrets.h.example
     cmds:
       - cp .env.example .env
-      - cp include/secrets.h.example include/secrets.h
+      - cp config/secrets.h.example config/secrets.h
 
   coverage:report:
     desc: Show coverage report

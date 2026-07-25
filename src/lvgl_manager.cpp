@@ -2,6 +2,7 @@
 #include <stddef.h>
 #include <stdlib.h>
 #include "catppuccin.h"
+#include "version.h"
 
 extern int currentThemeFlavor;
 extern int currentOrientation;
@@ -530,6 +531,11 @@ void LVGLManager::showSettings() {
     lv_obj_set_style_text_font(title, &lv_font_montserrat_20, 0);
     lv_obj_align(title, LV_ALIGN_TOP_MID, 0, 15);
 
+    lv_obj_t * version_label = lv_label_create(settings_screen);
+    lv_label_set_text(version_label, "v" APP_VERSION);
+    lv_obj_set_style_text_color(version_label, get_lv_color(getCatppuccinFlavor(currentThemeFlavor).text), 0);
+    lv_obj_align(version_label, LV_ALIGN_TOP_LEFT, 5, 5);
+
     // WiFi status icon in top right
     settings_wifi_icon = lv_label_create(settings_screen);
     lv_label_set_text(settings_wifi_icon, LV_SYMBOL_WIFI);
@@ -1004,6 +1010,11 @@ void LVGLManager::showLoadingSlideshowScreen(const char* message, bool isError) 
     lv_obj_align(lbl_msg, LV_ALIGN_TOP_MID, 0, 80);
     lv_obj_set_style_text_align(lbl_msg, LV_TEXT_ALIGN_CENTER, 0);
 
+    lv_obj_t * version_label = lv_label_create(loading_slideshow_screen);
+    lv_label_set_text(version_label, "v" APP_VERSION);
+    lv_obj_set_style_text_color(version_label, get_lv_color(getCatppuccinFlavor(currentThemeFlavor).text), 0);
+    lv_obj_align(version_label, LV_ALIGN_BOTTOM_RIGHT, -5, -5);
+
     lv_scr_load(loading_slideshow_screen);
     lv_task_handler();
 #endif
@@ -1080,6 +1091,11 @@ void LVGLManager::showOptimizationScreen() {
     lv_label_set_text(lbl_cancel, "Cancel");
     lv_obj_set_style_text_color(lbl_cancel, get_lv_color(getCatppuccinFlavor(currentThemeFlavor).crust), 0);
     lv_obj_align(lbl_cancel, LV_ALIGN_CENTER, 0, 0);
+
+    lv_obj_t * version_label = lv_label_create(opt_screen);
+    lv_label_set_text(version_label, "v" APP_VERSION);
+    lv_obj_set_style_text_color(version_label, get_lv_color(getCatppuccinFlavor(currentThemeFlavor).text), 0);
+    lv_obj_align(version_label, LV_ALIGN_BOTTOM_RIGHT, -5, -5);
 
     lv_scr_load(opt_screen);
     lv_task_handler();

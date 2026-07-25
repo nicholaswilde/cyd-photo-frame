@@ -43,6 +43,7 @@ void loadSettings(Preferences& prefs,
                   std::string& wifiPassword,
                   bool& bypassOptimization) {
     brightness = prefs.getUChar("bright", brightness);
+    if (brightness < 25) brightness = 25; // Clamp to ensure screen is never completely off
     autoBright = prefs.getBool("autob", autoBright);
     delay = prefs.getULong("delay", delay);
     randomMode = prefs.getBool("random", randomMode);
