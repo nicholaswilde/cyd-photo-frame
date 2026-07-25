@@ -73,7 +73,7 @@ extern bool isAutoBrightness;
 extern bool isRandomMode;
 extern bool isInactivitySleep;
 extern int currentThemeFlavor;
-extern unsigned long loadedDelay;
+extern SlideshowTimer slideshowTimer;
 extern void showNextImage();
 extern void showPreviousImage();
 
@@ -85,7 +85,7 @@ void emitMqttSettings() {
     doc["random_mode"] = isRandomMode;
     doc["sleep_enabled"] = isInactivitySleep;
     doc["theme"] = currentThemeFlavor;
-    doc["delay_ms"] = loadedDelay;
+    doc["delay_ms"] = slideshowTimer.getInterval();
     
     char buffer[256];
     serializeJson(doc, buffer);
@@ -137,8 +137,9 @@ void handleMqttMessage(const char* topic, const char* payload) {
         prefs.putInt("theme", currentThemeFlavor);
       }
       if (doc.containsKey("delay_ms")) {
-        loadedDelay = doc["delay_ms"].as<unsigned long>();
-        prefs.putULong("delay", loadedDelay);
+        unsigned long delay = doc["delay_ms"].as<unsigned long>();
+        slideshowTimer.setInterval(delay);
+        prefs.putULong("delay", delay);
       }
       prefs.end();
       
