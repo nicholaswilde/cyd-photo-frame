@@ -532,7 +532,7 @@ void LVGLManager::showSettings() {
     lv_obj_align(title, LV_ALIGN_TOP_MID, 0, 15);
 
     lv_obj_t * version_label = lv_label_create(settings_screen);
-    lv_label_set_text(version_label, "v" APP_VERSION);
+    lv_label_set_text(version_label, APP_VERSION);
     lv_obj_set_style_text_color(version_label, get_lv_color(getCatppuccinFlavor(currentThemeFlavor).text), 0);
     lv_obj_align(version_label, LV_ALIGN_TOP_LEFT, 5, 5);
 
@@ -1008,7 +1008,7 @@ void LVGLManager::showLoadingSlideshowScreen(const char* message, bool isError) 
     lv_obj_set_style_text_align(lbl_msg, LV_TEXT_ALIGN_CENTER, 0);
 
     lv_obj_t * version_label = lv_label_create(loading_slideshow_screen);
-    lv_label_set_text(version_label, "v" APP_VERSION);
+    lv_label_set_text(version_label, APP_VERSION);
     lv_obj_set_style_text_color(version_label, get_lv_color(getCatppuccinFlavor(currentThemeFlavor).text), 0);
     lv_obj_align(version_label, LV_ALIGN_BOTTOM_RIGHT, -5, -5);
 
@@ -1095,7 +1095,7 @@ void LVGLManager::showOptimizationScreen() {
     lv_obj_align(lbl_cancel, LV_ALIGN_CENTER, 0, 0);
 
     lv_obj_t * version_label = lv_label_create(opt_screen);
-    lv_label_set_text(version_label, "v" APP_VERSION);
+    lv_label_set_text(version_label, APP_VERSION);
     lv_obj_set_style_text_color(version_label, get_lv_color(getCatppuccinFlavor(currentThemeFlavor).text), 0);
     lv_obj_align(version_label, LV_ALIGN_BOTTOM_RIGHT, -5, -5);
 
