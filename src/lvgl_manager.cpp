@@ -982,10 +982,7 @@ void LVGLManager::showNoPhotosWarning() {
 
 void LVGLManager::showLoadingSlideshowScreen(const char* message, bool isError) {
 #if !defined(NATIVE_TEST)
-    if (loading_slideshow_screen != nullptr) {
-        lv_obj_del(loading_slideshow_screen);
-        loading_slideshow_screen = nullptr;
-    }
+    lv_obj_t * old_scr = loading_slideshow_screen;
 
     loading_slideshow_screen = lv_obj_create(NULL);
     lv_obj_set_style_bg_color(loading_slideshow_screen, get_lv_color(getCatppuccinFlavor(currentThemeFlavor).base), 0);
@@ -1016,6 +1013,9 @@ void LVGLManager::showLoadingSlideshowScreen(const char* message, bool isError) 
     lv_obj_align(version_label, LV_ALIGN_BOTTOM_RIGHT, -5, -5);
 
     lv_scr_load(loading_slideshow_screen);
+    if (old_scr != nullptr) {
+        lv_obj_del(old_scr);
+    }
     lv_task_handler();
 #endif
 }
