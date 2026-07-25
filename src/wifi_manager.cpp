@@ -8,6 +8,7 @@
 #include <Preferences.h>
 #include <SD.h>
 #include "config/config.h"
+#include "version.h"
 #include "screenshot_manager.h"
 #include "lvgl_manager.h"
 
@@ -345,6 +346,179 @@ void WifiManager::handleNotFound() {
     server->send(302, "text/plain", "");
 }
 
+static File _uploadFile;
+
+const char uploadHtml[] PROGMEM = R"rawliteral(
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CYD Photo Frame Upload</title>
+<style>
+body { font-family: 'Inter', system-ui, sans-serif; background: #1e1e2e; color: #cdd6f4; margin: 0; padding: 20px; display: flex; justify-content: center; align-items: center; min-height: 100vh; box-sizing: border-box; flex-direction: column; }
+.header { margin-bottom: 20px; text-align: center; }
+.header h1 { color: #f5c2e7; margin: 0; font-weight: 700; font-size: 28px; }
+.card { background: #181825; border-radius: 12px; padding: 30px; width: 100%; max-width: 500px; box-shadow: 0 8px 30px rgba(0,0,0,0.3); border: 1px solid #313244; }
+h2 { color: #cdd6f4; margin-top: 0; margin-bottom: 20px; font-weight: 600; text-align: center; font-size: 20px; }
+.drop-zone { border: 2px dashed #45475a; border-radius: 8px; padding: 40px 20px; cursor: pointer; transition: all 0.2s; background: #11111b; margin-bottom: 20px; text-align: center; }
+.drop-zone.dragover { border-color: #cba6f7; background: #313244; }
+.drop-zone p { color: #a6adc8; margin: 0; pointer-events: none; font-size: 16px; line-height: 1.5; }
+.progress-list { margin-bottom: 15px; max-height: 250px; overflow-y: auto; }
+.file-item { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; font-size: 14px; background: #313244; padding: 12px; border-radius: 6px; }
+.file-info { display: flex; justify-content: space-between; width: 100%; align-items: center; }
+.file-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 60%; }
+.file-status { color: #a6adc8; font-weight: bold; font-size: 13px; }
+.remove-btn { background: #f38ba8; color: #11111b; border: none; border-radius: 4px; padding: 4px 10px; cursor: pointer; font-size: 12px; font-weight: bold; margin-left: 10px; transition: background 0.2s; }
+.remove-btn:hover { background: #e78284; }
+.remove-btn:disabled { background: #45475a; cursor: not-allowed; color: #a6adc8; }
+.success { color: #a6e3a1; }
+.error { color: #f38ba8; }
+input[type="file"] { display: none; }
+.upload-btn { width: 100%; padding: 12px; background: #cba6f7; border: none; border-radius: 6px; color: #11111b; font-size: 16px; font-weight: bold; cursor: pointer; transition: background 0.2s; display: none; }
+.upload-btn:hover { background: #f5c2e7; }
+.upload-btn:disabled { background: #45475a; cursor: not-allowed; color: #a6adc8; }
+.restart-btn { width: 100%; padding: 12px; background: #f38ba8; border: none; border-radius: 6px; color: #11111b; font-size: 16px; font-weight: bold; cursor: pointer; transition: background 0.2s; display: none; margin-top: 10px; }
+.restart-btn:hover { background: #e78284; }
+.version { color: #a6adc8; font-size: 14px; margin-top: 5px; margin-bottom: 0; }
+</style>
+</head>
+<body>
+<div class="header">
+    <h1>CYD Photo Frame</h1>
+    <p class="version">)rawliteral" APP_VERSION R"rawliteral(</p>
+</div>
+<div class="card">
+<h2>Upload Images</h2>
+<div class="drop-zone" id="dropZone">
+    <p>Drag & Drop images here<br>or click to browse</p>
+</div>
+<input type="file" id="fileInput" multiple accept="image/*,video/*">
+<div class="progress-list" id="progressList"></div>
+<button id="uploadBtn" class="upload-btn">Upload All</button>
+<button id="restartBtn" class="restart-btn">Restart Device</button>
+</div>
+<script>
+const dropZone = document.getElementById('dropZone');
+const fileInput = document.getElementById('fileInput');
+const progressList = document.getElementById('progressList');
+const uploadBtn = document.getElementById('uploadBtn');
+const restartBtn = document.getElementById('restartBtn');
+let filesQueue = [];
+let isUploading = false;
+
+dropZone.addEventListener('click', () => { if (!isUploading) fileInput.click(); });
+dropZone.addEventListener('dragover', (e) => { e.preventDefault(); if(!isUploading) dropZone.classList.add('dragover'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+dropZone.addEventListener('drop', (e) => {
+    e.preventDefault();
+    dropZone.classList.remove('dragover');
+    if(!isUploading) handleFiles(e.dataTransfer.files);
+});
+fileInput.addEventListener('change', (e) => handleFiles(e.target.files));
+uploadBtn.addEventListener('click', () => {
+    if (filesQueue.length > 0) {
+        isUploading = true;
+        uploadBtn.disabled = true;
+        dropZone.style.opacity = '0.5';
+        dropZone.style.cursor = 'not-allowed';
+        document.querySelectorAll('.remove-btn').forEach(b => b.disabled = true);
+        processQueue();
+    }
+});
+
+function handleFiles(files) {
+    if(isUploading) return;
+    for (let f of files) {
+        let id = 'file-' + Math.random().toString(36).substr(2, 9);
+        let el = document.createElement('div');
+        el.className = 'file-item';
+        el.id = 'item-' + id;
+        el.innerHTML = `
+            <div class="file-info">
+                <span class="file-name">${f.name}</span>
+                <div>
+                    <span class='file-status' id='${id}'>Queued</span>
+                    <button class="remove-btn" onclick="removeFile('${id}')">X</button>
+                </div>
+            </div>`;
+        progressList.appendChild(el);
+        filesQueue.push({file: f, id: id});
+    }
+    updateUploadButton();
+}
+
+window.removeFile = function(id) {
+    if(isUploading) return;
+    filesQueue = filesQueue.filter(item => item.id !== id);
+    document.getElementById('item-' + id).remove();
+    updateUploadButton();
+}
+
+function updateUploadButton() {
+    let pending = filesQueue.filter(i => document.getElementById(i.id).textContent === 'Queued').length;
+    if (pending > 0 && !isUploading) {
+        uploadBtn.style.display = 'block';
+        uploadBtn.disabled = false;
+        uploadBtn.textContent = `Upload All (${pending})`;
+    } else if (!isUploading) {
+        uploadBtn.style.display = 'none';
+    }
+}
+
+async function processQueue() {
+    let item = filesQueue.find(i => document.getElementById(i.id).textContent === 'Queued');
+    if (!item) {
+        isUploading = false;
+        dropZone.style.opacity = '1';
+        dropZone.style.cursor = 'pointer';
+        uploadBtn.textContent = 'Upload Complete!';
+        restartBtn.style.display = 'block';
+        setTimeout(() => {
+            updateUploadButton();
+        }, 2000);
+        return;
+    }
+    
+    let statusEl = document.getElementById(item.id);
+    let removeBtn = document.querySelector(`#item-${item.id} .remove-btn`);
+    if(removeBtn) removeBtn.style.display = 'none';
+    
+    statusEl.textContent = 'Uploading...';
+    
+    let formData = new FormData();
+    formData.append('f', item.file);
+    
+    try {
+        let res = await fetch('/upload', { method: 'POST', body: formData });
+        if (res.ok) {
+            statusEl.textContent = 'Done';
+            statusEl.className = 'file-status success';
+        } else {
+            statusEl.textContent = 'Error';
+            statusEl.className = 'file-status error';
+        }
+    } catch(e) {
+        statusEl.textContent = 'Failed';
+        statusEl.className = 'file-status error';
+    }
+    processQueue();
+}
+
+restartBtn.addEventListener('click', async () => {
+    restartBtn.textContent = 'Restarting...';
+    restartBtn.disabled = true;
+    try {
+        await fetch('/restart', { method: 'POST' });
+    } catch(e) {}
+    setTimeout(() => {
+        window.location.reload();
+    }, 4000);
+});
+</script>
+</body>
+</html>
+)rawliteral";
+
 void WifiManager::startScreenshotServer() {
     if (_webServer) {
         stopScreenshotServer();
@@ -353,6 +527,59 @@ void WifiManager::startScreenshotServer() {
     server->on("/screenshot", [this]() { handleScreenshot(); });
     server->on("/api/orientation", HTTP_POST, [this]() { handleOrientation(); });
     server->on("/api/screen", HTTP_POST, [this]() { handleScreen(); });
+
+    server->on("/upload", HTTP_GET, [this]() {
+        WebServer* s = (WebServer*)_webServer;
+        s->send_P(200, "text/html", uploadHtml);
+    });
+
+    server->on("/restart", HTTP_POST, [this]() {
+        WebServer* s = (WebServer*)_webServer;
+        s->send(200, "text/plain", "Restarting...");
+        delay(500);
+        ESP.restart();
+    });
+
+    server->on("/upload", HTTP_POST, [this]() {
+        WebServer* s = (WebServer*)_webServer;
+        s->send(200, "text/plain", "OK");
+    }, [this]() {
+        WebServer* s = (WebServer*)_webServer;
+        HTTPUpload& upload = s->upload();
+        if (upload.status == UPLOAD_FILE_START) {
+            String filename = upload.filename;
+            if (!filename.startsWith("/")) filename = "/" + filename;
+            Serial.printf("[Upload] Start: %s\n", filename.c_str());
+            _uploadFile = SD.open(filename, FILE_WRITE);
+            if (!_uploadFile) {
+                Serial.printf("[Upload] ERROR: Could not open %s for writing!\n", filename.c_str());
+            }
+        } else if (upload.status == UPLOAD_FILE_WRITE) {
+            if (_uploadFile) {
+                size_t written = _uploadFile.write(upload.buf, upload.currentSize);
+                if (written != upload.currentSize) {
+                    Serial.printf("[Upload] ERROR: Wrote %u bytes, but expected %u\n", written, upload.currentSize);
+                } else {
+                    Serial.printf("[Upload] Wrote chunk of %u bytes\n", upload.currentSize);
+                }
+            } else {
+                Serial.println("[Upload] ERROR: Cannot write chunk, file is not open");
+            }
+        } else if (upload.status == UPLOAD_FILE_END) {
+            if (_uploadFile) {
+                _uploadFile.close();
+                Serial.printf("[Upload] End: %s, Total Size: %u\n", upload.filename.c_str(), upload.totalSize);
+            } else {
+                Serial.println("[Upload] End: ERROR (File was never opened)");
+            }
+        } else if (upload.status == UPLOAD_FILE_ABORTED) {
+            if (_uploadFile) {
+                _uploadFile.close();
+            }
+            Serial.println("[Upload] ABORTED");
+        }
+    });
+
     server->begin();
     _webServer = server;
     Serial.println("[WiFi] Screenshot server started on port 80.");

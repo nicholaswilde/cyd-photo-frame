@@ -25,6 +25,7 @@ A digital photo frame for the ESP32 Cheap Yellow Device (CYD)
 - **Catppuccin Theme Flavors:** Fully dynamic Settings panel and slideshow background borders in Mocha, Macchiato, Frappé, or Latte.
 - **Auto-Brightness (LDR Sensor):** Automatically adjusts LCD backlight brightness depending on ambient room light levels.
 - **Wi-Fi & Captive Portal Manager:** Toggleable Wi-Fi support with automated Access Point fallback (`cyd-photo-frame-<mac>`) and Captive Portal configuration webpage (`192.168.4.1`) for setting network credentials. Includes dynamic connection status icon in the Settings panel header which opens a detailed Wi-Fi Info modal (SSID, IP, MAC address, RSSI) when tapped.
+- **Remote HTTP File Upload:** Access a beautiful Catppuccin-themed webpage at `http://<device-ip>/upload` to manage files wirelessly! Supports drag-and-drop, multi-file sequential upload queues, queue removal, and on-demand device restarting to immediately render new photos.
 - **Unified Screen Design:** Consistent header typography, Catppuccin color palette, and structured vertical label layout across all system screens (Settings, Optimization, Wi-Fi Setup, SD Card Errors, Warnings, and confirmation modals).
 - **Filename Banner Overlay:** Displays a clean, toggleable Catppuccin Mantle banner containing the current image name at the bottom of the screen.
 - **Touch Navigation Zones:** Easily navigate images and access settings by tapping designated screen areas.
@@ -88,6 +89,18 @@ The screen is divided into a 3x3 touch grid to control slideshow behavior and pa
    - **Green Icon:** Connected to Wi-Fi. Tapping the icon opens an interactive **Wi-Fi Info** screen displaying current network SSID, IP address, MAC address, and signal strength (RSSI).
    - **Yellow Icon:** Connecting or AP Mode active.
    - **Red Icon:** Disconnected or connection failed.
+
+## :cloud: Remote HTTP File Upload
+
+The CYD Photo Frame hosts a built-in web server to allow wireless media management from your computer or smartphone when connected to Wi-Fi.
+
+1. Turn on Wi-Fi in the Settings panel and note the **IP Address** assigned to the frame (tap the green Wi-Fi icon in the top right to view).
+2. Open a web browser on any device on the same local network and navigate to: `http://<frame-ip-address>/upload`.
+3. You will be greeted with a beautiful Catppuccin-themed drag-and-drop interface.
+4. **Drag & Drop** multiple image files into the dashed area, or click to open your file browser.
+5. The files are added to a **pending queue**. You can review the selected files and click the **"X"** button to remove any unwanted files.
+6. Click **Upload All** to begin a sequential background upload directly to the device's SD Card.
+7. Once all uploads show as `Done` and the queue is finished, a **Restart Device** button will automatically appear. Click it to remotely reboot the frame, which forces it to rescan the SD card and instantly include your new photos in the slideshow!
 
 ## :camera: Screenshots
 
