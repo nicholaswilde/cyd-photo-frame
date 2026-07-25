@@ -1276,17 +1276,12 @@ void setup() {
   // Single-pass /cache sweep:
   // 1. Clears cache if the theme changed.
   // 2. Deletes leftover temporary (.tmp) files.
-  // 3. Populates cacheInventory (filename -> size) with valid cache files.
-  // This reduces up to three separate slow directory sweeps down to one.
   // ------------------------------------------------------------------
-  std::vector<std::pair<uint64_t, size_t>> cacheInventory;
-  cacheInventory.reserve(fileCache.size() + 20); // Pre-allocate to prevent mid-scan heap allocation/fragmentation
-
   bool themeChanged = (currentThemeFlavor != cachedTheme);
   if (themeChanged) {
     Serial.println("[System] Theme flavor changed. Clearing cache...");
   } else if (!bypassOptimization) {
-    Serial.println("[System] Scanning /cache inventory...");
+    Serial.println("[System] Cleaning up orphaned temp files in /cache...");
   }
 
   if (themeChanged || !bypassOptimization) {
@@ -1298,28 +1293,14 @@ void setup() {
           char path[256];
           strncpy(path, file.path(), sizeof(path) - 1);
           path[sizeof(path) - 1] = '\0';
-          size_t fileSize = (size_t)file.size();
           size_t len = strlen(path);
           file.close();
 
-          bool deleted = false;
           if (themeChanged) {
             SD.remove(path);
-            deleted = true;
           } else if (!bypassOptimization && len > 4 && strcasecmp(&path[len - 4], ".tmp") == 0) {
             Serial.printf("[System] Cleaning up orphaned temp file: %s\n", path);
             SD.remove(path);
-            deleted = true;
-          }
-
-          if (!deleted && !bypassOptimization) {
-            if (cacheInventory.size() < 3000) {
-              uint64_t h = fnv1a_hash(path);
-              cacheInventory.push_back({h, fileSize});
-            } else {
-              Serial.println("[System] Cache inventory size limit reached, aborting sweep to preserve memory.");
-              break;
-            }
           }
         } else {
           file.close();
@@ -1327,10 +1308,6 @@ void setup() {
         file = cacheDir.openNextFile();
       }
       cacheDir.close();
-    }
-    if (!bypassOptimization && !themeChanged) {
-      std::sort(cacheInventory.begin(), cacheInventory.end());
-      Serial.printf("[System] Cache inventory built: %zu file(s) found in /cache.\n", cacheInventory.size());
     }
   }
 
@@ -1397,18 +1374,15 @@ void setup() {
         }
       }
 
-      // Look up this image in the pre-built inventory (zero SD I/O).
+      // Check if cache file exists and has correct size
       bool cacheValid = false;
       size_t actualSize = 0;
-      uint64_t h = fnv1a_hash(cachePath.c_str());
-
-      auto it = std::lower_bound(cacheInventory.begin(), cacheInventory.end(), std::make_pair(h, (size_t)0),
-                                 [](const std::pair<uint64_t, size_t>& a, const std::pair<uint64_t, size_t>& b) {
-                                   return a.first < b.first;
-                                 });
-
-      if (it != cacheInventory.end() && it->first == h) {
-        actualSize = it->second;
+      
+      File cf = SD.open(cachePath.c_str(), FILE_READ);
+      if (cf) {
+        actualSize = (size_t)cf.size();
+        cf.close();
+        
         if (actualSize == expectedCacheBytes) {
           cacheValid = true;
         } else {
