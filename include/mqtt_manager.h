@@ -10,6 +10,10 @@
 #include "../tests/mocks/Arduino.h"
 #endif
 
+#include <functional>
+
+typedef std::function<void(const char* topic, const char* payload)> MqttMessageCallback;
+
 class MqttManager {
 public:
     /**
@@ -20,6 +24,11 @@ public:
      * @param password MQTT password
      */
     MqttManager(const char* server, uint16_t port, const char* user, const char* password);
+
+    /**
+     * @brief Set a callback to run when messages arrive.
+     */
+    void setCallback(MqttMessageCallback callback);
 
     /**
      * @brief Initializes the FreeRTOS timers and MQTT client callbacks.
@@ -63,6 +72,7 @@ private:
 
     AsyncMqttClient _mqttClient;
     TimerHandle_t _reconnectTimer;
+    MqttMessageCallback _messageCallback = nullptr;
 
     const char* _server;
     uint16_t _port;

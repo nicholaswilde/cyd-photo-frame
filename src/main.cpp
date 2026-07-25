@@ -65,6 +65,105 @@ WifiManager* wifiManager = nullptr;
 #if defined(MQTT_SERVER)
 #include "mqtt_manager.h"
 MqttManager* mqttManager = nullptr;
+#include <ArduinoJson.h>
+
+extern Preferences prefs;
+extern int currentBrightness;
+extern bool isAutoBrightness;
+extern bool isRandomMode;
+extern bool isInactivitySleep;
+extern int currentThemeFlavor;
+extern unsigned long loadedDelay;
+extern void showNextImage();
+extern void showPreviousImage();
+
+void emitMqttSettings() {
+  if (isMqttEnabled && mqttManager != nullptr && mqttManager->isConnected()) {
+    JsonDocument doc;
+    doc["brightness"] = currentBrightness;
+    doc["auto_brightness"] = isAutoBrightness;
+    doc["random_mode"] = isRandomMode;
+    doc["sleep_enabled"] = isInactivitySleep;
+    doc["theme"] = currentThemeFlavor;
+    doc["delay_ms"] = loadedDelay;
+    
+    char buffer[256];
+    serializeJson(doc, buffer);
+    mqttManager->publish("cyd/photo-frame/state/settings", buffer);
+  }
+}
+
+void emitMqttImageState(const char* filename, size_t index, size_t total) {
+  if (isMqttEnabled && mqttManager != nullptr && mqttManager->isConnected()) {
+    JsonDocument doc;
+    doc["filename"] = filename;
+    doc["current_index"] = index;
+    doc["total_images"] = total;
+    
+    char buffer[256];
+    serializeJson(doc, buffer);
+    mqttManager->publish("cyd/photo-frame/state/image", buffer);
+  }
+}
+
+void handleMqttMessage(const char* topic, const char* payload) {
+  if (strcmp(topic, "cyd/photo-frame/command/settings") == 0) {
+    JsonDocument doc;
+    DeserializationError error = deserializeJson(doc, payload);
+    if (!error) {
+      Preferences prefs;
+      prefs.begin("cyd-photo", false);
+      if (doc.containsKey("brightness")) {
+        currentBrightness = doc["brightness"].as<int>();
+#if defined(TFT_BL) && (TFT_BL >= 0)
+        if (!isAutoBrightness) analogWrite(TFT_BL, currentBrightness);
+#endif
+        prefs.putUChar("bright", currentBrightness);
+      }
+      if (doc.containsKey("auto_brightness")) {
+        isAutoBrightness = doc["auto_brightness"].as<bool>();
+        prefs.putBool("autob", isAutoBrightness);
+      }
+      if (doc.containsKey("random_mode")) {
+        isRandomMode = doc["random_mode"].as<bool>();
+        prefs.putBool("random", isRandomMode);
+      }
+      if (doc.containsKey("sleep_enabled")) {
+        isInactivitySleep = doc["sleep_enabled"].as<bool>();
+        prefs.putBool("sleep", isInactivitySleep);
+      }
+      if (doc.containsKey("theme")) {
+        currentThemeFlavor = doc["theme"].as<int>();
+        prefs.putInt("theme", currentThemeFlavor);
+      }
+      if (doc.containsKey("delay_ms")) {
+        loadedDelay = doc["delay_ms"].as<unsigned long>();
+        prefs.putULong("delay", loadedDelay);
+      }
+      prefs.end();
+      
+      emitMqttSettings();
+    }
+  } else if (strcmp(topic, "cyd/photo-frame/command/action") == 0) {
+    if (strcmp(payload, "next") == 0) {
+      showNextImage();
+    } else if (strcmp(payload, "previous") == 0) {
+      showPreviousImage();
+    } else if (strcmp(payload, "sleep") == 0) {
+      extern bool isSleeping;
+      extern LedManager led;
+      isSleeping = true;
+      led.setState(LedManager::STATE_OFF);
+    } else if (strcmp(payload, "wake") == 0) {
+      extern bool isSleeping;
+      extern LedManager led;
+      isSleeping = false;
+      led.setState(LedManager::STATE_SLIDESHOW);
+    } else if (strcmp(payload, "reboot") == 0) {
+      ESP.restart();
+    }
+  }
+}
 #endif
 
 #include "app_state.h"
@@ -738,9 +837,7 @@ bool renderScaledJpg(const char* filename) {
       }
       drawToastBannerIfNeeded();
 #if defined(MQTT_SERVER)
-      if (isMqttEnabled && mqttManager != nullptr) {
-          mqttManager->publish("cyd/photo-frame/filename", filename);
-      }
+      emitMqttImageState(filename, fileCache.getIndex() + 1, fileCache.size());
 #endif
       return true;
     }
@@ -1063,6 +1160,7 @@ void setup() {
     WiFi.onEvent(onWiFiGotIP, WiFiEvent_t::ARDUINO_EVENT_WIFI_STA_GOT_IP);
     WiFi.onEvent(onWiFiDisconnect, WiFiEvent_t::ARDUINO_EVENT_WIFI_STA_DISCONNECTED);
     mqttManager = new MqttManager(MQTT_SERVER, MQTT_PORT, MQTT_USER, MQTT_PASSWORD);
+    mqttManager->setCallback(handleMqttMessage);
     mqttManager->begin();
 #endif
     wifiManager->begin();

@@ -3,6 +3,10 @@
 MqttManager::MqttManager(const char* server, uint16_t port, const char* user, const char* password)
     : _server(server), _port(port), _user(user), _password(password), _reconnectTimer(nullptr) {}
 
+void MqttManager::setCallback(MqttMessageCallback callback) {
+    _messageCallback = callback;
+}
+
 void MqttManager::begin() {
     // 1. Create a FreeRTOS timer for non-blocking reconnects.
     _reconnectTimer = xTimerCreate("mqttTimer", pdMS_TO_TICKS(5000), pdFALSE, (void*)this, onMqttReconnectTimer);
@@ -23,6 +27,18 @@ void MqttManager::begin() {
     _mqttClient.onPublish([](uint16_t packetId) {
         Serial.printf("[MQTT] Broker acknowledged publish (Packet ID: %d)\n", packetId);
     });
+
+    _mqttClient.onMessage([this](char* topic, char* payload, AsyncMqttClientMessageProperties properties, size_t len, size_t index, size_t total) {
+        if (this->_messageCallback && index == 0 && len == total) {
+            char* nullTerminatedPayload = new char[len + 1];
+            memcpy(nullTerminatedPayload, payload, len);
+            nullTerminatedPayload[len] = '\0';
+            
+            this->_messageCallback(topic, nullTerminatedPayload);
+            
+            delete[] nullTerminatedPayload;
+        }
+    });
 }
 
 void MqttManager::connectToMqtt() {
@@ -42,11 +58,19 @@ void MqttManager::onNetworkDisconnected() {
     }
 }
 
+extern void emitMqttSettings();
+
 void MqttManager::onMqttConnect(bool sessionPresent) {
     Serial.println("[MQTT] Connected to broker!");
     
     // Publish a boot message
     _mqttClient.publish("cyd/photo-frame/status", 0, true, "online");
+    
+    // Subscribe to commands
+    _mqttClient.subscribe("cyd/photo-frame/command/#", 0);
+    
+    // Emit initial settings state
+    emitMqttSettings();
 }
 
 void MqttManager::onMqttDisconnect(AsyncMqttClientDisconnectReason reason) {
