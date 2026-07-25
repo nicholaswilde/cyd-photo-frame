@@ -1295,9 +1295,12 @@ void setup() {
       File file = cacheDir.openNextFile();
       while (file) {
         if (!file.isDirectory()) {
-          const char* path = file.path();
+          char path[256];
+          strncpy(path, file.path(), sizeof(path) - 1);
+          path[sizeof(path) - 1] = '\0';
           size_t fileSize = (size_t)file.size();
           size_t len = strlen(path);
+          file.close();
 
           bool deleted = false;
           if (themeChanged) {
@@ -1310,10 +1313,14 @@ void setup() {
           }
 
           if (!deleted && !bypassOptimization) {
-            uint64_t h = fnv1a_hash(path);
-            cacheInventory.push_back({h, fileSize});
+            if (cacheInventory.size() < 3000) {
+              uint64_t h = fnv1a_hash(path);
+              cacheInventory.push_back({h, fileSize});
+            } else {
+              Serial.println("[System] Cache inventory size limit reached, aborting sweep to preserve memory.");
+              break;
+            }
           }
-          file.close();
         } else {
           file.close();
         }
