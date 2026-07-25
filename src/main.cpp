@@ -1295,24 +1295,25 @@ void setup() {
       File file = cacheDir.openNextFile();
       while (file) {
         if (!file.isDirectory()) {
-          String path = file.path();
+          const char* path = file.path();
           size_t fileSize = (size_t)file.size();
-          file.close();
+          size_t len = strlen(path);
 
           bool deleted = false;
           if (themeChanged) {
-            SD.remove(path.c_str());
+            SD.remove(path);
             deleted = true;
-          } else if (!bypassOptimization && path.endsWith(".tmp")) {
-            Serial.printf("[System] Cleaning up orphaned temp file: %s\n", path.c_str());
-            SD.remove(path.c_str());
+          } else if (!bypassOptimization && len > 4 && strcasecmp(&path[len - 4], ".tmp") == 0) {
+            Serial.printf("[System] Cleaning up orphaned temp file: %s\n", path);
+            SD.remove(path);
             deleted = true;
           }
 
           if (!deleted && !bypassOptimization) {
-            uint64_t h = fnv1a_hash(path.c_str());
+            uint64_t h = fnv1a_hash(path);
             cacheInventory.push_back({h, fileSize});
           }
+          file.close();
         } else {
           file.close();
         }
