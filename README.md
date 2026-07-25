@@ -221,7 +221,19 @@ To enable MQTT features (e.g. broadcasting the currently displayed filename or d
 If `MQTT_SERVER` is defined, the device will publish its status to `cyd/photo-frame/status` upon connection, and publish the current picture filename to `cyd/photo-frame/filename` during the slideshow.
 
 
-### Compiling & Flashing
+### Flashing Pre-compiled Binaries
+
+You can download the latest `.bin` files directly from the [Releases](https://github.com/nicholaswilde/cyd-photo-frame/releases) page and flash them using `esptool`. 
+
+Similar to the process used in [frame-fi](https://github.com/nicholaswilde/frame-fi), download the firmware binary and flash it to your device using the following command (replacing `/dev/ttyUSB0` with your actual serial port):
+
+```bash
+esptool.py --chip esp32 --port /dev/ttyUSB0 --baud 921600 --before default_reset --after hard_reset write_flash -z --flash_mode dio --flash_freq 40m --flash_size detect 0x10000 firmware.bin
+```
+
+*(For more detailed flashing instructions, you can reference the [frame-fi flashing guide](https://nicholaswilde.io/frame-fi/flashing-firmware/)).*
+
+### Compiling from Source
 Select the environment matching your hardware:
 
 ```bash
