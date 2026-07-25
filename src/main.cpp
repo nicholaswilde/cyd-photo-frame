@@ -958,8 +958,8 @@ void exitSettings() {
 
   // Render transition screen
   LVGLManager::showLoadingSlideshowScreen("Resuming slideshow...", false);
-
-  delay(500);
+  
+  delay(100);
 
   // Smoothly fade out "Resuming slideshow..." screen to black
   fader.startFade(currentBrightness, 0, 250);
@@ -1498,15 +1498,15 @@ void setup() {
         restrictCacheToExisting();
         
         LVGLManager::showLoadingSlideshowScreen("Optimization cancelled.\nLoading slideshow...", true);
-        delay(1500);
+        delay(500);
       } else {
         drawProgress(filesToCache.size(), filesToCache.size(), "All Photos Optimized!");
-        delay(1500);
+        delay(500);
       }
     } else {
-      // If all photos were already cached, display completion status on screen for 1.5s
+      // If all photos were already cached, display completion status on screen for 0.5s
       LVGLManager::updateCalculationProgress(totalImages, totalImages, "All Photos Ready!", 0);
-      delay(1500);
+      delay(500);
     }
 
     // Smoothly fade out optimization / progress screen to black before loading first image
