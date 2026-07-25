@@ -91,6 +91,19 @@ The screen is divided into a 3x3 touch grid to control slideshow behavior and pa
 
 ## :camera: Screenshots
 
+### Device UI Showcase
+
+| Screen | Landscape (320x240) |
+|---|---|
+| **Settings** | ![Settings](screenshots/current_settings.png) |
+| **Access Point Mode** | ![AP Mode](screenshots/current_ap.png) |
+| **Photo Optimization** | ![Optimization](screenshots/current_opt.png) |
+| **Loading Slideshow** | ![Loading](screenshots/current_loading.png) |
+| **Resuming Slideshow** | ![Resuming](screenshots/current_resuming.png) |
+| **Clear Cache Prompt** | ![Clear Cache](screenshots/current_clear_cache.png) |
+| **No Photos Warning** | ![Warning](screenshots/current_warn.png) |
+| **SD Card Error** | ![SD Error](screenshots/current_sd_error.png) |
+
 The device supports capturing the current screen as a standard 24-bit BMP image via HTTP or serial commands.
 
 ### Remote HTTP API & Screen Capture
