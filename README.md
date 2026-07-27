@@ -144,6 +144,74 @@ If the CYD is plugged into your computer via USB:
 5. Type **`screenshot_tft`** and press **`Enter`** to capture the current raw TFT screen (e.g., Optimization) as BMP on the SD card.
 6. The ESP32 will format/empty the `/cache` directory (for clear) or write the BMP file, then automatically reboot if the cache was cleared.
 
+## :rocket: Getting Started
+
+### 1. Quick Install (Pre-compiled Binaries)
+
+You can flash the device directly from your terminal using the provided flash script. Replace `/dev/ttyUSB0` with your actual serial port. By default, it flashes the `cyd_28r` version, but you can specify the device as the first argument.
+
+```bash
+# Flash the default cyd_28r
+bash -c "$(curl -fsSL https://raw.githubusercontent.com/nicholaswilde/cyd-photo-frame/main/scripts/flash.sh)" _ cyd_28r /dev/ttyUSB0
+
+# Or flash the cyd_35c version
+bash -c "$(curl -fsSL https://raw.githubusercontent.com/nicholaswilde/cyd-photo-frame/main/scripts/flash.sh)" _ cyd_35c /dev/ttyUSB0
+```
+
+> [!WARNING]
+> Running a script directly from the internet with `bash -c "$(curl...)"` is a potential security risk. Always review the script's source code before executing it to ensure it is safe. You can view the script [here](https://github.com/nicholaswilde/cyd-photo-frame/blob/main/scripts/flash.sh).
+
+*(For more detailed flashing instructions, you can reference the [frame-fi flashing guide](https://nicholaswilde.io/frame-fi/flashing-firmware/)).*
+
+### 2. Build from Source
+
+#### Environment Setup (`.env` and `config/secrets.h`)
+
+Initialize local environment configuration by copying the templates:
+
+```bash
+task init
+# Or manually:
+# cp .env.example .env
+# cp config/secrets.h.example config/secrets.h
+```
+
+#### Configurable Variables in `.env`:
+| Variable | Default | Description |
+|---|---|---|
+| `PIO_ENV` | `cyd_28r` | Default PlatformIO target environment (`cyd_28r` or `cyd_35c`) |
+| `CYD_DEVICE_IP` | `192.168.1.100` | Local network IP address of the CYD device (used for `task screenshots`) |
+| `COVERALLS_REPO_TOKEN` | *(optional)* | Token for uploading coverage reports to Coveralls (`task coverage:upload`) |
+
+#### MQTT Configuration (`config/secrets.h`)
+To enable MQTT features (e.g. broadcasting the currently displayed filename or device status), edit `config/secrets.h` and configure your MQTT broker details:
+```cpp
+#define MQTT_SERVER   "192.168.1.100" // Your broker IP or hostname
+#define MQTT_PORT     1883
+#define MQTT_USER     "my_mqtt_username"
+#define MQTT_PASSWORD "my_secure_password"
+```
+
+If `MQTT_SERVER` is defined, the device will publish its status to `cyd/photo-frame/status` upon connection, and publish the current picture filename to `cyd/photo-frame/filename` during the slideshow.
+
+#### Build & Upload
+Select the environment matching your hardware:
+
+```bash
+# For CYD 2.8" (Resistive Touch, ILI9341)
+pio run -e cyd_28r -t upload
+# (Use cyd_28r_inv if your colors are inverted)
+
+# For CYD 3.5" (Capacitive Touch, ST7796)
+pio run -e cyd_35c -t upload
+# (Use cyd_35c_inv if your colors are inverted)
+
+# Start the Serial Monitor
+pio device monitor
+```
+
+---
+
 ## :framed_picture: Preparing Images
 
 A helper script (`scripts/prepare_images.py`) is included to resize and optimise images before copying them to the SD card.
@@ -191,70 +259,6 @@ uv run scripts/prepare_images.py -i ~/Photos -o /mnt/sdcard --raw
 > When using `--orientation both`, images are written into `landscape/` and `portrait/` subdirectories so you can copy only the set that matches your device's orientation setting. When `--raw` is active, a `cache/` directory containing the raw RGB565 files is automatically created within each output directory.
 
 ## :computer: Development
-
-### Environment Setup (`.env` and `config/secrets.h`)
-
-Initialize local environment configuration by copying the templates:
-
-```bash
-task init
-# Or manually:
-# cp .env.example .env
-# cp config/secrets.h.example config/secrets.h
-```
-
-#### Configurable Variables in `.env`:
-| Variable | Default | Description |
-|---|---|---|
-| `PIO_ENV` | `cyd_28r` | Default PlatformIO target environment (`cyd_28r` or `cyd_35c`) |
-| `CYD_DEVICE_IP` | `192.168.1.100` | Local network IP address of the CYD device (used for `task screenshots`) |
-| `COVERALLS_REPO_TOKEN` | *(optional)* | Token for uploading coverage reports to Coveralls (`task coverage:upload`) |
-
-#### MQTT Configuration (`config/secrets.h`)
-To enable MQTT features (e.g. broadcasting the currently displayed filename or device status), edit `config/secrets.h` and configure your MQTT broker details:
-```cpp
-#define MQTT_SERVER   "192.168.1.100" // Your broker IP or hostname
-#define MQTT_PORT     1883
-#define MQTT_USER     "my_mqtt_username"
-#define MQTT_PASSWORD "my_secure_password"
-```
-
-If `MQTT_SERVER` is defined, the device will publish its status to `cyd/photo-frame/status` upon connection, and publish the current picture filename to `cyd/photo-frame/filename` during the slideshow.
-
-
-### Flashing Pre-compiled Binaries
-
-1. **Download and Flash using the remote script:**
-   You can flash the device directly from your terminal using the provided flash script. Replace `/dev/ttyUSB0` with your actual serial port. By default, it flashes the `cyd_28r` version, but you can specify the device as the first argument.
-
-   ```bash
-   # Flash the default cyd_28r
-   bash -c "$(curl -fsSL https://raw.githubusercontent.com/nicholaswilde/cyd-photo-frame/main/scripts/flash.sh)" _ cyd_28r /dev/ttyUSB0
-
-   # Or flash the cyd_35c version
-   bash -c "$(curl -fsSL https://raw.githubusercontent.com/nicholaswilde/cyd-photo-frame/main/scripts/flash.sh)" _ cyd_35c /dev/ttyUSB0
-   ```
-
-   > [!WARNING]
-   > Running a script directly from the internet with `bash -c "$(curl...)"` is a potential security risk. Always review the script's source code before executing it to ensure it is safe. You can view the script [here](https://github.com/nicholaswilde/cyd-photo-frame/blob/main/scripts/flash.sh).
-
-*(For more detailed flashing instructions, you can reference the [frame-fi flashing guide](https://nicholaswilde.io/frame-fi/flashing-firmware/)).*
-
-### Compiling from Source
-Select the environment matching your hardware:
-
-```bash
-# For CYD 2.8" (Resistive Touch, ILI9341)
-pio run -e cyd_28r -t upload
-# (Use cyd_28r_inv if your colors are inverted)
-
-# For CYD 3.5" (Capacitive Touch, ST7796)
-pio run -e cyd_35c -t upload
-# (Use cyd_35c_inv if your colors are inverted)
-
-# Start the Serial Monitor
-pio device monitor
-```
 
 ### Running Tests
 Unit tests can be run locally on your host machine without hardware:
