@@ -5,6 +5,7 @@
 #include <WiFi.h>
 #include <DNSServer.h>
 #include <WebServer.h>
+#include <ImprovWiFiLibrary.h>
 #include <Preferences.h>
 #include <SD.h>
 #include "config/config.h"
@@ -46,8 +47,25 @@ WifiManager::WifiManager(const std::string& ssid, const std::string& password)
 
 void WifiManager::begin() {
     Serial.println("[WiFi] Starting Wi-Fi Manager...");
+#ifndef NATIVE_TEST
     WiFi.setAutoReconnect(true);
     WiFi.setTxPower(WIFI_POWER_11dBm);
+
+    ImprovWiFi* improv = new ImprovWiFi(&Serial);
+    improv->setDeviceInfo(ImprovTypes::ChipFamily::CF_ESP32, "CYD-Photo-Frame", "1.0", "CYD Photo Frame", "http://{LOCAL_IPV4}");
+    improv->onImprovConnected([](const char *ssid, const char *password) {
+        Serial.printf("\n[WiFi] Improv provisioned: %s\n", ssid);
+        Preferences prefs;
+        prefs.begin("settings", false);
+        prefs.putString("wifi_ssid", ssid);
+        prefs.putString("wifi_pass", password);
+        prefs.putBool("wifi_on", true);
+        prefs.end();
+        delay(500);
+        ESP.restart();
+    });
+    _improv = improv;
+#endif
     WiFi.mode(WIFI_STA);
     
     if (_ssid.empty()) {
@@ -78,6 +96,11 @@ void WifiManager::stop() {
 }
 
 void WifiManager::update() {
+#ifndef NATIVE_TEST
+    if (_improv) {
+        ((ImprovWiFi*)_improv)->handleSerial();
+    }
+#endif
     wl_status_t status = WiFi.status();
 
     switch (_state) {

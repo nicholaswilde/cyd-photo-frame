@@ -45,6 +45,7 @@ private:
 #ifndef NATIVE_TEST
     void* _dnsServer = nullptr;
     void* _webServer = nullptr;
+    void* _improv = nullptr;
 #endif
 };
 
