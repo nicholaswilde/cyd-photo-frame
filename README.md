@@ -246,9 +246,11 @@ Select the environment matching your hardware:
 ```bash
 # For CYD 2.8" (Resistive Touch, ILI9341)
 pio run -e cyd_28r -t upload
+# (Use cyd_28r_inv if your colors are inverted)
 
 # For CYD 3.5" (Capacitive Touch, ST7796)
 pio run -e cyd_35c -t upload
+# (Use cyd_35c_inv if your colors are inverted)
 
 # Start the Serial Monitor
 pio device monitor
@@ -266,7 +268,7 @@ If you encounter any issues with your screen or the software, please review the 
 
 ### Inverted Colors
 If the colors on your display appear inverted, this is a common issue with some batches of the CYD TFT screens. You can easily resolve it by:
-- Flashing the pre-compiled `_inv` releases (e.g. `cyd-weather-station-v0.1.7-cyd_28r_inv.zip` or `cyd_35c_inv.zip`).
+- Flashing the pre-compiled `_inv` releases (e.g. `cyd-photo-frame-v0.1.4-cyd_28r_inv.zip` or `cyd-photo-frame-v0.1.4-cyd_35c_inv.zip`).
 - Or, if building from source, using the `cyd_28r_inv` or `cyd_35c_inv` PlatformIO environments. These environments automatically enable the `TFT_INVERSION_ON=1` build flag.
 
 ### RGB / BGR Swap
