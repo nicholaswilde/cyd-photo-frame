@@ -63,8 +63,12 @@ jobs:
       - name: "Build PlatformIO Project ${{ matrix.env }}"
         run: pio run --environment ${{ matrix.env }}
 
-      - name: "Zip binaries"
-        run: zip -j ${{ env.BASENAME }}.zip .pio/build/${{ matrix.env }}/*.bin
+      - name: "Zip release package"
+        run: |
+          cd .pio/build/${{ matrix.env }}
+          zip $GITHUB_WORKSPACE/${{ env.BASENAME }}.zip *.bin
+          cd $GITHUB_WORKSPACE
+          zip ${{ env.BASENAME }}.zip README.md LICENSE version.txt scripts/prepare_images.py scripts/flash.sh
                   
       - name: "Upload ${{ matrix.env }} artifacts"
         uses: actions/upload-artifact@v4
