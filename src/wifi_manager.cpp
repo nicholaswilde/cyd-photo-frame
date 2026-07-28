@@ -53,6 +53,25 @@ void WifiManager::begin() {
 
     ImprovWiFi* improv = new ImprovWiFi(&Serial);
     improv->setDeviceInfo(ImprovTypes::ChipFamily::CF_ESP32, "CYD-Photo-Frame", "1.0", "CYD Photo Frame", "http://{LOCAL_IPV4}");
+    
+    improv->setCustomConnectWiFi([](const char *ssid, const char *password) {
+        Serial.printf("\n[WiFi] Improv connecting to %s...\n", ssid);
+        // Turn off AP mode to speed up STA connection and avoid channel conflicts
+        WiFi.softAPdisconnect(true);
+        WiFi.mode(WIFI_STA);
+        WiFi.disconnect();
+        delay(100);
+        
+        WiFi.begin(ssid, password);
+        int attempts = 0;
+        // Wait up to 8 seconds (16 * 500ms) to prevent browser RPC timeout (usually 10s)
+        while (WiFi.status() != WL_CONNECTED && attempts < 16) { 
+            delay(500);
+            attempts++;
+        }
+        return WiFi.status() == WL_CONNECTED;
+    });
+
     improv->onImprovConnected([](const char *ssid, const char *password) {
         Serial.printf("\n[WiFi] Improv provisioned: %s\n", ssid);
         Preferences prefs;

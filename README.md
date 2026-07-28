@@ -91,6 +91,10 @@ The screen is divided into a 3x3 touch grid to control slideshow behavior and pa
    - **Yellow Icon:** Connecting or AP Mode active.
    - **Red Icon:** Disconnected or connection failed.
 
+> [!NOTE]
+> **Improv Wi-Fi Provisioning**
+> The device supports [Improv Wi-Fi](https://www.improv-wifi.com/) provisioning over Serial. Please note that Improv is only active and available to detect your device when **WiFi is toggled ON** in the Settings menu.
+
 ## :cloud: Remote HTTP File Upload
 
 The CYD Photo Frame hosts a built-in web server to allow wireless media management from your computer or smartphone when connected to Wi-Fi.

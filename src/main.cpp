@@ -1062,10 +1062,49 @@ void setup() {
   Serial.println("[System] Booting ESP32 CYD Photo Frame...");
   Serial.println("[System] Serial commands: 'clear'/'clear_cache', 'screenshot' (settings screen), 'screenshot_tft' (current raw TFT screen)");
 
+  // Load settings from NVS early
+  int cachedTheme = 0;
+  int cachedOrientation = 1;
+  bool cachedWifiEnabled = false;
+  {
+    Preferences prefs;
+    prefs.begin("settings", false);
+    unsigned long loadedDelay = slideshowTimer.getInterval();
+    HardwareLogic::loadSettings(prefs, currentBrightness, isAutoBrightness, loadedDelay, isRandomMode, showFilename, isInactivitySleep, currentThemeFlavor, currentOrientation, currentLedBrightness, isLedEnabled, isWifiEnabled, isMqttEnabled, wifiSSID, wifiPassword, bypassOptimization);
+    slideshowTimer.setInterval(loadedDelay);
+    cachedTheme = (int)prefs.getUInt("cached_theme", 0);
+    cachedOrientation = (int)prefs.getInt("cached_rot", 1);
+    cachedWifiEnabled = prefs.getBool("cached_wifi", false);
+    prefs.end();
+    Serial.printf("[System] Settings loaded from NVS. Brightness: %d, Auto: %d, Delay: %lu ms, Random: %d, ShowFN: %d, Sleep: %d, Theme: %d, CachedTheme: %d, Orientation: %d, CachedOrientation: %d, LED Brightness: %d, LED Enabled: %d, WiFi: %d, CachedWiFi: %d, BypassOpt: %d\n",
+                  currentBrightness, isAutoBrightness, loadedDelay, isRandomMode, showFilename, isInactivitySleep, currentThemeFlavor, cachedTheme, currentOrientation, cachedOrientation, currentLedBrightness, isLedEnabled, isWifiEnabled, cachedWifiEnabled, bypassOptimization);
+  }
+
+  // Initialize and begin WiFi Manager if enabled (so Improv starts immediately)
+  if (isWifiEnabled) {
+    wifiManager = new WifiManager(wifiSSID, wifiPassword);
+#if defined(MQTT_SERVER)
+    WiFi.onEvent(onWiFiGotIP, WiFiEvent_t::ARDUINO_EVENT_WIFI_STA_GOT_IP);
+    WiFi.onEvent(onWiFiDisconnect, WiFiEvent_t::ARDUINO_EVENT_WIFI_STA_DISCONNECTED);
+    mqttManager = new MqttManager(MQTT_SERVER, MQTT_PORT, MQTT_USER, MQTT_PASSWORD);
+    mqttManager->setCallback(handleMqttMessage);
+    mqttManager->begin();
+#endif
+    wifiManager->begin();
+  }
+
+  auto waitWithWifi = [](unsigned long ms) {
+    unsigned long start = millis();
+    while (millis() - start < ms) {
+      if (wifiManager) wifiManager->update();
+      delay(20);
+    }
+  };
+
 #if defined(SD_CS_PIN) && (SD_CS_PIN >= 0)
   pinMode(SD_CS_PIN, OUTPUT);
   digitalWrite(SD_CS_PIN, HIGH);
-  delay(800); // Allow SD card power rails & internal controller to stabilize on cold boot
+  waitWithWifi(800); // Allow SD card power rails & internal controller to stabilize on cold boot
 #endif
 
   // Initialize SD Card FIRST (before TFT, Touch, and LVGL SPI bus initialization)
@@ -1085,7 +1124,7 @@ void setup() {
     SPI.transfer(0xFF);
   }
   SPI.endTransaction();
-  delay(50);
+  waitWithWifi(50);
 
   for (uint32_t freq : frequencies) {
     for (int retry = 1; retry <= 2; retry++) {
@@ -1099,27 +1138,9 @@ void setup() {
 #if defined(SD_CS_PIN) && (SD_CS_PIN >= 0)
       digitalWrite(SD_CS_PIN, HIGH);
 #endif
-      delay(150); // Give SD card controller time to reset before next attempt
+      waitWithWifi(150); // Give SD card controller time to reset before next attempt
     }
     if (sdSuccess) break;
-  }
-
-  // Load settings from NVS
-  int cachedTheme = 0;
-  int cachedOrientation = 1;
-  bool cachedWifiEnabled = false;
-  {
-    Preferences prefs;
-    prefs.begin("settings", false);
-    unsigned long loadedDelay = slideshowTimer.getInterval();
-    HardwareLogic::loadSettings(prefs, currentBrightness, isAutoBrightness, loadedDelay, isRandomMode, showFilename, isInactivitySleep, currentThemeFlavor, currentOrientation, currentLedBrightness, isLedEnabled, isWifiEnabled, isMqttEnabled, wifiSSID, wifiPassword, bypassOptimization);
-    slideshowTimer.setInterval(loadedDelay);
-    cachedTheme = (int)prefs.getUInt("cached_theme", 0);
-    cachedOrientation = (int)prefs.getInt("cached_rot", 1);
-    cachedWifiEnabled = prefs.getBool("cached_wifi", false);
-    prefs.end();
-    Serial.printf("[System] Settings loaded from NVS. Brightness: %d, Auto: %d, Delay: %lu ms, Random: %d, ShowFN: %d, Sleep: %d, Theme: %d, CachedTheme: %d, Orientation: %d, CachedOrientation: %d, LED Brightness: %d, LED Enabled: %d, WiFi: %d, CachedWiFi: %d, BypassOpt: %d\n",
-                  currentBrightness, isAutoBrightness, loadedDelay, isRandomMode, showFilename, isInactivitySleep, currentThemeFlavor, cachedTheme, currentOrientation, cachedOrientation, currentLedBrightness, isLedEnabled, isWifiEnabled, cachedWifiEnabled, bypassOptimization);
   }
 
   lastTouchTimeMs = millis();
@@ -1153,17 +1174,8 @@ void setup() {
   }
   Serial.println("SD Card mounted successfully.");
 
-  // Initialize and begin WiFi Manager if enabled
   if (isWifiEnabled) {
-    wifiManager = new WifiManager(wifiSSID, wifiPassword);
-#if defined(MQTT_SERVER)
-    WiFi.onEvent(onWiFiGotIP, WiFiEvent_t::ARDUINO_EVENT_WIFI_STA_GOT_IP);
-    WiFi.onEvent(onWiFiDisconnect, WiFiEvent_t::ARDUINO_EVENT_WIFI_STA_DISCONNECTED);
-    mqttManager = new MqttManager(MQTT_SERVER, MQTT_PORT, MQTT_USER, MQTT_PASSWORD);
-    mqttManager->setCallback(handleMqttMessage);
-    mqttManager->begin();
-#endif
-    wifiManager->begin();
+    // WiFi Manager already initialized at the start of setup()
 
     // If attempting STA connection with credentials, wait briefly to check status
     if (wifiManager->getState() == WIFI_STATE_CONNECTING) {
