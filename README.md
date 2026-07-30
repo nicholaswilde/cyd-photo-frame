@@ -152,6 +152,12 @@ If the CYD is plugged into your computer via USB:
 
 ### 1. Quick Install (Pre-compiled Binaries)
 
+**Option A: Web Flasher (Easiest)**
+
+You can easily flash the pre-compiled firmware directly from your browser using the [ESP32 Web Flasher](https://nicholaswilde.io/esp32-web-flasher/). This requires a Web Serial compatible browser (like Chrome or Edge).
+
+**Option B: Terminal Script**
+
 You can flash the device directly from your terminal using the provided flash script. Replace `/dev/ttyUSB0` with your actual serial port. By default, it flashes the `cyd_28r` version, but you can specify the device as the first argument.
 
 ```bash
