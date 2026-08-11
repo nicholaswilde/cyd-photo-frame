@@ -12,6 +12,9 @@
 #include "version.h"
 #include "screenshot_manager.h"
 #include "lvgl_manager.h"
+#include "dashboard_html.h"
+#include "settings_html.h"
+#include "hardware_logic.h"
 
 static void configureStaticIP() {
 #ifndef NATIVE_TEST
@@ -570,6 +573,10 @@ void WifiManager::startScreenshotServer() {
     server->on("/api/orientation", HTTP_POST, [this]() { handleOrientation(); });
     server->on("/api/screen", HTTP_POST, [this]() { handleScreen(); });
 
+    server->on("/", HTTP_GET, [this]() { handleDashboard(); });
+    server->on("/settings", HTTP_GET, [this]() { handleSettings(); });
+    server->on("/settings/save", HTTP_POST, [this]() { handleSettingsSave(); });
+
     server->on("/upload", HTTP_GET, [this]() {
         WebServer* s = (WebServer*)_webServer;
         s->send_P(200, "text/html", uploadHtml);
@@ -705,6 +712,121 @@ void WifiManager::handleScreen() {
     }
 }
 
+void WifiManager::handleDashboard() {
+    WebServer* server = (WebServer*)_webServer;
+    String html = String(dashboard_html);
+    html.replace("%APP_VERSION%", APP_VERSION);
+    server->send(200, "text/html", html);
+}
+
+void WifiManager::handleSettings() {
+    WebServer* server = (WebServer*)_webServer;
+    Preferences prefs;
+    prefs.begin("settings", true);
+    
+    int brightness = 255;
+    bool autoBright = false;
+    unsigned long delayMs = 10000;
+    bool randomMode = false;
+    bool showFilename = false;
+    bool inactivitySleep = false;
+    int themeFlavor = 0;
+    int screenOrientation = 1;
+    int ledBrightness = 128;
+    bool isLedEnabled = true;
+    bool isWifiEnabled = true;
+    bool isMqttEnabled = false;
+    std::string wifiSSID = "";
+    std::string wifiPassword = "";
+    bool bypassOptimization = false;
+    
+    HardwareLogic::loadSettings(prefs, brightness, autoBright, delayMs, randomMode, showFilename, inactivitySleep, themeFlavor, screenOrientation, ledBrightness, isLedEnabled, isWifiEnabled, isMqttEnabled, wifiSSID, wifiPassword, bypassOptimization);
+    
+    prefs.end();
+
+    String html = String(settings_html);
+    html.replace("%APP_VERSION%", APP_VERSION);
+    
+    html.replace("%THEME_MOCHA%", themeFlavor == 0 ? "selected" : "");
+    html.replace("%THEME_MACCHIATO%", themeFlavor == 1 ? "selected" : "");
+    html.replace("%THEME_FRAPPE%", themeFlavor == 2 ? "selected" : "");
+    html.replace("%THEME_LATTE%", themeFlavor == 3 ? "selected" : "");
+    
+    html.replace("%ORIENT_0%", screenOrientation == 0 ? "selected" : "");
+    html.replace("%ORIENT_1%", screenOrientation == 1 ? "selected" : "");
+    html.replace("%ORIENT_2%", screenOrientation == 2 ? "selected" : "");
+    html.replace("%ORIENT_3%", screenOrientation == 3 ? "selected" : "");
+    
+    html.replace("%BRIGHTNESS%", String(brightness));
+    html.replace("%AUTO_BRIGHTNESS%", autoBright ? "checked" : "");
+    html.replace("%INACTIVITY_SLEEP%", inactivitySleep ? "checked" : "");
+    
+    html.replace("%DELAY_SECONDS%", String(delayMs / 1000));
+    html.replace("%RANDOM_MODE%", randomMode ? "checked" : "");
+    html.replace("%SHOW_FILENAME%", showFilename ? "checked" : "");
+    html.replace("%BYPASS_OPT%", bypassOptimization ? "checked" : "");
+    
+    html.replace("%LED_ENABLED%", isLedEnabled ? "checked" : "");
+    html.replace("%LED_BRIGHTNESS%", String(ledBrightness));
+    html.replace("%WIFI_ENABLED%", isWifiEnabled ? "checked" : "");
+    html.replace("%MQTT_ENABLED%", isMqttEnabled ? "checked" : "");
+
+    server->send(200, "text/html", html);
+}
+
+void WifiManager::handleSettingsSave() {
+    WebServer* server = (WebServer*)_webServer;
+    Preferences prefs;
+    prefs.begin("settings", false);
+    
+    int brightness = 255;
+    bool autoBright = false;
+    unsigned long delayMs = 10000;
+    bool randomMode = false;
+    bool showFilename = false;
+    bool inactivitySleep = false;
+    int themeFlavor = 0;
+    int screenOrientation = 1;
+    int ledBrightness = 128;
+    bool isLedEnabled = true;
+    bool isWifiEnabled = true;
+    bool isMqttEnabled = false;
+    std::string wifiSSID = "";
+    std::string wifiPassword = "";
+    bool bypassOptimization = false;
+    
+    HardwareLogic::loadSettings(prefs, brightness, autoBright, delayMs, randomMode, showFilename, inactivitySleep, themeFlavor, screenOrientation, ledBrightness, isLedEnabled, isWifiEnabled, isMqttEnabled, wifiSSID, wifiPassword, bypassOptimization);
+    
+    if (server->hasArg("theme_flavor")) themeFlavor = server->arg("theme_flavor").toInt();
+    if (server->hasArg("screen_orientation")) screenOrientation = server->arg("screen_orientation").toInt();
+    if (server->hasArg("brightness")) brightness = server->arg("brightness").toInt();
+    
+    autoBright = server->hasArg("auto_brightness");
+    inactivitySleep = server->hasArg("inactivity_sleep");
+    
+    if (server->hasArg("slideshow_delay")) delayMs = server->arg("slideshow_delay").toInt() * 1000;
+    
+    randomMode = server->hasArg("random_mode");
+    showFilename = server->hasArg("show_filename");
+    bypassOptimization = server->hasArg("bypass_opt");
+    
+    isLedEnabled = server->hasArg("led_enabled");
+    if (server->hasArg("led_brightness")) ledBrightness = server->arg("led_brightness").toInt();
+    
+    isWifiEnabled = server->hasArg("wifi_enabled");
+    isMqttEnabled = server->hasArg("mqtt_enabled");
+    
+    HardwareLogic::saveSettings(prefs, brightness, autoBright, delayMs, randomMode, showFilename, inactivitySleep, themeFlavor, screenOrientation, ledBrightness, isLedEnabled, isWifiEnabled, isMqttEnabled, wifiSSID, wifiPassword, bypassOptimization);
+    
+    prefs.end();
+    
+    server->sendHeader("Location", "/", true);
+    server->send(302, "text/plain", "Settings saved. Rebooting...");
+    
+    delay(1000);
+    ESP.restart();
+}
+
 #else
 // Mock implementation for host-native tests
 #include <string>
@@ -743,4 +865,7 @@ void WifiManager::stopScreenshotServer() {}
 void WifiManager::handleScreenshot() {}
 void WifiManager::handleOrientation() {}
 void WifiManager::handleScreen() {}
+void WifiManager::handleDashboard() {}
+void WifiManager::handleSettings() {}
+void WifiManager::handleSettingsSave() {}
 #endif

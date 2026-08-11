@@ -32,6 +32,9 @@ private:
     void handleScreenshot();
     void handleOrientation();
     void handleScreen();
+    void handleDashboard();
+    void handleSettings();
+    void handleSettingsSave();
 
     std::string _ssid;
     std::string _password;
