@@ -15,6 +15,16 @@
 #include "dashboard_html.h"
 #include "settings_html.h"
 #include "hardware_logic.h"
+#include <Update.h>
+#include "ota_html.h"
+
+#if defined(ST7796_DRIVER)
+    #define DEVICE_NAME "ESP32-3248S035C"
+#elif defined(ILI9341_DRIVER)
+    #define DEVICE_NAME "ESP32-2432S028R"
+#else
+    #define DEVICE_NAME "Unknown CYD Device"
+#endif
 
 static void configureStaticIP() {
 #ifndef NATIVE_TEST
@@ -260,7 +270,7 @@ void WifiManager::startAPMode() {
     server->on("/scan", [this]() {
         WiFi.scanNetworks(true, false, false, 150);
         WebServer* s = (WebServer*)_webServer;
-        String html = "<!DOCTYPE html><html><head>";
+        String html = "<!DOCTYPE html><html><head><meta charset='UTF-8'>";
         html += "<meta http-equiv='refresh' content='3;url=/'>";
         html += "<meta name='viewport' content='width=device-width, initial-scale=1'>";
         html += "<title>Scanning...</title>";
@@ -302,7 +312,7 @@ void WifiManager::handleRoot() {
         }
     }
 
-    String html = "<!DOCTYPE html><html><head><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">";
+    String html = "<!DOCTYPE html><html><head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">";
     html += "<title>CYD Photo Frame WiFi Setup</title>";
     html += "<style>";
     html += "body { font-family: 'Inter', system-ui, sans-serif; background: #1e1e2e; color: #cdd6f4; margin: 0; padding: 20px; display: flex; justify-content: center; align-items: center; min-height: 100vh; box-sizing: border-box; }";
@@ -357,7 +367,7 @@ void WifiManager::handleSave() {
 
     Serial.printf("[WiFi] Saved new credentials via captive portal: %s\n", ssid.c_str());
 
-    String html = "<!DOCTYPE html><html><head><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">";
+    String html = "<!DOCTYPE html><html><head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">";
     html += "<title>Credentials Saved</title>";
     html += "<style>";
     html += "body { font-family: 'Inter', system-ui, sans-serif; background: #1e1e2e; color: #cdd6f4; margin: 0; padding: 20px; display: flex; justify-content: center; align-items: center; min-height: 100vh; box-sizing: border-box; }";
@@ -397,6 +407,7 @@ const char uploadHtml[] PROGMEM = R"rawliteral(
 <!DOCTYPE html>
 <html>
 <head>
+<meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>CYD Photo Frame Upload</title>
 <style>
@@ -424,6 +435,8 @@ input[type="file"] { display: none; }
 .upload-btn:disabled { background: #45475a; cursor: not-allowed; color: #a6adc8; }
 .restart-btn { width: 100%; padding: 12px; background: #f38ba8; border: none; border-radius: 6px; color: #11111b; font-size: 16px; font-weight: bold; cursor: pointer; transition: background 0.2s; display: none; margin-top: 10px; }
 .restart-btn:hover { background: #e78284; }
+.btn-back { display: block; margin-top: 15px; color: #a6adc8; text-decoration: none; font-size: 14px; text-align: center; transition: color 0.2s; }
+.btn-back:hover { color: #cdd6f4; }
 .version { color: #a6adc8; font-size: 14px; margin-top: 5px; margin-bottom: 0; }
 </style>
 </head>
@@ -441,6 +454,7 @@ input[type="file"] { display: none; }
 <div class="progress-list" id="progressList"></div>
 <button id="uploadBtn" class="upload-btn">Upload All</button>
 <button id="restartBtn" class="restart-btn">Restart Device</button>
+<a href="/" class="btn-back">&larr; Back to Dashboard</a>
 </div>
 <script>
 const dropZone = document.getElementById('dropZone');
@@ -576,6 +590,44 @@ void WifiManager::startScreenshotServer() {
     server->on("/", HTTP_GET, [this]() { handleDashboard(); });
     server->on("/settings", HTTP_GET, [this]() { handleSettings(); });
     server->on("/settings/save", HTTP_POST, [this]() { handleSettingsSave(); });
+
+    server->on("/update", HTTP_GET, [this]() {
+        WebServer* s = (WebServer*)_webServer;
+        String html = String(ota_html);
+        html.replace("%DEVICE_NAME%", DEVICE_NAME);
+        s->send(200, "text/html", html);
+    });
+
+    server->on("/update", HTTP_POST, [this]() {
+        WebServer* s = (WebServer*)_webServer;
+        s->sendHeader("Connection", "close");
+        if (Update.hasError()) {
+            s->send(500, "text/plain", String(Update.errorString()));
+        } else {
+            s->send(200, "text/plain", "OK");
+            delay(1000);
+            ESP.restart();
+        }
+    }, [this]() {
+        WebServer* s = (WebServer*)_webServer;
+        HTTPUpload& upload = s->upload();
+        if (upload.status == UPLOAD_FILE_START) {
+            Serial.printf("Update start: %s\n", upload.filename.c_str());
+            if (!Update.begin(UPDATE_SIZE_UNKNOWN)) {
+                Update.printError(Serial);
+            }
+        } else if (upload.status == UPLOAD_FILE_WRITE) {
+            if (Update.write(upload.buf, upload.currentSize) != upload.currentSize) {
+                Update.printError(Serial);
+            }
+        } else if (upload.status == UPLOAD_FILE_END) {
+            if (Update.end(true)) {
+                Serial.printf("Update Success: %u bytes\nRebooting...\n", upload.totalSize);
+            } else {
+                Update.printError(Serial);
+            }
+        }
+    });
 
     server->on("/upload", HTTP_GET, [this]() {
         WebServer* s = (WebServer*)_webServer;
@@ -716,6 +768,7 @@ void WifiManager::handleDashboard() {
     WebServer* server = (WebServer*)_webServer;
     String html = String(dashboard_html);
     html.replace("%APP_VERSION%", APP_VERSION);
+    html.replace("%DEVICE_NAME%", DEVICE_NAME);
     server->send(200, "text/html", html);
 }
 
@@ -724,21 +777,21 @@ void WifiManager::handleSettings() {
     Preferences prefs;
     prefs.begin("settings", true);
     
-    int brightness = 255;
-    bool autoBright = false;
-    unsigned long delayMs = 10000;
-    bool randomMode = false;
-    bool showFilename = false;
-    bool inactivitySleep = false;
-    int themeFlavor = 0;
-    int screenOrientation = 1;
-    int ledBrightness = 128;
-    bool isLedEnabled = true;
+    int brightness = DEFAULT_BRIGHTNESS;
+    bool autoBright = DEFAULT_AUTO_BRIGHTNESS;
+    unsigned long delayMs = DEFAULT_SLIDESHOW_DELAY_MS;
+    bool randomMode = DEFAULT_RANDOM_MODE;
+    bool showFilename = DEFAULT_SHOW_FILENAME;
+    bool inactivitySleep = DEFAULT_INACTIVITY_SLEEP;
+    int themeFlavor = DEFAULT_THEME_FLAVOR;
+    int screenOrientation = DEFAULT_SCREEN_ORIENTATION;
+    int ledBrightness = DEFAULT_LED_BRIGHTNESS;
+    bool isLedEnabled = DEFAULT_LED_ENABLED;
     bool isWifiEnabled = true;
     bool isMqttEnabled = false;
-    std::string wifiSSID = "";
-    std::string wifiPassword = "";
-    bool bypassOptimization = false;
+    std::string wifiSSID = DEFAULT_WIFI_SSID;
+    std::string wifiPassword = DEFAULT_WIFI_PASSWORD;
+    bool bypassOptimization = DEFAULT_BYPASS_OPTIMIZATION;
     bool bootFromCache = false;
     
     HardwareLogic::loadSettings(prefs, brightness, autoBright, delayMs, randomMode, showFilename, inactivitySleep, themeFlavor, screenOrientation, ledBrightness, isLedEnabled, isWifiEnabled, isMqttEnabled, wifiSSID, wifiPassword, bypassOptimization, bootFromCache);
@@ -758,7 +811,7 @@ void WifiManager::handleSettings() {
     html.replace("%ORIENT_2%", screenOrientation == 2 ? "selected" : "");
     html.replace("%ORIENT_3%", screenOrientation == 3 ? "selected" : "");
     
-    html.replace("%BRIGHTNESS%", String(brightness));
+    html.replace("%BRIGHTNESS%", String((brightness * 100) / 255));
     html.replace("%AUTO_BRIGHTNESS%", autoBright ? "checked" : "");
     html.replace("%INACTIVITY_SLEEP%", inactivitySleep ? "checked" : "");
     
@@ -769,9 +822,10 @@ void WifiManager::handleSettings() {
     html.replace("%BOOT_CACHE%", bootFromCache ? "checked" : "");
     
     html.replace("%LED_ENABLED%", isLedEnabled ? "checked" : "");
-    html.replace("%LED_BRIGHTNESS%", String(ledBrightness));
+    html.replace("%LED_BRIGHTNESS%", String((ledBrightness * 100) / 255));
     html.replace("%WIFI_ENABLED%", isWifiEnabled ? "checked" : "");
     html.replace("%MQTT_ENABLED%", isMqttEnabled ? "checked" : "");
+    html.replace("%DEVICE_NAME%", DEVICE_NAME);
 
     server->send(200, "text/html", html);
 }
@@ -781,28 +835,28 @@ void WifiManager::handleSettingsSave() {
     Preferences prefs;
     prefs.begin("settings", false);
     
-    int brightness = 255;
-    bool autoBright = false;
-    unsigned long delayMs = 10000;
-    bool randomMode = false;
-    bool showFilename = false;
-    bool inactivitySleep = false;
-    int themeFlavor = 0;
-    int screenOrientation = 1;
-    int ledBrightness = 128;
-    bool isLedEnabled = true;
+    int brightness = DEFAULT_BRIGHTNESS;
+    bool autoBright = DEFAULT_AUTO_BRIGHTNESS;
+    unsigned long delayMs = DEFAULT_SLIDESHOW_DELAY_MS;
+    bool randomMode = DEFAULT_RANDOM_MODE;
+    bool showFilename = DEFAULT_SHOW_FILENAME;
+    bool inactivitySleep = DEFAULT_INACTIVITY_SLEEP;
+    int themeFlavor = DEFAULT_THEME_FLAVOR;
+    int screenOrientation = DEFAULT_SCREEN_ORIENTATION;
+    int ledBrightness = DEFAULT_LED_BRIGHTNESS;
+    bool isLedEnabled = DEFAULT_LED_ENABLED;
     bool isWifiEnabled = true;
     bool isMqttEnabled = false;
-    std::string wifiSSID = "";
-    std::string wifiPassword = "";
-    bool bypassOptimization = false;
+    std::string wifiSSID = DEFAULT_WIFI_SSID;
+    std::string wifiPassword = DEFAULT_WIFI_PASSWORD;
+    bool bypassOptimization = DEFAULT_BYPASS_OPTIMIZATION;
     bool bootFromCache = false;
     
     HardwareLogic::loadSettings(prefs, brightness, autoBright, delayMs, randomMode, showFilename, inactivitySleep, themeFlavor, screenOrientation, ledBrightness, isLedEnabled, isWifiEnabled, isMqttEnabled, wifiSSID, wifiPassword, bypassOptimization, bootFromCache);
     
     if (server->hasArg("theme_flavor")) themeFlavor = server->arg("theme_flavor").toInt();
     if (server->hasArg("screen_orientation")) screenOrientation = server->arg("screen_orientation").toInt();
-    if (server->hasArg("brightness")) brightness = server->arg("brightness").toInt();
+    if (server->hasArg("brightness")) brightness = (server->arg("brightness").toInt() * 255) / 100;
     
     autoBright = server->hasArg("auto_brightness");
     inactivitySleep = server->hasArg("inactivity_sleep");
@@ -815,7 +869,7 @@ void WifiManager::handleSettingsSave() {
     bootFromCache = server->hasArg("boot_cache");
     
     isLedEnabled = server->hasArg("led_enabled");
-    if (server->hasArg("led_brightness")) ledBrightness = server->arg("led_brightness").toInt();
+    if (server->hasArg("led_brightness")) ledBrightness = (server->arg("led_brightness").toInt() * 255) / 100;
     
     isWifiEnabled = server->hasArg("wifi_enabled");
     isMqttEnabled = server->hasArg("mqtt_enabled");

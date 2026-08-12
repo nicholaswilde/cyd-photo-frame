@@ -51,10 +51,10 @@ button:hover { background: #f5c2e7; }
     <option value='3' %ORIENT_3%>Landscape Rev (270°)</option>
 </select>
 
-<label for='brightness'>Screen Brightness (25-255)</label>
+<label for='brightness'>Screen Brightness (%)</label>
 <div class='slider-group'>
-    <input type='range' id='brightness_slider' min='25' max='255' value='%BRIGHTNESS%' oninput='document.getElementById("brightness").value = this.value'>
-    <input type='number' id='brightness' name='brightness' min='25' max='255' value='%BRIGHTNESS%' oninput='document.getElementById("brightness_slider").value = this.value'>
+    <input type='range' id='brightness_slider' min='10' max='100' value='%BRIGHTNESS%' oninput='document.getElementById("brightness").value = this.value'>
+    <input type='number' id='brightness' name='brightness' min='10' max='100' value='%BRIGHTNESS%' oninput='document.getElementById("brightness_slider").value = this.value'>
 </div>
 
 <div class='checkbox-group'>
@@ -92,10 +92,10 @@ button:hover { background: #f5c2e7; }
     <label for='led_enabled'>RGB LED Enabled</label>
 </div>
 
-<label for='led_brightness'>LED Brightness (0-255)</label>
+<label for='led_brightness'>LED Brightness (%)</label>
 <div class='slider-group'>
-    <input type='range' id='led_brightness_slider' min='0' max='255' value='%LED_BRIGHTNESS%' oninput='document.getElementById("led_brightness").value = this.value'>
-    <input type='number' id='led_brightness' name='led_brightness' min='0' max='255' value='%LED_BRIGHTNESS%' oninput='document.getElementById("led_brightness_slider").value = this.value'>
+    <input type='range' id='led_brightness_slider' min='0' max='100' value='%LED_BRIGHTNESS%' oninput='document.getElementById("led_brightness").value = this.value'>
+    <input type='number' id='led_brightness' name='led_brightness' min='0' max='100' value='%LED_BRIGHTNESS%' oninput='document.getElementById("led_brightness_slider").value = this.value'>
 </div>
 
 <div class='checkbox-group'>
@@ -115,7 +115,7 @@ button:hover { background: #f5c2e7; }
 <button type='submit'>Save Settings & Reboot</button>
 </form>
 <a href="/" class="btn-back">&larr; Back to Dashboard</a>
-<p style="margin-top: 25px; margin-bottom: 0; font-size: 13px; color: #6c7086; text-align: center;">Built for ESP32-2432S028R | <a href="https://github.com/nicholaswilde/cyd-photo-frame" target="_blank" style="color: #89b4fa; text-decoration: none;">GitHub</a></p>
+<p style="margin-top: 25px; margin-bottom: 0; font-size: 13px; color: #6c7086; text-align: center;">Built for %DEVICE_NAME% | <a href="https://github.com/nicholaswilde/cyd-photo-frame" target="_blank" style="color: #89b4fa; text-decoration: none;">GitHub</a></p>
 </div>
 <script>
 function toggleMqttSettings() {

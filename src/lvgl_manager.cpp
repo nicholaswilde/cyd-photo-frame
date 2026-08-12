@@ -107,7 +107,8 @@ extern LedManager led;
 
 static void brightness_slider_event_cb(lv_event_t * e) {
     lv_obj_t * slider = lv_event_get_target(e);
-    currentBrightness = (int)lv_slider_get_value(slider);
+    currentBrightness = ((int)lv_slider_get_value(slider) * 255) / 100;
+    if (currentBrightness < 25) currentBrightness = 25;
 #if defined(TFT_BL) && (TFT_BL >= 0)
     if (!isAutoBrightness) {
         analogWrite(TFT_BL, currentBrightness);
@@ -117,7 +118,7 @@ static void brightness_slider_event_cb(lv_event_t * e) {
 
 static void led_brightness_slider_event_cb(lv_event_t * e) {
     lv_obj_t * slider = lv_event_get_target(e);
-    currentLedBrightness = (int)lv_slider_get_value(slider);
+    currentLedBrightness = ((int)lv_slider_get_value(slider) * 255) / 100;
     led.setBrightness(currentLedBrightness);
 }
 
@@ -409,7 +410,7 @@ void LVGLManager::handle() {
         // If settings menu is open and auto-brightness is active, keep slider in sync
         if (settings_screen && lv_scr_act() == settings_screen) {
             if (isAutoBrightness && slider_bright_ptr) {
-                lv_slider_set_value(slider_bright_ptr, currentBrightness, LV_ANIM_OFF);
+                lv_slider_set_value(slider_bright_ptr, (currentBrightness * 100) / 255, LV_ANIM_OFF);
             }
             if (settings_wifi_icon) {
                 if (wifiManager == nullptr) {
@@ -592,8 +593,8 @@ void LVGLManager::showSettings() {
     slider_bright_ptr = slider_bright;
     lv_obj_set_size(slider_bright, 80, 10);
     lv_obj_set_style_pad_right(row_bright, 15, 0);
-    lv_slider_set_range(slider_bright, 25, 255);
-    lv_slider_set_value(slider_bright, currentBrightness, LV_ANIM_OFF);
+    lv_slider_set_range(slider_bright, 10, 100);
+    lv_slider_set_value(slider_bright, (currentBrightness * 100) / 255, LV_ANIM_OFF);
     lv_obj_add_event_cb(slider_bright, brightness_slider_event_cb, LV_EVENT_VALUE_CHANGED, NULL);
     
     // 2. Auto Brightness
@@ -634,8 +635,8 @@ void LVGLManager::showSettings() {
     lv_obj_t * slider_led = lv_slider_create(row_led);
     lv_obj_set_size(slider_led, 80, 10);
     lv_obj_set_style_pad_right(row_led, 15, 0);
-    lv_slider_set_range(slider_led, 0, 255);
-    lv_slider_set_value(slider_led, currentLedBrightness, LV_ANIM_OFF);
+    lv_slider_set_range(slider_led, 0, 100);
+    lv_slider_set_value(slider_led, (currentLedBrightness * 100) / 255, LV_ANIM_OFF);
     lv_obj_add_event_cb(slider_led, led_brightness_slider_event_cb, LV_EVENT_VALUE_CHANGED, NULL);
 
     // 2b. Enable LED Switch

@@ -21,6 +21,8 @@ p.subtitle { color: #a6adc8; margin-top: 0; margin-bottom: 30px; font-size: 15px
 .btn-settings:hover { background: #b4befe; }
 .btn-screenshot { background: #f5c2e7; }
 .btn-screenshot:hover { background: #f5e0dc; }
+.btn-ota { background: #fab387; }
+.btn-ota:hover { background: #f9e2af; }
 .btn-reset { background: #f38ba8; margin-top: 30px; }
 .btn-reset:hover { background: #eba0ac; }
 </style>
@@ -33,10 +35,11 @@ p.subtitle { color: #a6adc8; margin-top: 0; margin-bottom: 30px; font-size: 15px
 <a href="/upload" class="btn btn-upload">🖼️ Manage Photos</a>
 <a href="/settings" class="btn btn-settings">⚙️ Device Settings</a>
 <a href="/screenshot" class="btn btn-screenshot" target="_blank">📸 View Screenshot</a>
+<a href="/update" class="btn btn-ota">🔄 Firmware Update</a>
 
 <a href="/reset" class="btn btn-reset" onclick="return confirm('Are you sure you want to factory reset this device? All settings and Wi-Fi credentials will be erased and the device will restart in AP Setup mode. This cannot be undone.');">⚠️ Factory Reset</a>
 
-<p style="margin-top: 25px; font-size: 13px; color: #6c7086;">Built for ESP32-2432S028R | <a href="https://github.com/nicholaswilde/cyd-photo-frame" target="_blank" style="color: #89b4fa; text-decoration: none;">GitHub</a></p>
+<p style="margin-top: 25px; font-size: 13px; color: #6c7086;">Built for %DEVICE_NAME% | <a href="https://github.com/nicholaswilde/cyd-photo-frame" target="_blank" style="color: #89b4fa; text-decoration: none;">GitHub</a></p>
 </div>
 </body>
 </html>
