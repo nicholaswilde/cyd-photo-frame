@@ -6,6 +6,7 @@
 #define DEFAULT_RANDOM_MODE false
 #define DEFAULT_SHOW_FILENAME true
 #define DEFAULT_BYPASS_OPTIMIZATION false
+#define DEFAULT_BOOT_FROM_CACHE true
 
 // Display & Backlight Settings
 #define DEFAULT_BRIGHTNESS 255

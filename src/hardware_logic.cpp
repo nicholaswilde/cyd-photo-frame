@@ -41,7 +41,8 @@ void loadSettings(Preferences& prefs,
                   bool& isMqttEnabled,
                   std::string& wifiSSID,
                   std::string& wifiPassword,
-                  bool& bypassOptimization) {
+                  bool& bypassOptimization,
+                  bool& bootFromCache) {
     brightness = prefs.getUChar("bright", brightness);
     if (brightness < 25) brightness = 25; // Clamp to ensure screen is never completely off
     autoBright = prefs.getBool("autob", autoBright);
@@ -58,6 +59,7 @@ void loadSettings(Preferences& prefs,
     wifiSSID = prefs.getString("wifi_ssid", wifiSSID.c_str()).c_str();
     wifiPassword = prefs.getString("wifi_pass", wifiPassword.c_str()).c_str();
     bypassOptimization = prefs.getBool("bypass_opt", bypassOptimization);
+    bootFromCache = prefs.getBool("boot_cache", bootFromCache);
 }
 
 void saveSettings(Preferences& prefs, 
@@ -75,7 +77,8 @@ void saveSettings(Preferences& prefs,
                   bool isMqttEnabled,
                   const std::string& wifiSSID,
                   const std::string& wifiPassword,
-                  bool bypassOptimization) {
+                  bool bypassOptimization,
+                  bool bootFromCache) {
     prefs.putUChar("bright", (uint8_t)brightness);
     prefs.putBool("autob", autoBright);
     prefs.putULong("delay", (uint32_t)delay);
@@ -91,6 +94,7 @@ void saveSettings(Preferences& prefs,
     prefs.putString("wifi_ssid", wifiSSID.c_str());
     prefs.putString("wifi_pass", wifiPassword.c_str());
     prefs.putBool("bypass_opt", bypassOptimization);
+    prefs.putBool("boot_cache", bootFromCache);
 }
 
 } // namespace HardwareLogic

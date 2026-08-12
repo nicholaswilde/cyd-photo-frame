@@ -34,6 +34,7 @@ bool isRandomMode = DEFAULT_RANDOM_MODE;
 bool isAutoBrightness = DEFAULT_AUTO_BRIGHTNESS;
 bool isInactivitySleep = DEFAULT_INACTIVITY_SLEEP;
 bool bypassOptimization = DEFAULT_BYPASS_OPTIMIZATION;
+bool bootFromCache = DEFAULT_BOOT_FROM_CACHE;
 bool optimizationCancelled = false;
 int currentOrientation = DEFAULT_SCREEN_ORIENTATION; // 1 = Landscape, 2 = Portrait, 3 = Landscape Rev, 4 = Portrait Rev
 
@@ -753,6 +754,21 @@ void drawFilenameBanner(const char* filename) {
  * @return true if drawing succeeded, false otherwise.
  */
 bool renderScaledJpg(const char* filename) {
+  if (bootFromCache || (strlen(filename) > 4 && strcasecmp(&filename[strlen(filename) - 4], ".raw") == 0)) {
+    if (SD.exists(filename)) {
+      Serial.printf("[System] Loading cached raw image directly: %s\n", filename);
+      bool drawSuccess = renderRawImage(filename);
+      if (drawSuccess) {
+        if (showFilename) {
+          drawFilenameBanner(filename);
+        }
+        drawToastBannerIfNeeded();
+        return true;
+      }
+    }
+    return false;
+  }
+
   std::string cachePath = getCachePath(filename);
   if (SD.exists(cachePath.c_str())) {
     bool cacheValid = false;
@@ -857,21 +873,37 @@ bool renderScaledJpg(const char* filename) {
 
 void populateCache() {
   fileCache.clear();
-  File root = SD.open("/");
+  const char* targetDir = bootFromCache ? "/cache" : "/";
+  if (!SD.exists(targetDir)) {
+    Serial.printf("Error: Directory %s does not exist!\n", targetDir);
+    return;
+  }
+  File root = SD.open(targetDir);
   if (!root) {
-    Serial.println("Error: Failed to open root directory.");
+    Serial.println("Error: Failed to open root/cache directory.");
     return;
   }
   File file = root.openNextFile();
   while (file) {
+    yield(); // Prevent Watchdog Timer resets if directory is huge
     if (!file.isDirectory()) {
       const char* path = file.path();
       size_t len = strlen(path);
-      if (len > 4 && (strcasecmp(&path[len - 4], ".jpg") == 0 || (len > 5 && strcasecmp(&path[len - 5], ".jpeg") == 0))) {
-        if (!fileCache.addFile(path)) {
-          Serial.println("[Cache] Full.");
-          file.close();
-          break;
+      if (bootFromCache) {
+        if (len > 4 && strcasecmp(&path[len - 4], ".raw") == 0) {
+          if (!fileCache.addFile(path)) {
+            Serial.println("[Cache] Full.");
+            file.close();
+            break;
+          }
+        }
+      } else {
+        if (len > 4 && (strcasecmp(&path[len - 4], ".jpg") == 0 || (len > 5 && strcasecmp(&path[len - 5], ".jpeg") == 0))) {
+          if (!fileCache.addFile(path)) {
+            Serial.println("[Cache] Full.");
+            file.close();
+            break;
+          }
         }
       }
     }
@@ -884,7 +916,7 @@ void populateCache() {
 void saveConfig() {
   Preferences prefs;
   prefs.begin("settings", false);
-  HardwareLogic::saveSettings(prefs, currentBrightness, isAutoBrightness, slideshowTimer.getInterval(), isRandomMode, showFilename, isInactivitySleep, currentThemeFlavor, currentOrientation, currentLedBrightness, isLedEnabled, isWifiEnabled, isMqttEnabled, wifiSSID, wifiPassword, bypassOptimization);
+  HardwareLogic::saveSettings(prefs, currentBrightness, isAutoBrightness, slideshowTimer.getInterval(), isRandomMode, showFilename, isInactivitySleep, currentThemeFlavor, currentOrientation, currentLedBrightness, isLedEnabled, isWifiEnabled, isMqttEnabled, wifiSSID, wifiPassword, bypassOptimization, bootFromCache);
   prefs.end();
   Serial.println("[System] Settings saved to NVS.");
 }
@@ -1070,14 +1102,14 @@ void setup() {
     Preferences prefs;
     prefs.begin("settings", false);
     unsigned long loadedDelay = slideshowTimer.getInterval();
-    HardwareLogic::loadSettings(prefs, currentBrightness, isAutoBrightness, loadedDelay, isRandomMode, showFilename, isInactivitySleep, currentThemeFlavor, currentOrientation, currentLedBrightness, isLedEnabled, isWifiEnabled, isMqttEnabled, wifiSSID, wifiPassword, bypassOptimization);
+    HardwareLogic::loadSettings(prefs, currentBrightness, isAutoBrightness, loadedDelay, isRandomMode, showFilename, isInactivitySleep, currentThemeFlavor, currentOrientation, currentLedBrightness, isLedEnabled, isWifiEnabled, isMqttEnabled, wifiSSID, wifiPassword, bypassOptimization, bootFromCache);
     slideshowTimer.setInterval(loadedDelay);
     cachedTheme = (int)prefs.getUInt("cached_theme", 0);
     cachedOrientation = (int)prefs.getInt("cached_rot", 1);
     cachedWifiEnabled = prefs.getBool("cached_wifi", false);
     prefs.end();
     Serial.printf("[System] Settings loaded from NVS. Brightness: %d, Auto: %d, Delay: %lu ms, Random: %d, ShowFN: %d, Sleep: %d, Theme: %d, CachedTheme: %d, Orientation: %d, CachedOrientation: %d, LED Brightness: %d, LED Enabled: %d, WiFi: %d, CachedWiFi: %d, BypassOpt: %d\n",
-                  currentBrightness, isAutoBrightness, loadedDelay, isRandomMode, showFilename, isInactivitySleep, currentThemeFlavor, cachedTheme, currentOrientation, cachedOrientation, currentLedBrightness, isLedEnabled, isWifiEnabled, cachedWifiEnabled, bypassOptimization);
+                  currentBrightness, isAutoBrightness, loadedDelay, isRandomMode, showFilename, isInactivitySleep, currentThemeFlavor, cachedTheme, currentOrientation, cachedOrientation, currentLedBrightness, isLedEnabled, isWifiEnabled, cachedWifiEnabled, bypassOptimization, bootFromCache);
   }
 
   // Initialize and begin WiFi Manager if enabled (so Improv starts immediately)
@@ -1266,7 +1298,7 @@ void setup() {
   TJpgDec.setSwapBytes(true);
 
   // Populate cache
-  Serial.println("[System] Populating file cache from SD root...");
+  Serial.printf("[System] Populating file cache from %s...\n", bootFromCache ? "/cache" : "SD root");
   populateCache();
   Serial.printf("[System] File cache populated: %zu image(s) found.\n", fileCache.size());
   if (fileCache.isEmpty()) {

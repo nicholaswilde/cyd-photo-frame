@@ -33,7 +33,8 @@ namespace HardwareLogic {
                       bool& isMqttEnabled,
                       std::string& wifiSSID,
                       std::string& wifiPassword,
-                      bool& bypassOptimization);
+                      bool& bypassOptimization,
+                      bool& bootFromCache);
 
     // Save settings to Preferences
     void saveSettings(Preferences& prefs, 
@@ -51,7 +52,8 @@ namespace HardwareLogic {
                       bool isMqttEnabled,
                       const std::string& wifiSSID,
                       const std::string& wifiPassword,
-                      bool bypassOptimization);
+                      bool bypassOptimization,
+                      bool bootFromCache);
 }
 
 #endif // HARDWARE_LOGIC_H

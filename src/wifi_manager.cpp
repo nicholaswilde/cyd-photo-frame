@@ -739,8 +739,9 @@ void WifiManager::handleSettings() {
     std::string wifiSSID = "";
     std::string wifiPassword = "";
     bool bypassOptimization = false;
+    bool bootFromCache = false;
     
-    HardwareLogic::loadSettings(prefs, brightness, autoBright, delayMs, randomMode, showFilename, inactivitySleep, themeFlavor, screenOrientation, ledBrightness, isLedEnabled, isWifiEnabled, isMqttEnabled, wifiSSID, wifiPassword, bypassOptimization);
+    HardwareLogic::loadSettings(prefs, brightness, autoBright, delayMs, randomMode, showFilename, inactivitySleep, themeFlavor, screenOrientation, ledBrightness, isLedEnabled, isWifiEnabled, isMqttEnabled, wifiSSID, wifiPassword, bypassOptimization, bootFromCache);
     
     prefs.end();
 
@@ -765,6 +766,7 @@ void WifiManager::handleSettings() {
     html.replace("%RANDOM_MODE%", randomMode ? "checked" : "");
     html.replace("%SHOW_FILENAME%", showFilename ? "checked" : "");
     html.replace("%BYPASS_OPT%", bypassOptimization ? "checked" : "");
+    html.replace("%BOOT_CACHE%", bootFromCache ? "checked" : "");
     
     html.replace("%LED_ENABLED%", isLedEnabled ? "checked" : "");
     html.replace("%LED_BRIGHTNESS%", String(ledBrightness));
@@ -794,8 +796,9 @@ void WifiManager::handleSettingsSave() {
     std::string wifiSSID = "";
     std::string wifiPassword = "";
     bool bypassOptimization = false;
+    bool bootFromCache = false;
     
-    HardwareLogic::loadSettings(prefs, brightness, autoBright, delayMs, randomMode, showFilename, inactivitySleep, themeFlavor, screenOrientation, ledBrightness, isLedEnabled, isWifiEnabled, isMqttEnabled, wifiSSID, wifiPassword, bypassOptimization);
+    HardwareLogic::loadSettings(prefs, brightness, autoBright, delayMs, randomMode, showFilename, inactivitySleep, themeFlavor, screenOrientation, ledBrightness, isLedEnabled, isWifiEnabled, isMqttEnabled, wifiSSID, wifiPassword, bypassOptimization, bootFromCache);
     
     if (server->hasArg("theme_flavor")) themeFlavor = server->arg("theme_flavor").toInt();
     if (server->hasArg("screen_orientation")) screenOrientation = server->arg("screen_orientation").toInt();
@@ -809,6 +812,7 @@ void WifiManager::handleSettingsSave() {
     randomMode = server->hasArg("random_mode");
     showFilename = server->hasArg("show_filename");
     bypassOptimization = server->hasArg("bypass_opt");
+    bootFromCache = server->hasArg("boot_cache");
     
     isLedEnabled = server->hasArg("led_enabled");
     if (server->hasArg("led_brightness")) ledBrightness = server->arg("led_brightness").toInt();
@@ -816,7 +820,7 @@ void WifiManager::handleSettingsSave() {
     isWifiEnabled = server->hasArg("wifi_enabled");
     isMqttEnabled = server->hasArg("mqtt_enabled");
     
-    HardwareLogic::saveSettings(prefs, brightness, autoBright, delayMs, randomMode, showFilename, inactivitySleep, themeFlavor, screenOrientation, ledBrightness, isLedEnabled, isWifiEnabled, isMqttEnabled, wifiSSID, wifiPassword, bypassOptimization);
+    HardwareLogic::saveSettings(prefs, brightness, autoBright, delayMs, randomMode, showFilename, inactivitySleep, themeFlavor, screenOrientation, ledBrightness, isLedEnabled, isWifiEnabled, isMqttEnabled, wifiSSID, wifiPassword, bypassOptimization, bootFromCache);
     
     prefs.end();
     
