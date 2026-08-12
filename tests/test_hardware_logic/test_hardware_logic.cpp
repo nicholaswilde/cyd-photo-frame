@@ -56,9 +56,10 @@ void test_preferences_persistence(void) {
     std::string wifiSSID = "testSSID";
     std::string wifiPassword = "testPassword";
     bool bypassOptimization = false;
+    bool bootFromCache = false;
     
     // Save settings
-    HardwareLogic::saveSettings(prefs, brightness, autoBright, delay, randomMode, showFilename, inactivitySleep, themeFlavor, screenOrientation, ledBrightness, isLedEnabled, isWifiEnabled, isMqttEnabled, wifiSSID, wifiPassword, bypassOptimization);
+    HardwareLogic::saveSettings(prefs, brightness, autoBright, delay, randomMode, showFilename, inactivitySleep, themeFlavor, screenOrientation, ledBrightness, isLedEnabled, isWifiEnabled, isMqttEnabled, wifiSSID, wifiPassword, bypassOptimization, bootFromCache);
     
     // Modify local variables to verify they load correctly
     int testBrightness = 0;
@@ -76,9 +77,10 @@ void test_preferences_persistence(void) {
     std::string testWifiSSID = "";
     std::string testWifiPassword = "";
     bool testBypassOptimization = true;
+    bool testBootFromCache = true;
     
     // Load settings
-    HardwareLogic::loadSettings(prefs, testBrightness, testAutoBright, testDelay, testRandomMode, testShowFilename, testInactivitySleep, testThemeFlavor, testScreenOrientation, testLedBrightness, testIsLedEnabled, testIsWifiEnabled, testIsMqttEnabled, testWifiSSID, testWifiPassword, testBypassOptimization);
+    HardwareLogic::loadSettings(prefs, testBrightness, testAutoBright, testDelay, testRandomMode, testShowFilename, testInactivitySleep, testThemeFlavor, testScreenOrientation, testLedBrightness, testIsLedEnabled, testIsWifiEnabled, testIsMqttEnabled, testWifiSSID, testWifiPassword, testBypassOptimization, testBootFromCache);
     
     // Verify loaded values match saved values
     TEST_ASSERT_EQUAL_INT(brightness, testBrightness);
@@ -96,6 +98,7 @@ void test_preferences_persistence(void) {
     TEST_ASSERT_EQUAL_STRING(wifiSSID.c_str(), testWifiSSID.c_str());
     TEST_ASSERT_EQUAL_STRING(wifiPassword.c_str(), testWifiPassword.c_str());
     TEST_ASSERT_EQUAL(bypassOptimization, testBypassOptimization);
+    TEST_ASSERT_EQUAL(bootFromCache, testBootFromCache);
     
     // Verify default fallback works when loading non-existent settings
     Preferences freshPrefs;
@@ -116,8 +119,9 @@ void test_preferences_persistence(void) {
     std::string fallbackWifiSSID = "fallback";
     std::string fallbackWifiPassword = "fallbackPass";
     bool fallbackBypassOptimization = true;
+    bool fallbackBootFromCache = true;
     
-    HardwareLogic::loadSettings(freshPrefs, fallbackBrightness, fallbackAutoBright, fallbackDelay, fallbackRandom, fallbackShowFn, fallbackSleep, fallbackTheme, fallbackOrientation, fallbackLedBrightness, fallbackIsLedEnabled, fallbackIsWifiEnabled, fallbackIsMqttEnabled, fallbackWifiSSID, fallbackWifiPassword, fallbackBypassOptimization);
+    HardwareLogic::loadSettings(freshPrefs, fallbackBrightness, fallbackAutoBright, fallbackDelay, fallbackRandom, fallbackShowFn, fallbackSleep, fallbackTheme, fallbackOrientation, fallbackLedBrightness, fallbackIsLedEnabled, fallbackIsWifiEnabled, fallbackIsMqttEnabled, fallbackWifiSSID, fallbackWifiPassword, fallbackBypassOptimization, fallbackBootFromCache);
     
     TEST_ASSERT_EQUAL_INT(200, fallbackBrightness);
     TEST_ASSERT_EQUAL(true, fallbackAutoBright);
@@ -131,6 +135,7 @@ void test_preferences_persistence(void) {
     TEST_ASSERT_EQUAL_STRING("fallback", fallbackWifiSSID.c_str());
     TEST_ASSERT_EQUAL_STRING("fallbackPass", fallbackWifiPassword.c_str());
     TEST_ASSERT_EQUAL(true, fallbackBypassOptimization);
+    TEST_ASSERT_EQUAL(true, fallbackBootFromCache);
 }
 
 int main(int argc, char **argv) {
