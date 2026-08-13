@@ -35,7 +35,7 @@ button:hover { background: #f5c2e7; }
 <form method='POST' action='/settings/save'>
 
 <div class='section-title' style='margin-top: 0;'>Display & UI</div>
-<label for='theme_flavor'>Theme (Catppuccin)</label>
+<label for='theme_flavor' title='Select the color palette for the user interface'>Theme (Catppuccin)</label>
 <select id='theme_flavor' name='theme_flavor'>
     <option value='0' %THEME_MOCHA%>Mocha</option>
     <option value='1' %THEME_MACCHIATO%>Macchiato</option>
@@ -43,7 +43,7 @@ button:hover { background: #f5c2e7; }
     <option value='3' %THEME_LATTE%>Latte</option>
 </select>
 
-<label for='screen_orientation'>Screen Orientation</label>
+<label for='screen_orientation' title='Set the rotation of the screen'>Screen Orientation</label>
 <select id='screen_orientation' name='screen_orientation'>
     <option value='0' %ORIENT_0%>Portrait (0°)</option>
     <option value='1' %ORIENT_1%>Landscape (90°)</option>
@@ -51,7 +51,7 @@ button:hover { background: #f5c2e7; }
     <option value='3' %ORIENT_3%>Landscape Rev (270°)</option>
 </select>
 
-<label for='brightness'>Screen Brightness (%)</label>
+<label for='brightness' title='Adjust the display backlight brightness'>Screen Brightness (%)</label>
 <div class='slider-group'>
     <input type='range' id='brightness_slider' min='10' max='100' value='%BRIGHTNESS%' oninput='document.getElementById("brightness").value = this.value'>
     <input type='number' id='brightness' name='brightness' min='10' max='100' value='%BRIGHTNESS%' oninput='document.getElementById("brightness_slider").value = this.value'>
@@ -59,40 +59,40 @@ button:hover { background: #f5c2e7; }
 
 <div class='checkbox-group'>
     <input type='checkbox' id='auto_brightness' name='auto_brightness' value='1' %AUTO_BRIGHTNESS%>
-    <label for='auto_brightness'>Auto Brightness</label>
+    <label for='auto_brightness' title='Automatically adjust brightness based on time of day'>Auto Brightness</label>
 </div>
 
 <div class='checkbox-group'>
     <input type='checkbox' id='inactivity_sleep' name='inactivity_sleep' value='1' %INACTIVITY_SLEEP%>
-    <label for='inactivity_sleep'>Inactivity Sleep</label>
+    <label for='inactivity_sleep' title='Turn off screen after a period of inactivity'>Inactivity Sleep</label>
 </div>
 
 <div class='section-title'>Slideshow Options</div>
-<label for='slideshow_delay'>Slideshow Delay (Seconds)</label>
+<label for='slideshow_delay' title='Time in seconds before switching to the next photo'>Slideshow Delay (Seconds)</label>
 <input type='number' id='slideshow_delay' name='slideshow_delay' min='1' max='3600' value='%DELAY_SECONDS%'>
 
 <div class='checkbox-group'>
     <input type='checkbox' id='random_mode' name='random_mode' value='1' %RANDOM_MODE%>
-    <label for='random_mode'>Randomize Photos</label>
+    <label for='random_mode' title='Display photos in a random order'>Randomize Photos</label>
 </div>
 
 <div class='checkbox-group'>
     <input type='checkbox' id='show_filename' name='show_filename' value='1' %SHOW_FILENAME%>
-    <label for='show_filename'>Show Filename</label>
+    <label for='show_filename' title='Display the current file name on the screen'>Show Filename</label>
 </div>
 
 <div class='checkbox-group'>
     <input type='checkbox' id='bypass_opt' name='bypass_opt' value='1' %BYPASS_OPT%>
-    <label for='bypass_opt'>Bypass Image Optimization</label>
+    <label for='bypass_opt' title='Load images directly without resizing optimization'>Bypass Image Optimization</label>
 </div>
 
 <div class='section-title'>System Features</div>
 <div class='checkbox-group'>
     <input type='checkbox' id='led_enabled' name='led_enabled' value='1' %LED_ENABLED%>
-    <label for='led_enabled'>RGB LED Enabled</label>
+    <label for='led_enabled' title='Enable or disable the onboard RGB LED'>RGB LED Enabled</label>
 </div>
 
-<label for='led_brightness'>LED Brightness (%)</label>
+<label for='led_brightness' title='Adjust the brightness of the RGB LED'>LED Brightness (%)</label>
 <div class='slider-group'>
     <input type='range' id='led_brightness_slider' min='0' max='100' value='%LED_BRIGHTNESS%' oninput='document.getElementById("led_brightness").value = this.value'>
     <input type='number' id='led_brightness' name='led_brightness' min='0' max='100' value='%LED_BRIGHTNESS%' oninput='document.getElementById("led_brightness_slider").value = this.value'>
@@ -100,16 +100,42 @@ button:hover { background: #f5c2e7; }
 
 <div class='checkbox-group'>
     <input type='checkbox' id='wifi_enabled' name='wifi_enabled' value='1' %WIFI_ENABLED%>
-    <label for='wifi_enabled'>WiFi Enabled</label>
+    <label for='wifi_enabled' title='Enable WiFi to connect to the network'>WiFi Enabled</label>
 </div>
 
 <div class='checkbox-group'>
     <input type='checkbox' id='mqtt_enabled' name='mqtt_enabled' value='1' %MQTT_ENABLED% onchange='toggleMqttSettings()'>
-    <label for='mqtt_enabled'>MQTT Enabled</label>
+    <label for='mqtt_enabled' title='Enable MQTT to publish device state and receive commands'>MQTT Enabled</label>
 </div>
 
 <div id='mqtt_settings' style='display: none; margin-left: 20px; border-left: 2px solid #313244; padding-left: 15px; margin-bottom: 20px;'>
-    <p style='color: #a6adc8; font-size: 13px;'>Note: MQTT uses default configuration (see code for broker settings).</p>
+    <label for='mqtt_server' title='Hostname or IP address of the MQTT broker'>MQTT Server</label>
+    <input type='text' id='mqtt_server' name='mqtt_server' value='%MQTT_SERVER%'>
+    
+    <label for='mqtt_port' title='Port number for the MQTT broker (default: 1883)'>MQTT Port</label>
+    <input type='number' id='mqtt_port' name='mqtt_port' value='%MQTT_PORT%'>
+    
+    <label for='mqtt_user' title='Username for MQTT authentication (leave blank if none)'>MQTT Username</label>
+    <input type='text' id='mqtt_user' name='mqtt_user' value='%MQTT_USER%'>
+    
+    <label for='mqtt_password' title='Password for MQTT authentication (leave blank if none)'>MQTT Password</label>
+    <input type='password' id='mqtt_password' name='mqtt_password' value='%MQTT_PASSWORD%'>
+</div>
+
+<div class='checkbox-group'>
+    <input type='checkbox' id='static_ip_enabled' name='static_ip_enabled' value='1' %STATIC_IP_ENABLED% onchange='toggleStaticIpSettings()'>
+    <label for='static_ip_enabled' title='Use a static IP address instead of DHCP'>Static IP Enabled</label>
+</div>
+
+<div id='static_ip_settings' style='display: none; margin-left: 20px; border-left: 2px solid #313244; padding-left: 15px; margin-bottom: 20px;'>
+    <label for='static_ip' title='Static IP address (e.g. 192.168.1.100)'>IP Address</label>
+    <input type='text' id='static_ip' name='static_ip' value='%STATIC_IP%'>
+    <label for='static_gw' title='Gateway IP address (e.g. 192.168.1.1)'>Gateway</label>
+    <input type='text' id='static_gw' name='static_gw' value='%STATIC_GW%'>
+    <label for='static_sn' title='Subnet mask (e.g. 255.255.255.0)'>Subnet Mask</label>
+    <input type='text' id='static_sn' name='static_sn' value='%STATIC_SN%'>
+    <label for='static_dns' title='DNS server IP address (e.g. 8.8.8.8)'>DNS Server</label>
+    <input type='text' id='static_dns' name='static_dns' value='%STATIC_DNS%'>
 </div>
 
 <button type='submit'>Save Settings & Reboot</button>
@@ -125,8 +151,16 @@ function toggleMqttSettings() {
         div.style.display = cb.checked ? 'block' : 'none';
     }
 }
+function toggleStaticIpSettings() {
+    var cb = document.getElementById('static_ip_enabled');
+    var div = document.getElementById('static_ip_settings');
+    if (cb && div) {
+        div.style.display = cb.checked ? 'block' : 'none';
+    }
+}
 window.onload = function() {
     toggleMqttSettings();
+    toggleStaticIpSettings();
 };
 </script>
 </body>

@@ -441,12 +441,10 @@ input[type="file"] { display: none; }
 </style>
 </head>
 <body>
-<div class="header">
-    <h1>CYD Photo Frame</h1>
-    <p class="version">)rawliteral" APP_VERSION R"rawliteral(</p>
-</div>
 <div class="card">
-<h2>Upload Images</h2>
+    <h2 style="margin-bottom: 5px;">CYD Photo Frame</h2>
+    <p style="text-align: center; color: #a6adc8; margin-top: 0; margin-bottom: 20px; font-size: 14px;">Version %APP_VERSION%</p>
+    <p style="color: #a6adc8; font-size: 14px; margin-bottom: 20px; text-align: center;">Upload images or videos to display.</p>
 <div class="drop-zone" id="dropZone">
     <p>Drag & Drop images here<br>or click to browse</p>
 </div>
@@ -455,6 +453,7 @@ input[type="file"] { display: none; }
 <button id="uploadBtn" class="upload-btn">Upload All</button>
 <button id="restartBtn" class="restart-btn">Restart Device</button>
 <a href="/" class="btn-back">&larr; Back to Dashboard</a>
+<p style="margin-top: 25px; margin-bottom: 0; font-size: 13px; color: #6c7086; text-align: center;">Built for %DEVICE_NAME% | <a href="https://github.com/nicholaswilde/cyd-photo-frame" target="_blank" style="color: #89b4fa; text-decoration: none;">GitHub</a></p>
 </div>
 <script>
 const dropZone = document.getElementById('dropZone');
@@ -595,6 +594,7 @@ void WifiManager::startScreenshotServer() {
         WebServer* s = (WebServer*)_webServer;
         String html = String(ota_html);
         html.replace("%DEVICE_NAME%", DEVICE_NAME);
+        html.replace("%APP_VERSION%", APP_VERSION);
         s->send(200, "text/html", html);
     });
 
@@ -631,7 +631,10 @@ void WifiManager::startScreenshotServer() {
 
     server->on("/upload", HTTP_GET, [this]() {
         WebServer* s = (WebServer*)_webServer;
-        s->send_P(200, "text/html", uploadHtml);
+        String html = String(uploadHtml);
+        html.replace("%DEVICE_NAME%", DEVICE_NAME);
+        html.replace("%APP_VERSION%", APP_VERSION);
+        s->send(200, "text/html", html);
     });
 
     server->on("/restart", HTTP_POST, [this]() {
@@ -796,6 +799,24 @@ void WifiManager::handleSettings() {
     
     HardwareLogic::loadSettings(prefs, brightness, autoBright, delayMs, randomMode, showFilename, inactivitySleep, themeFlavor, screenOrientation, ledBrightness, isLedEnabled, isWifiEnabled, isMqttEnabled, wifiSSID, wifiPassword, bypassOptimization, bootFromCache);
     
+    String mqttServer = prefs.getString("mqtt_server", "");
+    int mqttPort = prefs.getInt("mqtt_port", 1883);
+    String mqttUser = prefs.getString("mqtt_user", "");
+    String mqttPassword = prefs.getString("mqtt_pass", "");
+    
+    bool isStaticIpEnabled = prefs.getBool("static_ip_en", false);
+    String staticIp = prefs.getString("static_ip", "");
+    if (staticIp.isEmpty() && WiFi.status() == WL_CONNECTED) staticIp = WiFi.localIP().toString();
+    
+    String staticGw = prefs.getString("static_gw", "");
+    if (staticGw.isEmpty() && WiFi.status() == WL_CONNECTED) staticGw = WiFi.gatewayIP().toString();
+    
+    String staticSn = prefs.getString("static_sn", "");
+    if (staticSn.isEmpty() && WiFi.status() == WL_CONNECTED) staticSn = WiFi.subnetMask().toString();
+    
+    String staticDns = prefs.getString("static_dns", "");
+    if (staticDns.isEmpty() && WiFi.status() == WL_CONNECTED) staticDns = WiFi.dnsIP().toString();
+    
     prefs.end();
 
     String html = String(settings_html);
@@ -825,6 +846,18 @@ void WifiManager::handleSettings() {
     html.replace("%LED_BRIGHTNESS%", String((ledBrightness * 100) / 255));
     html.replace("%WIFI_ENABLED%", isWifiEnabled ? "checked" : "");
     html.replace("%MQTT_ENABLED%", isMqttEnabled ? "checked" : "");
+    
+    html.replace("%MQTT_SERVER%", mqttServer);
+    html.replace("%MQTT_PORT%", String(mqttPort));
+    html.replace("%MQTT_USER%", mqttUser);
+    html.replace("%MQTT_PASSWORD%", mqttPassword);
+    
+    html.replace("%STATIC_IP_ENABLED%", isStaticIpEnabled ? "checked" : "");
+    html.replace("%STATIC_IP%", staticIp);
+    html.replace("%STATIC_GW%", staticGw);
+    html.replace("%STATIC_SN%", staticSn);
+    html.replace("%STATIC_DNS%", staticDns);
+    
     html.replace("%DEVICE_NAME%", DEVICE_NAME);
 
     server->send(200, "text/html", html);
@@ -873,6 +906,18 @@ void WifiManager::handleSettingsSave() {
     
     isWifiEnabled = server->hasArg("wifi_enabled");
     isMqttEnabled = server->hasArg("mqtt_enabled");
+    
+    if (server->hasArg("mqtt_server")) prefs.putString("mqtt_server", server->arg("mqtt_server"));
+    if (server->hasArg("mqtt_port")) prefs.putInt("mqtt_port", server->arg("mqtt_port").toInt());
+    if (server->hasArg("mqtt_user")) prefs.putString("mqtt_user", server->arg("mqtt_user"));
+    if (server->hasArg("mqtt_password")) prefs.putString("mqtt_pass", server->arg("mqtt_password"));
+
+    bool staticIpEnabled = server->hasArg("static_ip_enabled");
+    prefs.putBool("static_ip_en", staticIpEnabled);
+    if (server->hasArg("static_ip")) prefs.putString("static_ip", server->arg("static_ip"));
+    if (server->hasArg("static_gw")) prefs.putString("static_gw", server->arg("static_gw"));
+    if (server->hasArg("static_sn")) prefs.putString("static_sn", server->arg("static_sn"));
+    if (server->hasArg("static_dns")) prefs.putString("static_dns", server->arg("static_dns"));
     
     HardwareLogic::saveSettings(prefs, brightness, autoBright, delayMs, randomMode, showFilename, inactivitySleep, themeFlavor, screenOrientation, ledBrightness, isLedEnabled, isWifiEnabled, isMqttEnabled, wifiSSID, wifiPassword, bypassOptimization, bootFromCache);
     
