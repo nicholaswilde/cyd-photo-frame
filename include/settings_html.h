@@ -93,6 +93,11 @@ button:hover { background: #f5c2e7; }
     <label for='bypass_opt' title='Load images directly without resizing optimization'>Bypass Image Optimization</label>
 </div>
 
+<div class='checkbox-group'>
+    <input type='checkbox' id='boot_cache' name='boot_cache' value='1' %BOOT_CACHE%>
+    <label for='boot_cache' title='Show cached boot image immediately on power up'>Boot from Cache</label>
+</div>
+
 <div class='section-title'>System Features</div>
 <div class='checkbox-group'>
     <input type='checkbox' id='led_enabled' name='led_enabled' value='1' %LED_ENABLED%>
