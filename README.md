@@ -34,7 +34,7 @@ A digital photo frame for the ESP32 Cheap Yellow Device (CYD)
 - **Touch Navigation Zones:** Easily navigate images and access settings by tapping designated screen areas.
 - **On-Screen Feedback Banners:** Displays a temporary top toast notification banner to confirm touch zone settings changes on-screen (e.g. brightness, interval, random mode, etc.) before auto-restoring the photo.
 - **Settings Storage Management:** Clear the on-device photo cache directly from the Settings menu with an interactive confirmation prompt and visual progress bar tracking cache folder deletion.
-- **MQTT & Home Assistant Auto-Discovery:** Full integration with Home Assistant via MQTT Discovery, exposing controls for LCD backlight, auto-brightness, random mode, filename banner overlay, slideshow interval, theme flavor, screen orientation, playback controls (next, previous, pause/resume), and diagnostics (Wi-Fi RSSI, IP, MAC address, uptime, free heap, current image filename, and total images).
+- **MQTT & Home Assistant Auto-Discovery:** Full integration with Home Assistant via MQTT Discovery, exposing controls for LCD backlight, auto-brightness, random mode, filename banner overlay, inactivity sleep, bypass optimization, boot from cache, slideshow interval, theme flavor, screen orientation, playback controls (next, previous, pause/resume), and diagnostics (Wi-Fi RSSI, IP, MAC address, uptime, free heap, current image filename, and total images).
 
 ## :world_map: Touch Navigation Zones
 
@@ -216,7 +216,7 @@ MQTT can be configured either dynamically via the web settings portal (`http://<
 ```
 
 When MQTT is enabled:
-- **Home Assistant Auto-Discovery:** Devices register automatically under the prefix `homeassistant/` with entities for LCD Brightness, Auto Brightness, Random Mode, Show Filename, Inactivity Sleep, Slideshow Interval, Theme Flavor, Screen Orientation, Playback controls (Next, Previous, Pause/Play), and Restart.
+- **Home Assistant Auto-Discovery:** Devices register automatically under the prefix `homeassistant/` with entities for LCD Brightness, Auto Brightness, Random Mode, Show Filename, Inactivity Sleep, Bypass Optimization, Boot from Cache, Slideshow Interval, Theme Flavor, Screen Orientation, Playback controls (Next, Previous, Pause/Play), and Restart.
 - **Sensors & Diagnostics:** Reports device connection status, uptime, free heap memory, Wi-Fi RSSI, IP, MAC address, firmware version, current photo filename, and total images count.
 - **State & Command Topics:** Default base topic is `cyd/photo_frame/` (e.g. `cyd/photo_frame/state/image`, `cyd/photo_frame/command/slideshow_interval`, `cyd/photo_frame/command/theme`, etc.).
 
