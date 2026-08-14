@@ -29,6 +29,7 @@ static bool s_lastTouched = false;
 static int s_lastX = 0;
 static int s_lastY = 0;
 static unsigned long s_lastSampleMs = 0;
+static unsigned long s_lastTouchTimeMs = 0;
 
 static void updateTouchSample() {
     unsigned long now = millis();
@@ -40,14 +41,19 @@ static void updateTouchSample() {
     if (touch.touched()) {
         TS_Point p = touch.getPoint();
         if (p.x == 0 && p.y == 0) {
-            s_lastTouched = false; // Ignore phantom touches
+            if (now - s_lastTouchTimeMs > 50) {
+                s_lastTouched = false; // Ignore phantom touches
+            }
         } else {
             s_lastX = p.x;
             s_lastY = p.y;
             s_lastTouched = true;
+            s_lastTouchTimeMs = now;
         }
     } else {
-        s_lastTouched = false;
+        if (now - s_lastTouchTimeMs > 50) {
+            s_lastTouched = false;
+        }
     }
 }
 
@@ -171,7 +177,9 @@ static void updateTouchSample() {
                         }
                     }
                 } else {
-                    s_lastTouched = false;
+                    if (now - s_lastTouchTimeMs > 50) {
+                        s_lastTouched = false;
+                    }
                 }
             }
         }

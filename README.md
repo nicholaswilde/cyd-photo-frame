@@ -32,8 +32,9 @@ A digital photo frame for the ESP32 Cheap Yellow Device (CYD)
 - **Unified Screen Design:** Consistent header typography, Catppuccin color palette, and structured vertical label layout across all system screens (Settings, Optimization, Wi-Fi Setup, SD Card Errors, Warnings, and confirmation modals).
 - **Filename Banner Overlay:** Displays a clean, toggleable Catppuccin Mantle banner containing the current image name at the bottom of the screen.
 - **Touch Navigation Zones:** Easily navigate images and access settings by tapping designated screen areas.
-- **On-Screen Feedback Banners:** Displays a temporary top toast notification banner to confirm touch zone settings changes on-screen (e.g. brightness, delay, random mode, etc.) before auto-restoring the photo.
+- **On-Screen Feedback Banners:** Displays a temporary top toast notification banner to confirm touch zone settings changes on-screen (e.g. brightness, interval, random mode, etc.) before auto-restoring the photo.
 - **Settings Storage Management:** Clear the on-device photo cache directly from the Settings menu with an interactive confirmation prompt and visual progress bar tracking cache folder deletion.
+- **MQTT & Home Assistant Auto-Discovery:** Full integration with Home Assistant via MQTT Discovery, exposing controls for LCD backlight, auto-brightness, random mode, filename banner overlay, slideshow interval, theme flavor, screen orientation, playback controls (next, previous, pause/resume), and diagnostics (Wi-Fi RSSI, IP, MAC address, uptime, free heap, current image filename, and total images).
 
 ## :world_map: Touch Navigation Zones
 
@@ -49,8 +50,8 @@ The screen is divided into a 3x3 touch grid to control slideshow behavior and pa
 | **Bottom-Left** | Decrease backlight brightness |
 | **Top-Center** | Toggle filename banner display |
 | **Bottom-Center** | Toggle random slideshow mode |
-| **Top-Right** | Increase slideshow delay (+1s) |
-| **Bottom-Right** | Decrease slideshow delay (-1s) |
+| **Top-Right** | Increase slideshow interval (+1s) |
+| **Bottom-Right** | Decrease slideshow interval (-1s) |
 
 ## :floppy_disk: SD Card Configuration
 
@@ -205,8 +206,8 @@ task init
 | `CYD_DEVICE_IP` | `192.168.1.100` | Local network IP address of the CYD device (used for `task screenshots`) |
 | `COVERALLS_REPO_TOKEN` | *(optional)* | Token for uploading coverage reports to Coveralls (`task coverage:upload`) |
 
-#### MQTT Configuration (`config/secrets.h`)
-To enable MQTT features (e.g. broadcasting the currently displayed filename or device status), edit `config/secrets.h` and configure your MQTT broker details:
+#### MQTT & Home Assistant Configuration
+MQTT can be configured either dynamically via the web settings portal (`http://<device-ip>/`) or compiled into default fallback firmware values via `config/secrets.h`:
 ```cpp
 #define MQTT_SERVER   "192.168.1.100" // Your broker IP or hostname
 #define MQTT_PORT     1883
@@ -214,7 +215,10 @@ To enable MQTT features (e.g. broadcasting the currently displayed filename or d
 #define MQTT_PASSWORD "my_secure_password"
 ```
 
-If `MQTT_SERVER` is defined, the device will publish its status to `cyd/photo-frame/status` upon connection, and publish the current picture filename to `cyd/photo-frame/filename` during the slideshow.
+When MQTT is enabled:
+- **Home Assistant Auto-Discovery:** Devices register automatically under the prefix `homeassistant/` with entities for LCD Brightness, Auto Brightness, Random Mode, Show Filename, Inactivity Sleep, Slideshow Interval, Theme Flavor, Screen Orientation, Playback controls (Next, Previous, Pause/Play), and Restart.
+- **Sensors & Diagnostics:** Reports device connection status, uptime, free heap memory, Wi-Fi RSSI, IP, MAC address, firmware version, current photo filename, and total images count.
+- **State & Command Topics:** Default base topic is `cyd/photo_frame/` (e.g. `cyd/photo_frame/state/image`, `cyd/photo_frame/command/slideshow_interval`, `cyd/photo_frame/command/theme`, etc.).
 
 #### Build & Upload
 Select the environment matching your hardware:
@@ -320,6 +324,15 @@ Intermittent touch issues, screen flickering, or spontaneous reboots are frequen
 
 ### Audio Output / DAC Pins
 If you ever intend to use the speaker connector on the back, be aware that the DAC pin mapping changes between board revisions. Sometimes it's mapped to GPIO 25, and sometimes GPIO 26.
+
+### "No RAM for frame buffer; falling back to SD seek-writes"
+During the on-device JPEG optimization and caching phase, the firmware attempts to allocate a full-screen frame buffer in RAM (approx. 150–300 KB depending on screen resolution) using PSRAM or free heap memory to decode images entirely in RAM and write them to the SD card in a single sequential block.
+
+If the board lacks external PSRAM or available contiguous heap memory is insufficient (such as when network and UI services are loaded), the console displays:
+```text
+[System] WARNING: No RAM for frame buffer; falling back to SD seek-writes.
+```
+This is **safe and expected behavior**. The device automatically falls back to streaming decoded rows directly to the SD card row-by-row (`SD seek-writes`). Initial conversion of un-cached photos will take slightly longer, but the resulting `.raw` images in `/cache/` will still load and render at full speed (<60ms) on all subsequent slideshow passes. You can also skip on-device optimization entirely by toggling **Bypass Optimization** or pre-generating `.raw` files using `scripts/prepare_images.py --raw`.
 
 ## :balance_scale: License
 

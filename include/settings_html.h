@@ -68,8 +68,15 @@ button:hover { background: #f5c2e7; }
 </div>
 
 <div class='section-title'>Slideshow Options</div>
-<label for='slideshow_delay' title='Time in seconds before switching to the next photo'>Slideshow Delay (Seconds)</label>
-<input type='number' id='slideshow_delay' name='slideshow_delay' min='1' max='3600' value='%DELAY_SECONDS%'>
+<label for='slideshow_interval' title='Time before switching to the next photo'>Slideshow Interval</label>
+<select id='slideshow_interval' name='slideshow_interval'>
+    <option value='2' %DELAY_2%>2 Seconds</option>
+    <option value='5' %DELAY_5%>5 Seconds</option>
+    <option value='10' %DELAY_10%>10 Seconds</option>
+    <option value='15' %DELAY_15%>15 Seconds</option>
+    <option value='30' %DELAY_30%>30 Seconds</option>
+    <option value='60' %DELAY_60%>60 Seconds</option>
+</select>
 
 <div class='checkbox-group'>
     <input type='checkbox' id='random_mode' name='random_mode' value='1' %RANDOM_MODE%>
@@ -120,6 +127,9 @@ button:hover { background: #f5c2e7; }
     
     <label for='mqtt_password' title='Password for MQTT authentication (leave blank if none)'>MQTT Password</label>
     <input type='password' id='mqtt_password' name='mqtt_password' value='%MQTT_PASSWORD%'>
+    
+    <label for='mqtt_base_topic' title='Base topic prefix for MQTT (e.g. home/living_room/photo_frame/)'>MQTT Base Topic</label>
+    <input type='text' id='mqtt_base_topic' name='mqtt_base_topic' value='%MQTT_BASE_TOPIC%'>
 </div>
 
 <div class='checkbox-group'>

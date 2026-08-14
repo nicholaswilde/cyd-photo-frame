@@ -60,6 +60,13 @@ static lv_obj_t* confirm_dialog = nullptr;
 static lv_obj_t* reboot_confirm_dialog = nullptr;
 static lv_obj_t* wifi_info_dialog = nullptr;
 static lv_obj_t* slider_bright_ptr = nullptr;
+static lv_obj_t* sw_autob_ptr = nullptr;
+static lv_obj_t* sw_random_ptr = nullptr;
+static lv_obj_t* sw_filename_ptr = nullptr;
+static lv_obj_t* sw_sleep_ptr = nullptr;
+static lv_obj_t* dd_delay_ptr = nullptr;
+static lv_obj_t* dd_theme_ptr = nullptr;
+static lv_obj_t* dd_orient_ptr = nullptr;
 static lv_obj_t* settings_wifi_icon = nullptr;
 static lv_obj_t* ap_screen = nullptr;
 static lv_obj_t* loading_slideshow_screen = nullptr;
@@ -412,6 +419,50 @@ void LVGLManager::handle() {
             if (isAutoBrightness && slider_bright_ptr) {
                 lv_slider_set_value(slider_bright_ptr, (currentBrightness * 100) / 255, LV_ANIM_OFF);
             }
+            if (sw_autob_ptr) {
+                if (isAutoBrightness && !lv_obj_has_state(sw_autob_ptr, LV_STATE_CHECKED)) lv_obj_add_state(sw_autob_ptr, LV_STATE_CHECKED);
+                else if (!isAutoBrightness && lv_obj_has_state(sw_autob_ptr, LV_STATE_CHECKED)) lv_obj_clear_state(sw_autob_ptr, LV_STATE_CHECKED);
+            }
+            if (sw_random_ptr) {
+                if (isRandomMode && !lv_obj_has_state(sw_random_ptr, LV_STATE_CHECKED)) lv_obj_add_state(sw_random_ptr, LV_STATE_CHECKED);
+                else if (!isRandomMode && lv_obj_has_state(sw_random_ptr, LV_STATE_CHECKED)) lv_obj_clear_state(sw_random_ptr, LV_STATE_CHECKED);
+            }
+            if (sw_filename_ptr) {
+                if (showFilename && !lv_obj_has_state(sw_filename_ptr, LV_STATE_CHECKED)) lv_obj_add_state(sw_filename_ptr, LV_STATE_CHECKED);
+                else if (!showFilename && lv_obj_has_state(sw_filename_ptr, LV_STATE_CHECKED)) lv_obj_clear_state(sw_filename_ptr, LV_STATE_CHECKED);
+            }
+            if (sw_sleep_ptr) {
+                if (isInactivitySleep && !lv_obj_has_state(sw_sleep_ptr, LV_STATE_CHECKED)) lv_obj_add_state(sw_sleep_ptr, LV_STATE_CHECKED);
+                else if (!isInactivitySleep && lv_obj_has_state(sw_sleep_ptr, LV_STATE_CHECKED)) lv_obj_clear_state(sw_sleep_ptr, LV_STATE_CHECKED);
+            }
+            if (dd_delay_ptr) {
+                unsigned long interval_sec = slideshowTimer.getInterval() / 1000UL;
+                int sel_idx = 2; // Default 10s
+                if (interval_sec == 2) sel_idx = 0;
+                else if (interval_sec == 5) sel_idx = 1;
+                else if (interval_sec == 10) sel_idx = 2;
+                else if (interval_sec == 15) sel_idx = 3;
+                else if (interval_sec == 30) sel_idx = 4;
+                else if (interval_sec == 60) sel_idx = 5;
+                if (lv_dropdown_get_selected(dd_delay_ptr) != sel_idx) {
+                    lv_dropdown_set_selected(dd_delay_ptr, sel_idx);
+                }
+            }
+            if (dd_theme_ptr) {
+                if (lv_dropdown_get_selected(dd_theme_ptr) != currentThemeFlavor) {
+                    lv_dropdown_set_selected(dd_theme_ptr, currentThemeFlavor);
+                }
+            }
+            if (dd_orient_ptr) {
+                static const int rotation_to_dropdown[] = {3, 0, 1, 2};
+                int current_dd_orient = 0;
+                if (currentOrientation >= 0 && currentOrientation < 4) {
+                    current_dd_orient = rotation_to_dropdown[currentOrientation];
+                }
+                if (lv_dropdown_get_selected(dd_orient_ptr) != current_dd_orient) {
+                    lv_dropdown_set_selected(dd_orient_ptr, current_dd_orient);
+                }
+            }
             if (settings_wifi_icon) {
                 if (wifiManager == nullptr) {
                     lv_obj_add_flag(settings_wifi_icon, LV_OBJ_FLAG_HIDDEN);
@@ -612,6 +663,7 @@ void LVGLManager::showSettings() {
     lv_obj_set_style_text_color(lbl_auto, get_lv_color(getCatppuccinFlavor(currentThemeFlavor).text), 0);
 
     lv_obj_t * sw_auto = lv_switch_create(row_auto);
+    sw_autob_ptr = sw_auto;
     if (isAutoBrightness) {
         lv_obj_add_state(sw_auto, LV_STATE_CHECKED);
         lv_obj_add_state(slider_bright, LV_STATE_DISABLED);
@@ -672,10 +724,11 @@ void LVGLManager::showSettings() {
     lv_obj_set_style_pad_all(row_delay, 5, 0);
 
     lv_obj_t * lbl_delay = lv_label_create(row_delay);
-    lv_label_set_text(lbl_delay, "Delay");
+    lv_label_set_text(lbl_delay, "Interval");
     lv_obj_set_style_text_color(lbl_delay, get_lv_color(getCatppuccinFlavor(currentThemeFlavor).text), 0);
 
     lv_obj_t * dd_delay = lv_dropdown_create(row_delay);
+    dd_delay_ptr = dd_delay;
     lv_dropdown_set_options(dd_delay, "2s\n5s\n10s\n15s\n30s\n60s");
     
     unsigned long interval_sec = slideshowTimer.getInterval() / 1000UL;
@@ -704,6 +757,7 @@ void LVGLManager::showSettings() {
     lv_obj_set_style_text_color(lbl_random, get_lv_color(getCatppuccinFlavor(currentThemeFlavor).text), 0);
 
     lv_obj_t * sw_random = lv_switch_create(row_random);
+    sw_random_ptr = sw_random;
     if (isRandomMode) lv_obj_add_state(sw_random, LV_STATE_CHECKED);
     lv_obj_add_event_cb(sw_random, random_mode_switch_event_cb, LV_EVENT_VALUE_CHANGED, NULL);
     
@@ -722,6 +776,7 @@ void LVGLManager::showSettings() {
     lv_obj_set_style_text_color(lbl_filename, get_lv_color(getCatppuccinFlavor(currentThemeFlavor).text), 0);
 
     lv_obj_t * sw_filename = lv_switch_create(row_filename);
+    sw_filename_ptr = sw_filename;
     if (showFilename) lv_obj_add_state(sw_filename, LV_STATE_CHECKED);
     lv_obj_add_event_cb(sw_filename, show_filename_switch_event_cb, LV_EVENT_VALUE_CHANGED, NULL);
     
@@ -740,6 +795,7 @@ void LVGLManager::showSettings() {
     lv_obj_set_style_text_color(lbl_sleep, get_lv_color(getCatppuccinFlavor(currentThemeFlavor).text), 0);
 
     lv_obj_t * sw_sleep = lv_switch_create(row_sleep);
+    sw_sleep_ptr = sw_sleep;
     if (isInactivitySleep) lv_obj_add_state(sw_sleep, LV_STATE_CHECKED);
     lv_obj_add_event_cb(sw_sleep, inactivity_sleep_switch_event_cb, LV_EVENT_VALUE_CHANGED, NULL);
 
@@ -842,6 +898,7 @@ void LVGLManager::showSettings() {
     lv_obj_set_style_text_color(lbl_theme, get_lv_color(getCatppuccinFlavor(currentThemeFlavor).text), 0);
 
     lv_obj_t * dd_theme = lv_dropdown_create(row_theme);
+    dd_theme_ptr = dd_theme;
     lv_dropdown_set_options(dd_theme, "Mocha\nMacchiato\nFrappe\nLatte");
     lv_dropdown_set_selected(dd_theme, currentThemeFlavor);
     lv_obj_add_event_cb(dd_theme, theme_dropdown_event_cb, LV_EVENT_VALUE_CHANGED, NULL);
@@ -862,6 +919,7 @@ void LVGLManager::showSettings() {
 
     static const int rotation_to_dropdown[] = {3, 0, 1, 2};
     lv_obj_t * dd_orient = lv_dropdown_create(row_orient);
+    dd_orient_ptr = dd_orient;
     lv_dropdown_set_options(dd_orient, "Landscape\nPortrait\nLandscape Rev\nPortrait Rev");
     int initial_dd = 0;
     if (currentOrientation >= 0 && currentOrientation < 4) {
@@ -923,6 +981,13 @@ void LVGLManager::hideSettings() {
         lv_obj_del(old_scr);
         settings_screen = nullptr;
         slider_bright_ptr = nullptr;
+        sw_autob_ptr = nullptr;
+        sw_random_ptr = nullptr;
+        sw_filename_ptr = nullptr;
+        sw_sleep_ptr = nullptr;
+        dd_delay_ptr = nullptr;
+        dd_theme_ptr = nullptr;
+        dd_orient_ptr = nullptr;
         settings_wifi_icon = nullptr;
     }
 #endif

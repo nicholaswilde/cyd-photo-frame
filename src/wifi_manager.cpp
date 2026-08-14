@@ -782,7 +782,7 @@ void WifiManager::handleSettings() {
     
     int brightness = DEFAULT_BRIGHTNESS;
     bool autoBright = DEFAULT_AUTO_BRIGHTNESS;
-    unsigned long delayMs = DEFAULT_SLIDESHOW_DELAY_MS;
+    unsigned long delayMs = DEFAULT_SLIDESHOW_INTERVAL_MS;
     bool randomMode = DEFAULT_RANDOM_MODE;
     bool showFilename = DEFAULT_SHOW_FILENAME;
     bool inactivitySleep = DEFAULT_INACTIVITY_SLEEP;
@@ -803,6 +803,7 @@ void WifiManager::handleSettings() {
     int mqttPort = prefs.getInt("mqtt_port", 1883);
     String mqttUser = prefs.getString("mqtt_user", "");
     String mqttPassword = prefs.getString("mqtt_pass", "");
+    String mqttBaseTopic = prefs.getString("mqtt_topic", DEFAULT_MQTT_BASE_TOPIC);
     
     bool isStaticIpEnabled = prefs.getBool("static_ip_en", false);
     String staticIp = prefs.getString("static_ip", "");
@@ -836,7 +837,12 @@ void WifiManager::handleSettings() {
     html.replace("%AUTO_BRIGHTNESS%", autoBright ? "checked" : "");
     html.replace("%INACTIVITY_SLEEP%", inactivitySleep ? "checked" : "");
     
-    html.replace("%DELAY_SECONDS%", String(delayMs / 1000));
+    html.replace("%DELAY_2%", delayMs == 2000 ? "selected" : "");
+    html.replace("%DELAY_5%", delayMs == 5000 ? "selected" : "");
+    html.replace("%DELAY_10%", delayMs == 10000 ? "selected" : "");
+    html.replace("%DELAY_15%", delayMs == 15000 ? "selected" : "");
+    html.replace("%DELAY_30%", delayMs == 30000 ? "selected" : "");
+    html.replace("%DELAY_60%", delayMs == 60000 ? "selected" : "");
     html.replace("%RANDOM_MODE%", randomMode ? "checked" : "");
     html.replace("%SHOW_FILENAME%", showFilename ? "checked" : "");
     html.replace("%BYPASS_OPT%", bypassOptimization ? "checked" : "");
@@ -851,6 +857,7 @@ void WifiManager::handleSettings() {
     html.replace("%MQTT_PORT%", String(mqttPort));
     html.replace("%MQTT_USER%", mqttUser);
     html.replace("%MQTT_PASSWORD%", mqttPassword);
+    html.replace("%MQTT_BASE_TOPIC%", mqttBaseTopic);
     
     html.replace("%STATIC_IP_ENABLED%", isStaticIpEnabled ? "checked" : "");
     html.replace("%STATIC_IP%", staticIp);
@@ -870,7 +877,7 @@ void WifiManager::handleSettingsSave() {
     
     int brightness = DEFAULT_BRIGHTNESS;
     bool autoBright = DEFAULT_AUTO_BRIGHTNESS;
-    unsigned long delayMs = DEFAULT_SLIDESHOW_DELAY_MS;
+    unsigned long delayMs = DEFAULT_SLIDESHOW_INTERVAL_MS;
     bool randomMode = DEFAULT_RANDOM_MODE;
     bool showFilename = DEFAULT_SHOW_FILENAME;
     bool inactivitySleep = DEFAULT_INACTIVITY_SLEEP;
@@ -894,7 +901,7 @@ void WifiManager::handleSettingsSave() {
     autoBright = server->hasArg("auto_brightness");
     inactivitySleep = server->hasArg("inactivity_sleep");
     
-    if (server->hasArg("slideshow_delay")) delayMs = server->arg("slideshow_delay").toInt() * 1000;
+    if (server->hasArg("slideshow_interval")) delayMs = server->arg("slideshow_interval").toInt() * 1000;
     
     randomMode = server->hasArg("random_mode");
     showFilename = server->hasArg("show_filename");
@@ -911,6 +918,13 @@ void WifiManager::handleSettingsSave() {
     if (server->hasArg("mqtt_port")) prefs.putInt("mqtt_port", server->arg("mqtt_port").toInt());
     if (server->hasArg("mqtt_user")) prefs.putString("mqtt_user", server->arg("mqtt_user"));
     if (server->hasArg("mqtt_password")) prefs.putString("mqtt_pass", server->arg("mqtt_password"));
+    if (server->hasArg("mqtt_base_topic")) {
+        String topic = server->arg("mqtt_base_topic");
+        if (topic.length() > 0 && !topic.endsWith("/")) {
+            topic += "/";
+        }
+        prefs.putString("mqtt_topic", topic);
+    }
 
     bool staticIpEnabled = server->hasArg("static_ip_enabled");
     prefs.putBool("static_ip_en", staticIpEnabled);

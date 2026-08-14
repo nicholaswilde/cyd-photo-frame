@@ -2,7 +2,7 @@
 #define CONFIG_H
 
 // Slideshow Settings
-#define DEFAULT_SLIDESHOW_DELAY_MS 10000
+#define DEFAULT_SLIDESHOW_INTERVAL_MS 10000
 #define DEFAULT_RANDOM_MODE false
 #define DEFAULT_SHOW_FILENAME true
 #define DEFAULT_BYPASS_OPTIMIZATION false
@@ -32,8 +32,12 @@
 // #define SD_MOSI_PIN 23
 
 // WiFi Settings
+#ifndef DEFAULT_WIFI_SSID
 #define DEFAULT_WIFI_SSID ""
+#endif
+#ifndef DEFAULT_WIFI_PASSWORD
 #define DEFAULT_WIFI_PASSWORD ""
+#endif
 
 // Static IP Settings
 // Uncomment the lines below to configure a static IP address.
@@ -42,5 +46,10 @@
 // #define STATIC_GATEWAY     "192.168.1.1"
 // #define STATIC_SUBNET      "255.255.255.0"
 // #define STATIC_DNS         "1.1.1.1"
+
+// MQTT Settings
+#ifndef DEFAULT_MQTT_BASE_TOPIC
+#define DEFAULT_MQTT_BASE_TOPIC "cyd/photo_frame/"
+#endif
 
 #endif // CONFIG_H

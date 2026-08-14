@@ -6,6 +6,7 @@
 #include <TJpg_Decoder.h>
 #include <unordered_map>
 #include "config/config.h"
+#include "version.h"
 #include "file_cache.h"
 #include "slideshow_timer.h"
 #include "touch_manager.h"
@@ -25,7 +26,7 @@ TransitionDirection pendingDirection = DIR_NEXT;
 // Note: Pins and drivers are automatically handled by platformio.ini build_flags!
 TFT_eSPI tft = TFT_eSPI();
 FileCache fileCache(1024);
-SlideshowTimer slideshowTimer(DEFAULT_SLIDESHOW_DELAY_MS);
+SlideshowTimer slideshowTimer(DEFAULT_SLIDESHOW_INTERVAL_MS);
 TouchHandler touchHandler(TFT_HEIGHT, TFT_WIDTH);
 
 int currentBrightness = DEFAULT_BRIGHTNESS;
@@ -59,14 +60,13 @@ std::string wifiPassword = DEFAULT_WIFI_PASSWORD;
 #include "wifi_manager.h"
 WifiManager* wifiManager = nullptr;
 
-#if __has_include("config/secrets.h")
-#include "config/secrets.h"
-#endif
 
-#if defined(MQTT_SERVER)
+
 #include "mqtt_manager.h"
 MqttManager* mqttManager = nullptr;
 #include <ArduinoJson.h>
+
+unsigned long lastDiagnosticPublishMs = 0;
 
 extern Preferences prefs;
 extern int currentBrightness;
@@ -74,27 +74,37 @@ extern bool isAutoBrightness;
 extern bool isRandomMode;
 extern bool isInactivitySleep;
 extern int currentThemeFlavor;
+extern int currentOrientation;
+extern bool showFilename;
 extern SlideshowTimer slideshowTimer;
 extern void showNextImage();
 extern void showPreviousImage();
+extern LedManager led;
+
 
 void emitMqttSettings() {
   if (isMqttEnabled && mqttManager != nullptr && mqttManager->isConnected()) {
-    JsonDocument doc;
-    doc["brightness"] = currentBrightness;
-    doc["auto_brightness"] = isAutoBrightness;
-    doc["random_mode"] = isRandomMode;
-    doc["sleep_enabled"] = isInactivitySleep;
-    doc["theme"] = currentThemeFlavor;
-    doc["delay_ms"] = slideshowTimer.getInterval();
+    mqttManager->publish("settings/brightness", String(currentBrightness).c_str(), true);
+    mqttManager->publish("settings/auto_brightness", isAutoBrightness ? "ON" : "OFF", true);
+    mqttManager->publish("settings/random_mode", isRandomMode ? "ON" : "OFF", true);
+    mqttManager->publish("settings/show_filename", showFilename ? "ON" : "OFF", true);
+    mqttManager->publish("settings/inactivity_sleep", isInactivitySleep ? "ON" : "OFF", true);
+    mqttManager->publish("settings/slideshow_interval", (String(slideshowTimer.getInterval() / 1000) + "s").c_str(), true);
     
-    char buffer[256];
-    serializeJson(doc, buffer);
-    mqttManager->publish("cyd/photo-frame/state/settings", buffer);
+    const char* themes[] = {"Mocha", "Macchiato", "Frappe", "Latte"};
+    if (currentThemeFlavor >= 0 && currentThemeFlavor < 4) {
+      mqttManager->publish("settings/theme", themes[currentThemeFlavor], true);
+    }
+    
+    const char* orientations[] = {"Portrait Rev", "Landscape", "Portrait", "Landscape Rev"};
+    if (currentOrientation >= 0 && currentOrientation < 4) {
+      mqttManager->publish("settings/screen_orientation", orientations[currentOrientation], true);
+    }
   }
 }
 
 void emitMqttImageState(const char* filename, size_t index, size_t total) {
+  // Can still keep this JSON payload for a custom state topic if desired, or map to an HA text sensor
   if (isMqttEnabled && mqttManager != nullptr && mqttManager->isConnected()) {
     JsonDocument doc;
     doc["filename"] = filename;
@@ -103,70 +113,92 @@ void emitMqttImageState(const char* filename, size_t index, size_t total) {
     
     char buffer[256];
     serializeJson(doc, buffer);
-    mqttManager->publish("cyd/photo-frame/state/image", buffer);
+    mqttManager->publish("state/image", buffer, true);
   }
 }
 
-void handleMqttMessage(const char* topic, const char* payload) {
-  if (strcmp(topic, "cyd/photo-frame/command/settings") == 0) {
-    JsonDocument doc;
-    DeserializationError error = deserializeJson(doc, payload);
-    if (!error) {
-      Preferences prefs;
-      prefs.begin("cyd-photo", false);
-      if (doc.containsKey("brightness")) {
-        currentBrightness = doc["brightness"].as<int>();
+void handleMqttMessage(const String& topic, const String& payload) {
+  Preferences prefs;
+  prefs.begin("settings", false);
+  bool settingsChanged = false;
+  bool pendingRestart = false;
+
+  if (topic.endsWith("command/brightness")) {
+    currentBrightness = payload.toInt();
 #if defined(TFT_BL) && (TFT_BL >= 0)
-        if (!isAutoBrightness) analogWrite(TFT_BL, currentBrightness);
+    if (!isAutoBrightness) analogWrite(TFT_BL, currentBrightness);
 #endif
-        prefs.putUChar("bright", currentBrightness);
-      }
-      if (doc.containsKey("auto_brightness")) {
-        isAutoBrightness = doc["auto_brightness"].as<bool>();
-        prefs.putBool("autob", isAutoBrightness);
-      }
-      if (doc.containsKey("random_mode")) {
-        isRandomMode = doc["random_mode"].as<bool>();
-        prefs.putBool("random", isRandomMode);
-      }
-      if (doc.containsKey("sleep_enabled")) {
-        isInactivitySleep = doc["sleep_enabled"].as<bool>();
-        prefs.putBool("sleep", isInactivitySleep);
-      }
-      if (doc.containsKey("theme")) {
-        currentThemeFlavor = doc["theme"].as<int>();
-        prefs.putInt("theme", currentThemeFlavor);
-      }
-      if (doc.containsKey("delay_ms")) {
-        unsigned long delay = doc["delay_ms"].as<unsigned long>();
-        slideshowTimer.setInterval(delay);
-        prefs.putULong("delay", delay);
-      }
-      prefs.end();
-      
-      emitMqttSettings();
-    }
-  } else if (strcmp(topic, "cyd/photo-frame/command/action") == 0) {
-    if (strcmp(payload, "next") == 0) {
-      showNextImage();
-    } else if (strcmp(payload, "previous") == 0) {
-      showPreviousImage();
-    } else if (strcmp(payload, "sleep") == 0) {
-      extern bool isSleeping;
-      extern LedManager led;
-      isSleeping = true;
-      led.setState(LedManager::STATE_OFF);
-    } else if (strcmp(payload, "wake") == 0) {
-      extern bool isSleeping;
-      extern LedManager led;
-      isSleeping = false;
-      led.setState(LedManager::STATE_SLIDESHOW);
-    } else if (strcmp(payload, "reboot") == 0) {
-      ESP.restart();
-    }
+    prefs.putUChar("bright", currentBrightness);
+    settingsChanged = true;
+  } else if (topic.endsWith("command/auto_brightness")) {
+    isAutoBrightness = (payload == "ON");
+    prefs.putBool("autob", isAutoBrightness);
+    settingsChanged = true;
+  } else if (topic.endsWith("command/random_mode")) {
+    isRandomMode = (payload == "ON");
+    prefs.putBool("random", isRandomMode);
+    settingsChanged = true;
+  } else if (topic.endsWith("command/show_filename")) {
+    showFilename = (payload == "ON");
+    prefs.putBool("showfn", showFilename);
+    settingsChanged = true;
+  } else if (topic.endsWith("command/inactivity_sleep")) {
+    isInactivitySleep = (payload == "ON");
+    prefs.putBool("sleep", isInactivitySleep);
+    settingsChanged = true;
+  } else if (topic.endsWith("command/slideshow_interval")) {
+    String p = payload;
+    p.replace("s", "");
+    unsigned long delay = p.toInt() * 1000;
+    if (delay < 1000) delay = 1000; // safety fallback
+    slideshowTimer.setInterval(delay);
+    prefs.putULong("delay", delay);
+    settingsChanged = true;
+  } else if (topic.endsWith("command/theme")) {
+    if (payload == "Mocha") currentThemeFlavor = 0;
+    else if (payload == "Macchiato") currentThemeFlavor = 1;
+    else if (payload == "Frappe") currentThemeFlavor = 2;
+    else if (payload == "Latte") currentThemeFlavor = 3;
+    prefs.putInt("theme", currentThemeFlavor);
+    prefs.putUInt("cached_theme", (uint32_t)currentThemeFlavor);
+    settingsChanged = true;
+    pendingRestart = true;
+  } else if (topic.endsWith("command/screen_orientation")) {
+    int rot = 1;
+    if (payload == "Portrait Rev") rot = 0;
+    else if (payload == "Landscape") rot = 1;
+    else if (payload == "Portrait") rot = 2;
+    else if (payload == "Landscape Rev") rot = 3;
+    prefs.putInt("orientation", rot);
+    prefs.putInt("cached_rot", rot);
+    settingsChanged = true;
+    pendingRestart = true;
+  } else if (topic.endsWith("command/reboot")) {
+    pendingRestart = true;
+  } else if (topic.endsWith("command/next_image")) {
+    showNextImage();
+  } else if (topic.endsWith("command/prev_image")) {
+    showPreviousImage();
+  } else if (topic.endsWith("command/toggle_play")) {
+    bool isPaused = !slideshowTimer.isPaused();
+    slideshowTimer.setPaused(isPaused);
+  }
+
+  prefs.end();
+  
+  if (settingsChanged) {
+    emitMqttSettings();
+  }
+  
+  lastDiagnosticPublishMs = 0; // Force immediate state publish
+  
+  if (pendingRestart) {
+    Serial.println("[MQTT] Restarting to apply settings...");
+    delay(500);
+    ESP.restart();
   }
 }
-#endif
+
 
 #include "app_state.h"
 AppState currentState = STATE_SLIDESHOW;
@@ -853,9 +885,7 @@ bool renderScaledJpg(const char* filename) {
         drawFilenameBanner(filename);
       }
       drawToastBannerIfNeeded();
-#if defined(MQTT_SERVER)
       emitMqttImageState(filename, fileCache.getIndex() + 1, fileCache.size());
-#endif
       return true;
     }
     
@@ -1073,7 +1103,6 @@ void handleClearCache() {
 }
 
 // --- Wi-Fi Event Handlers ---
-#if defined(MQTT_SERVER)
 void onWiFiGotIP(WiFiEvent_t event, WiFiEventInfo_t info) {
     if (isMqttEnabled && isWifiEnabled && mqttManager != nullptr) {
         Serial.println("[System] Wi-Fi connected with IP! Signaling MQTT Manager...");
@@ -1087,7 +1116,6 @@ void onWiFiDisconnect(WiFiEvent_t event, WiFiEventInfo_t info) {
         mqttManager->onNetworkDisconnected();
     }
 }
-#endif
 
 void setup() {
   Serial.begin(115200);
@@ -1103,6 +1131,15 @@ void setup() {
     prefs.begin("settings", false);
     unsigned long loadedDelay = slideshowTimer.getInterval();
     HardwareLogic::loadSettings(prefs, currentBrightness, isAutoBrightness, loadedDelay, isRandomMode, showFilename, isInactivitySleep, currentThemeFlavor, currentOrientation, currentLedBrightness, isLedEnabled, isWifiEnabled, isMqttEnabled, wifiSSID, wifiPassword, bypassOptimization, bootFromCache);
+    
+    // Snap loaded delay to valid intervals (2, 5, 10, 15, 30, 60) for MQTT/HTML dropdown compatibility
+    if (loadedDelay <= 3500) loadedDelay = 2000;
+    else if (loadedDelay <= 7500) loadedDelay = 5000;
+    else if (loadedDelay <= 12500) loadedDelay = 10000;
+    else if (loadedDelay <= 22500) loadedDelay = 15000;
+    else if (loadedDelay <= 45000) loadedDelay = 30000;
+    else loadedDelay = 60000;
+    
     slideshowTimer.setInterval(loadedDelay);
     cachedTheme = (int)prefs.getUInt("cached_theme", 0);
     cachedOrientation = (int)prefs.getInt("cached_rot", 1);
@@ -1115,13 +1152,23 @@ void setup() {
   // Initialize and begin WiFi Manager if enabled (so Improv starts immediately)
   if (isWifiEnabled) {
     wifiManager = new WifiManager(wifiSSID, wifiPassword);
-#if defined(MQTT_SERVER)
     WiFi.onEvent(onWiFiGotIP, WiFiEvent_t::ARDUINO_EVENT_WIFI_STA_GOT_IP);
     WiFi.onEvent(onWiFiDisconnect, WiFiEvent_t::ARDUINO_EVENT_WIFI_STA_DISCONNECTED);
-    mqttManager = new MqttManager(MQTT_SERVER, MQTT_PORT, MQTT_USER, MQTT_PASSWORD);
-    mqttManager->setCallback(handleMqttMessage);
-    mqttManager->begin();
-#endif
+
+    Preferences prefs;
+    prefs.begin("settings", true);
+    String mqttServer = prefs.getString("mqtt_server", "");
+    int mqttPort = prefs.getInt("mqtt_port", 1883);
+    String mqttUser = prefs.getString("mqtt_user", "");
+    String mqttPassword = prefs.getString("mqtt_pass", "");
+    String mqttBaseTopic = prefs.getString("mqtt_topic", DEFAULT_MQTT_BASE_TOPIC);
+    prefs.end();
+
+    if (mqttServer.length() > 0) {
+      mqttManager = new MqttManager(mqttServer, mqttPort, mqttUser, mqttPassword, mqttBaseTopic);
+      mqttManager->onMessage(handleMqttMessage);
+      mqttManager->begin();
+    }
     wifiManager->begin();
   }
 
@@ -1660,7 +1707,59 @@ void showPreviousImage() {
   }
 }
 
+void publishDiagnostics() {
+  if (isMqttEnabled && mqttManager != nullptr && mqttManager->isConnected()) {
+    unsigned long now = millis();
+    if (now - lastDiagnosticPublishMs > 60000 || lastDiagnosticPublishMs == 0) { // publish every 60 seconds
+      lastDiagnosticPublishMs = now == 0 ? 1 : now; // Avoid staying at 0
+      
+      // System Diagnostics
+      mqttManager->publish("system/uptime", String(now / 1000).c_str(), true);
+      mqttManager->publish("system/free_heap", String(ESP.getFreeHeap()).c_str(), true);
+      mqttManager->publish("system/wifi_rssi", String(WiFi.RSSI()).c_str(), true);
+      mqttManager->publish("system/ip", WiFi.localIP().toString().c_str(), true);
+      mqttManager->publish("system/version", APP_VERSION, true);
+      mqttManager->publish("system/mac", WiFi.macAddress().c_str(), true);
+
+      // Operational Settings
+      mqttManager->publish("settings/brightness", String(currentBrightness).c_str(), true);
+      mqttManager->publish("settings/auto_brightness", isAutoBrightness ? "ON" : "OFF", true);
+      mqttManager->publish("settings/random_mode", isRandomMode ? "ON" : "OFF", true);
+      mqttManager->publish("settings/show_filename", showFilename ? "ON" : "OFF", true);
+      mqttManager->publish("settings/inactivity_sleep", isInactivitySleep ? "ON" : "OFF", true);
+      mqttManager->publish("settings/slideshow_interval", String(slideshowTimer.getInterval()).c_str(), true);
+      
+      String themeStr = "";
+      switch (currentThemeFlavor) {
+        case 0: themeStr = "Mocha"; break;
+        case 1: themeStr = "Macchiato"; break;
+        case 2: themeStr = "Frappe"; break;
+        case 3: themeStr = "Latte"; break;
+        default: themeStr = "Mocha";
+      }
+      mqttManager->publish("settings/theme", themeStr.c_str(), true);
+      
+      String orientStr = "";
+      switch (currentOrientation) {
+        case 0: orientStr = "Portrait Rev"; break;
+        case 1: orientStr = "Landscape"; break;
+        case 2: orientStr = "Portrait"; break;
+        case 3: orientStr = "Landscape Rev"; break;
+        default: orientStr = "Landscape";
+      }
+      mqttManager->publish("settings/screen_orientation", orientStr.c_str(), true);
+      
+      // Image State
+      if (fileCache.size() > 0) {
+        emitMqttImageState(fileCache.getCurrent().c_str(), fileCache.getIndex() + 1, fileCache.size());
+      }
+    }
+  }
+}
+
 void loop() {
+  publishDiagnostics();
+
   if (wifiManager != nullptr) {
     wifiManager->update();
   }
