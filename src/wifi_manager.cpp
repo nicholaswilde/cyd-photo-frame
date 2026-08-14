@@ -956,7 +956,7 @@ void WifiManager::begin() {
 }
 
 void WifiManager::stop() {
-    _state = WIFI_STATE_DISCONNECTED;
+    _state = WIFI_STATE_STOPPED;
 }
 
 void WifiManager::update() {}

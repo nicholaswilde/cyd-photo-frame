@@ -19,8 +19,15 @@ void test_wifi_manager_stub(void) {
     TEST_ASSERT_EQUAL_STRING("cyd-photo-frame-mock", wm.getAPSSID().c_str());
 }
 
+void test_wifi_manager_stop(void) {
+    WifiManager wm("myssid", "mypass");
+    wm.stop();
+    TEST_ASSERT_EQUAL(WIFI_STATE_STOPPED, wm.getState());
+}
+
 int main(int argc, char **argv) {
     UNITY_BEGIN();
     RUN_TEST(test_wifi_manager_stub);
+    RUN_TEST(test_wifi_manager_stop);
     return UNITY_END();
 }
