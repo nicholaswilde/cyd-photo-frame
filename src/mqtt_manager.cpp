@@ -93,12 +93,14 @@ void MqttManager::onMqttConnect(bool sessionPresent) {
     subscribe("command/reboot", 0);
     subscribe("command/auto_brightness", 0);
     subscribe("command/screensaver", 0);
-    subscribe("command/theme", 0);
     subscribe("command/screen_orientation", 0);
     subscribe("command/slideshow_interval", 0);
     subscribe("command/random_mode", 0);
     subscribe("command/show_filename", 0);
     subscribe("command/inactivity_sleep", 0);
+    subscribe("command/bypass_optimization", 0);
+    subscribe("command/boot_from_cache", 0);
+    subscribe("command/theme", 0);
     subscribe("command/next_image", 0);
     subscribe("command/prev_image", 0);
     subscribe("command/toggle_play", 0);
@@ -178,6 +180,13 @@ void MqttManager::publishHADiscovery() {
     // Inactivity Sleep (Switch)
     String sleepPayload = "{\"name\":\"Inactivity Sleep\",\"state_topic\":\"" + _baseTopic + "settings/inactivity_sleep\",\"command_topic\":\"" + _baseTopic + "command/inactivity_sleep\",\"payload_on\":\"ON\",\"payload_off\":\"OFF\",\"entity_category\":\"config\",\"unique_id\":\"" + deviceId + "_insleep\"," + deviceJson + "}";
     _mqttClient.publish(("homeassistant/switch/" + deviceId + "/inactivity_sleep/config").c_str(), 0, true, sleepPayload.c_str());
+    vTaskDelay(pdMS_TO_TICKS(50));
+    // Bypass Optimization (Switch)
+    String bypassOptPayload = "{\"name\":\"Bypass Optimization\",\"state_topic\":\"" + _baseTopic + "settings/bypass_optimization\",\"command_topic\":\"" + _baseTopic + "command/bypass_optimization\",\"payload_on\":\"ON\",\"payload_off\":\"OFF\",\"entity_category\":\"config\",\"unique_id\":\"" + deviceId + "_bypassopt\"," + deviceJson + "}";
+    _mqttClient.publish(("homeassistant/switch/" + deviceId + "/bypass_optimization/config").c_str(), 0, true, bypassOptPayload.c_str());
+    // Boot from Cache (Switch)
+    String bootCachePayload = "{\"name\":\"Boot From Cache\",\"state_topic\":\"" + _baseTopic + "settings/boot_from_cache\",\"command_topic\":\"" + _baseTopic + "command/boot_from_cache\",\"payload_on\":\"ON\",\"payload_off\":\"OFF\",\"entity_category\":\"config\",\"unique_id\":\"" + deviceId + "_bootcache\"," + deviceJson + "}";
+    _mqttClient.publish(("homeassistant/switch/" + deviceId + "/boot_from_cache/config").c_str(), 0, true, bootCachePayload.c_str());
 
     // Theme (Select)
     String themePayload = "{\"name\":\"Theme Flavor\",\"state_topic\":\"" + _baseTopic + "settings/theme\",\"command_topic\":\"" + _baseTopic + "command/theme\",\"options\":[\"Mocha\",\"Macchiato\",\"Frappe\",\"Latte\"],\"entity_category\":\"config\",\"unique_id\":\"" + deviceId + "_theme\"," + deviceJson + "}";

@@ -64,6 +64,8 @@ static lv_obj_t* sw_autob_ptr = nullptr;
 static lv_obj_t* sw_random_ptr = nullptr;
 static lv_obj_t* sw_filename_ptr = nullptr;
 static lv_obj_t* sw_sleep_ptr = nullptr;
+static lv_obj_t* sw_bypass_opt_ptr = nullptr;
+static lv_obj_t* sw_boot_cache_ptr = nullptr;
 static lv_obj_t* dd_delay_ptr = nullptr;
 static lv_obj_t* dd_theme_ptr = nullptr;
 static lv_obj_t* dd_orient_ptr = nullptr;
@@ -434,6 +436,14 @@ void LVGLManager::handle() {
             if (sw_sleep_ptr) {
                 if (isInactivitySleep && !lv_obj_has_state(sw_sleep_ptr, LV_STATE_CHECKED)) lv_obj_add_state(sw_sleep_ptr, LV_STATE_CHECKED);
                 else if (!isInactivitySleep && lv_obj_has_state(sw_sleep_ptr, LV_STATE_CHECKED)) lv_obj_clear_state(sw_sleep_ptr, LV_STATE_CHECKED);
+            }
+            if (sw_bypass_opt_ptr) {
+                if (bypassOptimization && !lv_obj_has_state(sw_bypass_opt_ptr, LV_STATE_CHECKED)) lv_obj_add_state(sw_bypass_opt_ptr, LV_STATE_CHECKED);
+                else if (!bypassOptimization && lv_obj_has_state(sw_bypass_opt_ptr, LV_STATE_CHECKED)) lv_obj_clear_state(sw_bypass_opt_ptr, LV_STATE_CHECKED);
+            }
+            if (sw_boot_cache_ptr) {
+                if (bootFromCache && !lv_obj_has_state(sw_boot_cache_ptr, LV_STATE_CHECKED)) lv_obj_add_state(sw_boot_cache_ptr, LV_STATE_CHECKED);
+                else if (!bootFromCache && lv_obj_has_state(sw_boot_cache_ptr, LV_STATE_CHECKED)) lv_obj_clear_state(sw_boot_cache_ptr, LV_STATE_CHECKED);
             }
             if (dd_delay_ptr) {
                 unsigned long interval_sec = slideshowTimer.getInterval() / 1000UL;
@@ -859,10 +869,12 @@ void LVGLManager::showSettings() {
     lv_obj_set_style_text_color(lbl_bypass_opt, get_lv_color(getCatppuccinFlavor(currentThemeFlavor).text), 0);
 
     lv_obj_t * sw_bypass_opt = lv_switch_create(row_bypass_opt);
+    sw_bypass_opt_ptr = sw_bypass_opt;
     if (bypassOptimization) {
         lv_obj_add_state(sw_bypass_opt, LV_STATE_CHECKED);
     }
     lv_obj_add_event_cb(sw_bypass_opt, bypass_optimization_switch_event_cb, LV_EVENT_VALUE_CHANGED, NULL);
+    
     // 6e. Boot from Cache Switch
     lv_obj_t * row_boot_cache = lv_obj_create(list);
     lv_obj_clear_flag(row_boot_cache, LV_OBJ_FLAG_SCROLLABLE);
@@ -878,6 +890,7 @@ void LVGLManager::showSettings() {
     lv_obj_set_style_text_color(lbl_boot_cache, get_lv_color(getCatppuccinFlavor(currentThemeFlavor).text), 0);
 
     lv_obj_t * sw_boot_cache = lv_switch_create(row_boot_cache);
+    sw_boot_cache_ptr = sw_boot_cache;
     if (bootFromCache) {
         lv_obj_add_state(sw_boot_cache, LV_STATE_CHECKED);
     }
@@ -985,6 +998,8 @@ void LVGLManager::hideSettings() {
         sw_random_ptr = nullptr;
         sw_filename_ptr = nullptr;
         sw_sleep_ptr = nullptr;
+        sw_bypass_opt_ptr = nullptr;
+        sw_boot_cache_ptr = nullptr;
         dd_delay_ptr = nullptr;
         dd_theme_ptr = nullptr;
         dd_orient_ptr = nullptr;

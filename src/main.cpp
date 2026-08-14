@@ -89,6 +89,8 @@ void emitMqttSettings() {
     mqttManager->publish("settings/random_mode", isRandomMode ? "ON" : "OFF", true);
     mqttManager->publish("settings/show_filename", showFilename ? "ON" : "OFF", true);
     mqttManager->publish("settings/inactivity_sleep", isInactivitySleep ? "ON" : "OFF", true);
+    mqttManager->publish("settings/bypass_optimization", bypassOptimization ? "ON" : "OFF", true);
+    mqttManager->publish("settings/boot_from_cache", bootFromCache ? "ON" : "OFF", true);
     mqttManager->publish("settings/slideshow_interval", (String(slideshowTimer.getInterval() / 1000) + "s").c_str(), true);
     
     const char* themes[] = {"Mocha", "Macchiato", "Frappe", "Latte"};
@@ -145,6 +147,14 @@ void handleMqttMessage(const String& topic, const String& payload) {
   } else if (topic.endsWith("command/inactivity_sleep")) {
     isInactivitySleep = (payload == "ON");
     prefs.putBool("sleep", isInactivitySleep);
+    settingsChanged = true;
+  } else if (topic.endsWith("command/bypass_optimization")) {
+    bypassOptimization = (payload == "ON");
+    prefs.putBool("bypass_opt", bypassOptimization);
+    settingsChanged = true;
+  } else if (topic.endsWith("command/boot_from_cache")) {
+    bootFromCache = (payload == "ON");
+    prefs.putBool("boot_cache", bootFromCache);
     settingsChanged = true;
   } else if (topic.endsWith("command/slideshow_interval")) {
     String p = payload;
@@ -1727,6 +1737,8 @@ void publishDiagnostics() {
       mqttManager->publish("settings/random_mode", isRandomMode ? "ON" : "OFF", true);
       mqttManager->publish("settings/show_filename", showFilename ? "ON" : "OFF", true);
       mqttManager->publish("settings/inactivity_sleep", isInactivitySleep ? "ON" : "OFF", true);
+      mqttManager->publish("settings/bypass_optimization", bypassOptimization ? "ON" : "OFF", true);
+      mqttManager->publish("settings/boot_from_cache", bootFromCache ? "ON" : "OFF", true);
       mqttManager->publish("settings/slideshow_interval", String(slideshowTimer.getInterval()).c_str(), true);
       
       String themeStr = "";
