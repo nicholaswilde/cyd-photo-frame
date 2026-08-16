@@ -30,12 +30,13 @@ TouchZone TouchHandler::processTouch(bool isTouched, int rawX, int rawY, unsigne
     mapCoordinates(rawX, rawY, pixelX, pixelY, isCapacitive);
     
     // Determine row (vertical splitting: top 1/4, bottom 1/4, middle 1/2)
-    bool isTopRow = (pixelY < m_displayHeight / 4);
-    bool isBottomRow = (pixelY >= (3 * m_displayHeight) / 4);
+    // We add a 15px margin to expand the middle zone and avoid boundary jitter
+    bool isTopRow = (pixelY < (m_displayHeight / 4) - 15);
+    bool isBottomRow = (pixelY >= (3 * m_displayHeight) / 4 + 15);
     
     // Determine column (horizontal splitting: 3 equal columns)
-    bool isLeftCol = (pixelX < m_displayWidth / 3);
-    bool isRightCol = (pixelX >= (2 * m_displayWidth) / 3);
+    bool isLeftCol = (pixelX < (m_displayWidth / 3) - 15);
+    bool isRightCol = (pixelX >= (2 * m_displayWidth) / 3 + 15);
     
     TouchZone currentZone = TouchZone::NONE;
     if (isTopRow) {

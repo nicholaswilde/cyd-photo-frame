@@ -625,14 +625,14 @@ void LVGLManager::showSettings() {
     }
     
     lv_obj_t * list = lv_obj_create(settings_screen);
-    lv_obj_set_size(list, LV_PCT(95), LV_PCT(74));
+    lv_obj_set_size(list, LV_PCT(95), LV_PCT(70));
     lv_obj_align(list, LV_ALIGN_TOP_MID, 0, 50);
     lv_obj_set_flex_flow(list, LV_FLEX_FLOW_COLUMN);
     lv_obj_set_style_bg_color(list, get_lv_color(getCatppuccinFlavor(currentThemeFlavor).base), 0);
     lv_obj_set_style_border_width(list, 0, 0);
     lv_obj_set_style_pad_all(list, 5, 0);
     lv_obj_set_style_pad_row(list, 10, 0);
-    lv_obj_set_style_pad_bottom(list, 20, 0);
+    lv_obj_set_style_pad_bottom(list, 35, 0);
     lv_obj_set_scroll_dir(list, LV_DIR_VER);
     lv_obj_set_scrollbar_mode(list, LV_SCROLLBAR_MODE_AUTO);
     
@@ -970,7 +970,7 @@ void LVGLManager::showSettings() {
     // 9. Save & Exit Button
     lv_obj_t * btn_exit = lv_btn_create(settings_screen);
     lv_obj_set_size(btn_exit, 100, 30);
-    lv_obj_align(btn_exit, LV_ALIGN_BOTTOM_MID, 0, -5);
+    lv_obj_align(btn_exit, LV_ALIGN_BOTTOM_MID, 0, -8);
     lv_obj_set_style_bg_color(btn_exit, get_lv_color(getCatppuccinFlavor(currentThemeFlavor).green), 0);
     
     lv_obj_t * lbl_exit = lv_label_create(btn_exit);
