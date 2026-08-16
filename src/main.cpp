@@ -1389,6 +1389,7 @@ void setup() {
     LVGLManager::showNoPhotosWarning();
     while(true) {
       LVGLManager::handle();
+      if (isWifiEnabled) wifiManager->update();
       delay(10);
     }
   }
