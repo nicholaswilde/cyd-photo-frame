@@ -115,6 +115,11 @@ button:hover { background: #f5c2e7; }
     <label for='wifi_enabled' title='Enable WiFi to connect to the network'>WiFi Enabled</label>
 </div>
 
+<div class='checkbox-group'>
+    <input type='checkbox' id='api_server_enabled' name='api_server_enabled' value='1' %API_SERVER_ENABLED%>
+    <label for='api_server_enabled' title='Enable the REST API server'>API Server</label>
+</div>
+
 <label for='ap_password' title='Password for the device&#39;s configuration Access Point'>Configuration AP Password (min 8 chars)</label>
 <input type='password' id='ap_password' name='ap_password' value='%AP_PASSWORD%'>
 

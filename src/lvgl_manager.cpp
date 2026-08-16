@@ -101,6 +101,7 @@ static void my_touchpad_read(lv_indev_drv_t *indev_driver, lv_indev_data_t *data
 
 extern bool isWifiEnabled;
 extern bool isMqttEnabled;
+extern bool isApiEnabled;
 extern bool bypassOptimization;
 extern bool bootFromCache;
 extern int currentBrightness;
@@ -195,6 +196,12 @@ static void mqtt_switch_event_cb(lv_event_t * e) {
     lv_obj_t * sw = lv_event_get_target(e);
     isMqttEnabled = lv_obj_has_state(sw, LV_STATE_CHECKED);
 }
+
+static void api_switch_event_cb(lv_event_t * e) {
+    lv_obj_t * sw = lv_event_get_target(e);
+    isApiEnabled = lv_obj_has_state(sw, LV_STATE_CHECKED);
+}
+
 
 static void boot_cache_switch_event_cb(lv_event_t * e) {
     lv_obj_t * sw = (lv_obj_t *)lv_event_get_target(e);
@@ -853,6 +860,29 @@ void LVGLManager::showSettings() {
     
     // Attach event callback to WiFi switch, passing MQTT switch as user_data
     lv_obj_add_event_cb(sw_wifi, wifi_switch_event_cb, LV_EVENT_VALUE_CHANGED, sw_mqtt);
+
+    // 6c_2. API Server Switch
+    lv_obj_t * row_api = lv_obj_create(list);
+    lv_obj_clear_flag(row_api, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_set_size(row_api, LV_PCT(100), 40);
+    lv_obj_set_flex_flow(row_api, LV_FLEX_FLOW_ROW);
+    lv_obj_set_flex_align(row_api, LV_FLEX_ALIGN_SPACE_BETWEEN, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+    lv_obj_set_style_bg_color(row_api, get_lv_color(getCatppuccinFlavor(currentThemeFlavor).mantle), 0);
+    lv_obj_set_style_border_width(row_api, 0, 0);
+    lv_obj_set_style_pad_all(row_api, 5, 0);
+
+    lv_obj_t * lbl_api = lv_label_create(row_api);
+    lv_label_set_text(lbl_api, "API Server");
+    lv_obj_set_style_text_color(lbl_api, get_lv_color(getCatppuccinFlavor(currentThemeFlavor).text), 0);
+
+    lv_obj_t * sw_api = lv_switch_create(row_api);
+    if (isApiEnabled) {
+        lv_obj_add_state(sw_api, LV_STATE_CHECKED);
+    }
+    if (!isWifiEnabled) {
+        lv_obj_add_state(sw_api, LV_STATE_DISABLED);
+    }
+    lv_obj_add_event_cb(sw_api, api_switch_event_cb, LV_EVENT_VALUE_CHANGED, NULL);
 
     // 6d. Bypass Optimization Switch
     lv_obj_t * row_bypass_opt = lv_obj_create(list);

@@ -100,6 +100,7 @@ void MqttManager::onMqttConnect(bool sessionPresent) {
     subscribe("command/inactivity_sleep", 0);
     subscribe("command/bypass_optimization", 0);
     subscribe("command/boot_from_cache", 0);
+    subscribe("command/api_server_enabled", 0);
     subscribe("command/theme", 0);
     subscribe("command/next_image", 0);
     subscribe("command/prev_image", 0);
@@ -185,8 +186,11 @@ void MqttManager::publishHADiscovery() {
     String bypassOptPayload = "{\"name\":\"Bypass Optimization\",\"state_topic\":\"" + _baseTopic + "settings/bypass_optimization\",\"command_topic\":\"" + _baseTopic + "command/bypass_optimization\",\"payload_on\":\"ON\",\"payload_off\":\"OFF\",\"entity_category\":\"config\",\"unique_id\":\"" + deviceId + "_bypassopt\"," + deviceJson + "}";
     _mqttClient.publish(("homeassistant/switch/" + deviceId + "/bypass_optimization/config").c_str(), 0, true, bypassOptPayload.c_str());
     // Boot from Cache (Switch)
-    String bootCachePayload = "{\"name\":\"Boot From Cache\",\"state_topic\":\"" + _baseTopic + "settings/boot_from_cache\",\"command_topic\":\"" + _baseTopic + "command/boot_from_cache\",\"payload_on\":\"ON\",\"payload_off\":\"OFF\",\"entity_category\":\"config\",\"unique_id\":\"" + deviceId + "_bootcache\"," + deviceJson + "}";
+    String bootCachePayload = "{\"name\":\"Boot From Cache\",\"state_topic\":\"" + _baseTopic + "settings/boot_from_cache\",\"command_topic\":\"" + _baseTopic + "command/boot_from_cache\",\"payload_on\":\"ON\",\"payload_off\":\"OFF\",\"icon\":\"mdi:sd\",\"unique_id\":\"" + deviceId + "_boot_from_cache\",\"device\":{\"identifiers\":[\"" + deviceId + "\"]}}";
     _mqttClient.publish(("homeassistant/switch/" + deviceId + "/boot_from_cache/config").c_str(), 0, true, bootCachePayload.c_str());
+    // API Server Enabled (Switch)
+    String apiServerPayload = "{\"name\":\"API Server\",\"state_topic\":\"" + _baseTopic + "settings/api_server_enabled\",\"command_topic\":\"" + _baseTopic + "command/api_server_enabled\",\"payload_on\":\"ON\",\"payload_off\":\"OFF\",\"icon\":\"mdi:api\",\"unique_id\":\"" + deviceId + "_api_server_enabled\",\"device\":{\"identifiers\":[\"" + deviceId + "\"]}}";
+    _mqttClient.publish(("homeassistant/switch/" + deviceId + "/api_server_enabled/config").c_str(), 0, true, apiServerPayload.c_str());
 
     // Theme (Select)
     String themePayload = "{\"name\":\"Theme Flavor\",\"state_topic\":\"" + _baseTopic + "settings/theme\",\"command_topic\":\"" + _baseTopic + "command/theme\",\"options\":[\"Mocha\",\"Macchiato\",\"Frappe\",\"Latte\"],\"entity_category\":\"config\",\"unique_id\":\"" + deviceId + "_theme\"," + deviceJson + "}";

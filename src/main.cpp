@@ -61,6 +61,7 @@ int currentThemeFlavor = DEFAULT_THEME_FLAVOR;
 
 bool isWifiEnabled = false;
 bool isMqttEnabled = false;
+bool isApiEnabled = DEFAULT_API_SERVER_ENABLED;
 std::string wifiSSID = DEFAULT_WIFI_SSID;
 std::string wifiPassword = DEFAULT_WIFI_PASSWORD;
 #include "wifi_manager.h"
@@ -97,6 +98,7 @@ void emitMqttSettings() {
     mqttManager->publish("settings/inactivity_sleep", isInactivitySleep ? "ON" : "OFF", true);
     mqttManager->publish("settings/bypass_optimization", bypassOptimization ? "ON" : "OFF", true);
     mqttManager->publish("settings/boot_from_cache", bootFromCache ? "ON" : "OFF", true);
+    mqttManager->publish("settings/api_server_enabled", isApiEnabled ? "ON" : "OFF", true);
     mqttManager->publish("settings/slideshow_interval", (String(slideshowTimer.getInterval() / 1000) + "s").c_str(), true);
     
     const char* themes[] = {"Mocha", "Macchiato", "Frappe", "Latte"};
@@ -157,6 +159,10 @@ void handleMqttMessage(const String& topic, const String& payload) {
   } else if (topic.endsWith("command/bypass_optimization")) {
     bypassOptimization = (payload == "ON");
     prefs.putBool("bypass_opt", bypassOptimization);
+    settingsChanged = true;
+  } else if (topic.endsWith("command/api_server_enabled")) {
+    isApiEnabled = (payload == "ON");
+    prefs.putBool("api_srv", isApiEnabled);
     settingsChanged = true;
   } else if (topic.endsWith("command/boot_from_cache")) {
     bool oldBootFromCache = bootFromCache;
@@ -967,6 +973,7 @@ void saveConfig() {
   Preferences prefs;
   prefs.begin("settings", false);
   HardwareLogic::saveSettings(prefs, currentBrightness, isAutoBrightness, slideshowTimer.getInterval(), isRandomMode, showFilename, isInactivitySleep, currentThemeFlavor, currentOrientation, currentLedBrightness, isLedEnabled, isWifiEnabled, isMqttEnabled, wifiSSID, wifiPassword, bypassOptimization, bootFromCache);
+  prefs.putBool("api_srv", isApiEnabled);
   prefs.end();
   Serial.println("[System] Settings saved to NVS.");
 }
@@ -1158,6 +1165,7 @@ void setup() {
     prefs.begin("settings", false);
     unsigned long loadedDelay = slideshowTimer.getInterval();
     HardwareLogic::loadSettings(prefs, currentBrightness, isAutoBrightness, loadedDelay, isRandomMode, showFilename, isInactivitySleep, currentThemeFlavor, currentOrientation, currentLedBrightness, isLedEnabled, isWifiEnabled, isMqttEnabled, wifiSSID, wifiPassword, bypassOptimization, bootFromCache);
+    isApiEnabled = prefs.getBool("api_srv", DEFAULT_API_SERVER_ENABLED);
     
     // Snap loaded delay to valid intervals (2, 5, 10, 15, 30, 60) for MQTT/HTML dropdown compatibility
     if (loadedDelay <= 3500) loadedDelay = 2000;
@@ -1756,6 +1764,7 @@ void publishDiagnostics() {
       mqttManager->publish("settings/inactivity_sleep", isInactivitySleep ? "ON" : "OFF", true);
       mqttManager->publish("settings/bypass_optimization", bypassOptimization ? "ON" : "OFF", true);
       mqttManager->publish("settings/boot_from_cache", bootFromCache ? "ON" : "OFF", true);
+      mqttManager->publish("settings/api_server_enabled", isApiEnabled ? "ON" : "OFF", true);
       mqttManager->publish("settings/slideshow_interval", String(slideshowTimer.getInterval()).c_str(), true);
       
       String themeStr = "";

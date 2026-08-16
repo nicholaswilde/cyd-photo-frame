@@ -8,6 +8,7 @@
 #include <ImprovWiFiLibrary.h>
 #include <Preferences.h>
 #include <SD.h>
+#include <ArduinoJson.h>
 #include "config/config.h"
 #include "version.h"
 #include "screenshot_manager.h"
@@ -597,6 +598,8 @@ void WifiManager::startScreenshotServer() {
     server->on("/", HTTP_GET, [this]() { handleDashboard(); });
     server->on("/settings", HTTP_GET, [this]() { handleSettings(); });
     server->on("/settings/save", HTTP_POST, [this]() { handleSettingsSave(); });
+    server->on("/api/config", HTTP_GET, [this]() { handleApiConfigGet(); });
+    server->on("/api/config", HTTP_POST, [this]() { handleApiConfigPost(); });
 
     server->on("/update", HTTP_GET, [this]() {
         WebServer* s = (WebServer*)_webServer;
@@ -742,6 +745,17 @@ void WifiManager::handleScreenshot() {
 
 void WifiManager::handleOrientation() {
     WebServer* server = (WebServer*)_webServer;
+    
+    Preferences prefs;
+    prefs.begin("settings", true);
+    bool apiServerEnabled = prefs.getBool("api_srv", DEFAULT_API_SERVER_ENABLED);
+    prefs.end();
+    
+    if (!apiServerEnabled) {
+        server->send(403, "text/plain", "Forbidden: API server disabled in settings");
+        return;
+    }
+    
     if (server->hasArg("val")) {
         int rot = server->arg("val").toInt();
         Preferences prefs;
@@ -759,6 +773,17 @@ void WifiManager::handleOrientation() {
 
 void WifiManager::handleScreen() {
     WebServer* server = (WebServer*)_webServer;
+    
+    Preferences prefs;
+    prefs.begin("settings", true);
+    bool apiServerEnabled = prefs.getBool("api_srv", DEFAULT_API_SERVER_ENABLED);
+    prefs.end();
+    
+    if (!apiServerEnabled) {
+        server->send(403, "text/plain", "Forbidden: API server disabled in settings");
+        return;
+    }
+    
     if (server->hasArg("index")) {
         String tab = server->arg("index");
         if (tab == "settings") LVGLManager::showSettings();
@@ -777,6 +802,17 @@ void WifiManager::handleScreen() {
 
 void WifiManager::handleDashboard() {
     WebServer* server = (WebServer*)_webServer;
+    
+    Preferences prefs;
+    prefs.begin("settings", true);
+    bool apiServerEnabled = prefs.getBool("api_srv", DEFAULT_API_SERVER_ENABLED);
+    prefs.end();
+    
+    if (!apiServerEnabled) {
+        server->send(403, "text/plain", "Forbidden: API server disabled in settings");
+        return;
+    }
+    
     String html = String(dashboard_html);
     html.replace("%APP_VERSION%", APP_VERSION);
     html.replace("%DEVICE_NAME%", DEVICE_NAME);
@@ -860,6 +896,10 @@ void WifiManager::handleSettings() {
     html.replace("%LED_ENABLED%", isLedEnabled ? "checked" : "");
     html.replace("%LED_BRIGHTNESS%", String((ledBrightness * 100) / 255));
     html.replace("%WIFI_ENABLED%", isWifiEnabled ? "checked" : "");
+    
+    bool apiServerEnabled = prefs.getBool("api_srv", DEFAULT_API_SERVER_ENABLED);
+    html.replace("%API_SERVER_ENABLED%", apiServerEnabled ? "checked" : "");
+    
     html.replace("%MQTT_ENABLED%", isMqttEnabled ? "checked" : "");
     
     html.replace("%MQTT_SERVER%", mqttServer);
@@ -922,6 +962,7 @@ void WifiManager::handleSettingsSave() {
     if (server->hasArg("led_brightness")) ledBrightness = (server->arg("led_brightness").toInt() * 255) / 100;
     
     isWifiEnabled = server->hasArg("wifi_enabled");
+    prefs.putBool("api_srv", server->hasArg("api_server_enabled"));
     isMqttEnabled = server->hasArg("mqtt_enabled");
     
     if (server->hasArg("mqtt_server")) prefs.putString("mqtt_server", server->arg("mqtt_server"));
@@ -953,6 +994,186 @@ void WifiManager::handleSettingsSave() {
     
     delay(1000);
     ESP.restart();
+}
+
+void WifiManager::handleApiConfigGet() {
+    WebServer* server = (WebServer*)_webServer;
+    Preferences prefs;
+    prefs.begin("settings", true);
+    
+    bool apiServerEnabled = prefs.getBool("api_srv", DEFAULT_API_SERVER_ENABLED);
+    if (!apiServerEnabled) {
+        prefs.end();
+        server->send(403, "text/plain", "Forbidden: API server disabled in settings");
+        return;
+    }
+    
+    int brightness = DEFAULT_BRIGHTNESS;
+    bool autoBright = DEFAULT_AUTO_BRIGHTNESS;
+    unsigned long delayMs = DEFAULT_SLIDESHOW_INTERVAL_MS;
+    bool randomMode = DEFAULT_RANDOM_MODE;
+    bool showFilename = DEFAULT_SHOW_FILENAME;
+    bool inactivitySleep = DEFAULT_INACTIVITY_SLEEP;
+    int themeFlavor = DEFAULT_THEME_FLAVOR;
+    int screenOrientation = DEFAULT_SCREEN_ORIENTATION;
+    int ledBrightness = DEFAULT_LED_BRIGHTNESS;
+    bool isLedEnabled = DEFAULT_LED_ENABLED;
+    bool isWifiEnabled = true;
+    bool isMqttEnabled = false;
+    std::string wifiSSID = DEFAULT_WIFI_SSID;
+    std::string wifiPassword = DEFAULT_WIFI_PASSWORD;
+    bool bypassOptimization = DEFAULT_BYPASS_OPTIMIZATION;
+    bool bootFromCache = false;
+    
+    HardwareLogic::loadSettings(prefs, brightness, autoBright, delayMs, randomMode, showFilename, inactivitySleep, themeFlavor, screenOrientation, ledBrightness, isLedEnabled, isWifiEnabled, isMqttEnabled, wifiSSID, wifiPassword, bypassOptimization, bootFromCache);
+    
+    DynamicJsonDocument doc(2048);
+    
+    doc["brightness"] = (brightness * 100) / 255;
+    doc["auto_brightness"] = autoBright;
+    doc["slideshow_interval"] = delayMs / 1000;
+    doc["random_mode"] = randomMode;
+    doc["show_filename"] = showFilename;
+    doc["inactivity_sleep"] = inactivitySleep;
+    doc["theme_flavor"] = themeFlavor;
+    doc["api_server_enabled"] = apiServerEnabled;
+    doc["screen_orientation"] = screenOrientation;
+    doc["led_brightness"] = (ledBrightness * 100) / 255;
+    doc["led_enabled"] = isLedEnabled;
+    doc["wifi_enabled"] = isWifiEnabled;
+    doc["mqtt_enabled"] = isMqttEnabled;
+    doc["wifi_ssid"] = wifiSSID;
+    doc["wifi_password"] = wifiPassword;
+    doc["bypass_opt"] = bypassOptimization;
+    doc["boot_cache"] = bootFromCache;
+    
+    doc["mqtt_server"] = prefs.getString("mqtt_server", "");
+    doc["mqtt_port"] = prefs.getInt("mqtt_port", 1883);
+    doc["mqtt_user"] = prefs.getString("mqtt_user", "");
+    doc["mqtt_password"] = prefs.getString("mqtt_pass", "");
+    doc["ap_password"] = prefs.getString("ap_pass", "");
+    doc["mqtt_base_topic"] = prefs.getString("mqtt_topic", DEFAULT_MQTT_BASE_TOPIC);
+    
+    doc["static_ip_enabled"] = prefs.getBool("static_ip_en", false);
+    
+    String staticIp = prefs.getString("static_ip", "");
+    if (staticIp.isEmpty() && WiFi.status() == WL_CONNECTED) staticIp = WiFi.localIP().toString();
+    doc["static_ip"] = staticIp;
+    
+    String staticGw = prefs.getString("static_gw", "");
+    if (staticGw.isEmpty() && WiFi.status() == WL_CONNECTED) staticGw = WiFi.gatewayIP().toString();
+    doc["static_gateway"] = staticGw;
+    
+    String staticSn = prefs.getString("static_sn", "");
+    if (staticSn.isEmpty() && WiFi.status() == WL_CONNECTED) staticSn = WiFi.subnetMask().toString();
+    doc["static_subnet"] = staticSn;
+    
+    String staticDns = prefs.getString("static_dns", "");
+    if (staticDns.isEmpty() && WiFi.status() == WL_CONNECTED) staticDns = WiFi.dnsIP().toString();
+    doc["static_dns"] = staticDns;
+    
+    prefs.end();
+    
+    String response;
+    serializeJson(doc, response);
+    server->send(200, "application/json", response);
+}
+
+void WifiManager::handleApiConfigPost() {
+    WebServer* server = (WebServer*)_webServer;
+    
+    Preferences apiPrefs;
+    apiPrefs.begin("settings", true);
+    bool apiServerEnabled = apiPrefs.getBool("api_srv", DEFAULT_API_SERVER_ENABLED);
+    apiPrefs.end();
+    
+    if (!apiServerEnabled) {
+        server->send(403, "text/plain", "Forbidden: API server disabled in settings");
+        return;
+    }
+    
+    if (!server->hasArg("plain")) {
+        server->send(400, "text/plain", "Body not received");
+        return;
+    }
+    
+    DynamicJsonDocument doc(2048);
+    DeserializationError error = deserializeJson(doc, server->arg("plain"));
+    if (error) {
+        server->send(400, "text/plain", "Invalid JSON");
+        return;
+    }
+
+    Preferences prefs;
+    prefs.begin("settings", false);
+    
+    int brightness = DEFAULT_BRIGHTNESS;
+    bool autoBright = DEFAULT_AUTO_BRIGHTNESS;
+    unsigned long delayMs = DEFAULT_SLIDESHOW_INTERVAL_MS;
+    bool randomMode = DEFAULT_RANDOM_MODE;
+    bool showFilename = DEFAULT_SHOW_FILENAME;
+    bool inactivitySleep = DEFAULT_INACTIVITY_SLEEP;
+    int themeFlavor = DEFAULT_THEME_FLAVOR;
+    int screenOrientation = DEFAULT_SCREEN_ORIENTATION;
+    int ledBrightness = DEFAULT_LED_BRIGHTNESS;
+    bool isLedEnabled = DEFAULT_LED_ENABLED;
+    bool isWifiEnabled = true;
+    bool isMqttEnabled = false;
+    std::string wifiSSID = DEFAULT_WIFI_SSID;
+    std::string wifiPassword = DEFAULT_WIFI_PASSWORD;
+    bool bypassOptimization = DEFAULT_BYPASS_OPTIMIZATION;
+    bool bootFromCache = false;
+    
+    HardwareLogic::loadSettings(prefs, brightness, autoBright, delayMs, randomMode, showFilename, inactivitySleep, themeFlavor, screenOrientation, ledBrightness, isLedEnabled, isWifiEnabled, isMqttEnabled, wifiSSID, wifiPassword, bypassOptimization, bootFromCache);
+    
+    if (doc.containsKey("theme_flavor")) themeFlavor = doc["theme_flavor"];
+    if (doc.containsKey("screen_orientation")) screenOrientation = doc["screen_orientation"];
+    if (doc.containsKey("brightness")) {
+        int pct = doc["brightness"];
+        brightness = (pct * 255) / 100;
+    }
+    if (doc.containsKey("auto_brightness")) autoBright = doc["auto_brightness"];
+    if (doc.containsKey("inactivity_sleep")) inactivitySleep = doc["inactivity_sleep"];
+    if (doc.containsKey("slideshow_interval")) delayMs = doc["slideshow_interval"].as<unsigned long>() * 1000;
+    if (doc.containsKey("random_mode")) randomMode = doc["random_mode"];
+    if (doc.containsKey("show_filename")) showFilename = doc["show_filename"];
+    if (doc.containsKey("bypass_opt")) bypassOptimization = doc["bypass_opt"];
+    if (doc.containsKey("boot_cache")) bootFromCache = doc["boot_cache"];
+    
+    if (doc.containsKey("led_enabled")) isLedEnabled = doc["led_enabled"];
+    if (doc.containsKey("led_brightness")) {
+        int pct = doc["led_brightness"];
+        ledBrightness = (pct * 255) / 100;
+    }
+    
+    if (doc.containsKey("wifi_enabled")) isWifiEnabled = doc["wifi_enabled"];
+    if (doc.containsKey("api_server_enabled")) prefs.putBool("api_srv", doc["api_server_enabled"]);
+    if (doc.containsKey("mqtt_enabled")) isMqttEnabled = doc["mqtt_enabled"];
+    
+    if (doc.containsKey("mqtt_server")) prefs.putString("mqtt_server", doc["mqtt_server"].as<String>());
+    if (doc.containsKey("mqtt_port")) prefs.putInt("mqtt_port", doc["mqtt_port"]);
+    if (doc.containsKey("mqtt_user")) prefs.putString("mqtt_user", doc["mqtt_user"].as<String>());
+    if (doc.containsKey("mqtt_password")) prefs.putString("mqtt_pass", doc["mqtt_password"].as<String>());
+    if (doc.containsKey("ap_password")) prefs.putString("ap_pass", doc["ap_password"].as<String>());
+    if (doc.containsKey("mqtt_base_topic")) {
+        String topic = doc["mqtt_base_topic"].as<String>();
+        if (topic.length() > 0 && !topic.endsWith("/")) {
+            topic += "/";
+        }
+        prefs.putString("mqtt_topic", topic);
+    }
+
+    if (doc.containsKey("static_ip_enabled")) prefs.putBool("static_ip_en", doc["static_ip_enabled"]);
+    if (doc.containsKey("static_ip")) prefs.putString("static_ip", doc["static_ip"].as<String>());
+    if (doc.containsKey("static_gateway")) prefs.putString("static_gw", doc["static_gateway"].as<String>());
+    if (doc.containsKey("static_subnet")) prefs.putString("static_sn", doc["static_subnet"].as<String>());
+    if (doc.containsKey("static_dns")) prefs.putString("static_dns", doc["static_dns"].as<String>());
+    
+    HardwareLogic::saveSettings(prefs, brightness, autoBright, delayMs, randomMode, showFilename, inactivitySleep, themeFlavor, screenOrientation, ledBrightness, isLedEnabled, isWifiEnabled, isMqttEnabled, wifiSSID, wifiPassword, bypassOptimization, bootFromCache);
+    
+    prefs.end();
+    
+    server->send(200, "application/json", "{\"status\":\"ok\"}");
 }
 
 #else
@@ -996,4 +1217,6 @@ void WifiManager::handleScreen() {}
 void WifiManager::handleDashboard() {}
 void WifiManager::handleSettings() {}
 void WifiManager::handleSettingsSave() {}
+void WifiManager::handleApiConfigGet() {}
+void WifiManager::handleApiConfigPost() {}
 #endif

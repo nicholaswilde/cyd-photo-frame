@@ -7,6 +7,7 @@
 #define DEFAULT_SHOW_FILENAME true
 #define DEFAULT_BYPASS_OPTIMIZATION false
 #define DEFAULT_BOOT_FROM_CACHE true
+#define DEFAULT_API_SERVER_ENABLED true
 
 // Display & Backlight Settings
 #define DEFAULT_BRIGHTNESS 255
