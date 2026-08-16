@@ -252,8 +252,16 @@ void WifiManager::startAPMode() {
     WiFi.softAPConfig(apIP, apIP, IPAddress(255, 255, 255, 0));
     delay(100);
     
-    // No password by default for AP mode
-    WiFi.softAP(apSSID.c_str(), nullptr);
+    Preferences prefs;
+    prefs.begin("settings", true);
+    String apPasswordStr = prefs.getString("ap_pass", "");
+    prefs.end();
+    
+    if (apPasswordStr.length() >= 8) {
+        WiFi.softAP(apSSID.c_str(), apPasswordStr.c_str());
+    } else {
+        WiFi.softAP(apSSID.c_str(), nullptr);
+    }
     delay(200);
 
     _cachedNetworksHTML = "<div class='net-item' style='color: #a6adc8;'>Scanning in progress... Please refresh.</div>";
@@ -803,6 +811,7 @@ void WifiManager::handleSettings() {
     int mqttPort = prefs.getInt("mqtt_port", 1883);
     String mqttUser = prefs.getString("mqtt_user", "");
     String mqttPassword = prefs.getString("mqtt_pass", "");
+    String apPassword = prefs.getString("ap_pass", "");
     String mqttBaseTopic = prefs.getString("mqtt_topic", DEFAULT_MQTT_BASE_TOPIC);
     
     bool isStaticIpEnabled = prefs.getBool("static_ip_en", false);
@@ -857,6 +866,7 @@ void WifiManager::handleSettings() {
     html.replace("%MQTT_PORT%", String(mqttPort));
     html.replace("%MQTT_USER%", mqttUser);
     html.replace("%MQTT_PASSWORD%", mqttPassword);
+    html.replace("%AP_PASSWORD%", apPassword);
     html.replace("%MQTT_BASE_TOPIC%", mqttBaseTopic);
     
     html.replace("%STATIC_IP_ENABLED%", isStaticIpEnabled ? "checked" : "");
@@ -918,6 +928,7 @@ void WifiManager::handleSettingsSave() {
     if (server->hasArg("mqtt_port")) prefs.putInt("mqtt_port", server->arg("mqtt_port").toInt());
     if (server->hasArg("mqtt_user")) prefs.putString("mqtt_user", server->arg("mqtt_user"));
     if (server->hasArg("mqtt_password")) prefs.putString("mqtt_pass", server->arg("mqtt_password"));
+    if (server->hasArg("ap_password")) prefs.putString("ap_pass", server->arg("ap_password"));
     if (server->hasArg("mqtt_base_topic")) {
         String topic = server->arg("mqtt_base_topic");
         if (topic.length() > 0 && !topic.endsWith("/")) {

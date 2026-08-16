@@ -115,6 +115,9 @@ button:hover { background: #f5c2e7; }
     <label for='wifi_enabled' title='Enable WiFi to connect to the network'>WiFi Enabled</label>
 </div>
 
+<label for='ap_password' title='Password for the device&#39;s configuration Access Point'>Configuration AP Password (min 8 chars)</label>
+<input type='password' id='ap_password' name='ap_password' value='%AP_PASSWORD%'>
+
 <div class='checkbox-group'>
     <input type='checkbox' id='mqtt_enabled' name='mqtt_enabled' value='1' %MQTT_ENABLED% onchange='toggleMqttSettings()'>
     <label for='mqtt_enabled' title='Enable MQTT to publish device state and receive commands'>MQTT Enabled</label>
