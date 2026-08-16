@@ -291,7 +291,7 @@ static void clear_cache_click_event_cb(lv_event_t * e) {
     // Confirm button
     lv_obj_t * btn_confirm = lv_btn_create(confirm_dialog);
     lv_obj_set_size(btn_confirm, 90, 32);
-    lv_obj_align(btn_confirm, LV_ALIGN_BOTTOM_LEFT, 20, -30);
+    lv_obj_align(btn_confirm, LV_ALIGN_BOTTOM_RIGHT, -20, -30);
     lv_obj_set_style_bg_color(btn_confirm, get_lv_color(getCatppuccinFlavor(currentThemeFlavor).red), 0);
     lv_obj_add_event_cb(btn_confirm, confirm_clear_cache_cb, LV_EVENT_CLICKED, NULL);
 
@@ -303,7 +303,7 @@ static void clear_cache_click_event_cb(lv_event_t * e) {
     // Cancel button
     lv_obj_t * btn_cancel = lv_btn_create(confirm_dialog);
     lv_obj_set_size(btn_cancel, 90, 32);
-    lv_obj_align(btn_cancel, LV_ALIGN_BOTTOM_RIGHT, -20, -30);
+    lv_obj_align(btn_cancel, LV_ALIGN_BOTTOM_LEFT, 20, -30);
     lv_obj_set_style_bg_color(btn_cancel, get_lv_color(getCatppuccinFlavor(currentThemeFlavor).overlay), 0);
     lv_obj_add_event_cb(btn_cancel, cancel_clear_cache_cb, LV_EVENT_CLICKED, NULL);
 
@@ -360,7 +360,7 @@ void LVGLManager::showRebootConfirmDialog() {
     // Confirm button
     lv_obj_t * btn_confirm = lv_btn_create(reboot_confirm_dialog);
     lv_obj_set_size(btn_confirm, 90, 32);
-    lv_obj_align(btn_confirm, LV_ALIGN_BOTTOM_LEFT, 20, -30);
+    lv_obj_align(btn_confirm, LV_ALIGN_BOTTOM_RIGHT, -20, -30);
     lv_obj_set_style_bg_color(btn_confirm, get_lv_color(getCatppuccinFlavor(currentThemeFlavor).red), 0);
     lv_obj_add_event_cb(btn_confirm, confirm_reboot_cb, LV_EVENT_CLICKED, NULL);
 
@@ -372,7 +372,7 @@ void LVGLManager::showRebootConfirmDialog() {
     // Cancel button
     lv_obj_t * btn_cancel = lv_btn_create(reboot_confirm_dialog);
     lv_obj_set_size(btn_cancel, 90, 32);
-    lv_obj_align(btn_cancel, LV_ALIGN_BOTTOM_RIGHT, -20, -30);
+    lv_obj_align(btn_cancel, LV_ALIGN_BOTTOM_LEFT, 20, -30);
     lv_obj_set_style_bg_color(btn_cancel, get_lv_color(getCatppuccinFlavor(currentThemeFlavor).overlay), 0);
     lv_obj_add_event_cb(btn_cancel, cancel_reboot_cb, LV_EVENT_CLICKED, NULL);
 
