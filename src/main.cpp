@@ -47,6 +47,12 @@ bool isLedEnabled = DEFAULT_LED_ENABLED;
 bool isCancelButtonTouched(int touchX, int touchY);
 void drawCancellingFeedback();
 bool renderScaledJpg(const char* filename);
+
+// Forward declarations
+void handleTouch();
+void handleRebootConfirm();
+void populateCache();
+std::string getCachePath(const std::string& originalPath);
 void handleClearCache();
 
 #include "catppuccin.h"
@@ -153,8 +159,12 @@ void handleMqttMessage(const String& topic, const String& payload) {
     prefs.putBool("bypass_opt", bypassOptimization);
     settingsChanged = true;
   } else if (topic.endsWith("command/boot_from_cache")) {
+    bool oldBootFromCache = bootFromCache;
     bootFromCache = (payload == "ON");
     prefs.putBool("boot_cache", bootFromCache);
+    if (oldBootFromCache != bootFromCache) {
+      populateCache();
+    }
     settingsChanged = true;
   } else if (topic.endsWith("command/slideshow_interval")) {
     String p = payload;
@@ -796,7 +806,7 @@ void drawFilenameBanner(const char* filename) {
  * @return true if drawing succeeded, false otherwise.
  */
 bool renderScaledJpg(const char* filename) {
-  if (bootFromCache || (strlen(filename) > 4 && strcasecmp(&filename[strlen(filename) - 4], ".raw") == 0)) {
+  if (strlen(filename) > 4 && strcasecmp(&filename[strlen(filename) - 4], ".raw") == 0) {
     if (SD.exists(filename)) {
       Serial.printf("[System] Loading cached raw image directly: %s\n", filename);
       bool drawSuccess = renderRawImage(filename);
@@ -991,12 +1001,14 @@ void exitSettings() {
   int cachedTheme = 0;
   int cachedOrientation = 1;
   bool cachedWifiEnabled = false;
+  bool cachedBootFromCache = DEFAULT_BOOT_FROM_CACHE;
   {
     Preferences prefs;
     prefs.begin("settings", false);
     cachedTheme = (int)prefs.getUInt("cached_theme", 0);
     cachedOrientation = (int)prefs.getInt("cached_rot", 1);
     cachedWifiEnabled = prefs.getBool("cached_wifi", false);
+    cachedBootFromCache = prefs.getBool("boot_cache", DEFAULT_BOOT_FROM_CACHE);
     prefs.end();
   }
 
@@ -1007,6 +1019,11 @@ void exitSettings() {
     Serial.println("[System] Theme flavor, orientation, or WiFi setting changed. Rebooting...");
     delay(500);
     ESP.restart();
+  }
+  
+  if (bootFromCache != cachedBootFromCache) {
+    Serial.println("[System] Boot from cache setting changed. Repopulating cache...");
+    populateCache();
   }
 #endif
 
@@ -1425,7 +1442,7 @@ void setup() {
     cachedWifiEnabled = isWifiEnabled; // Sync local variable
   }
 
-  if (!bypassOptimization) {
+  if (!bypassOptimization && !bootFromCache) {
     // Scan for files that need optimization/caching
     size_t totalImages = fileCache.size();
     std::vector<size_t> filesToCache;
