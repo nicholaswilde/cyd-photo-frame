@@ -1128,36 +1128,36 @@ void WifiManager::handleApiConfigPost() {
     
     HardwareLogic::loadSettings(prefs, brightness, autoBright, delayMs, randomMode, showFilename, inactivitySleep, themeFlavor, screenOrientation, ledBrightness, isLedEnabled, isWifiEnabled, isMqttEnabled, wifiSSID, wifiPassword, bypassOptimization, bootFromCache);
     
-    if (doc.containsKey("theme_flavor")) themeFlavor = doc["theme_flavor"];
-    if (doc.containsKey("screen_orientation")) screenOrientation = doc["screen_orientation"];
-    if (doc.containsKey("brightness")) {
+    if (!doc["theme_flavor"].isNull()) themeFlavor = doc["theme_flavor"];
+    if (!doc["screen_orientation"].isNull()) screenOrientation = doc["screen_orientation"];
+    if (!doc["brightness"].isNull()) {
         int pct = doc["brightness"];
         brightness = (pct * 255) / 100;
     }
-    if (doc.containsKey("auto_brightness")) autoBright = doc["auto_brightness"];
-    if (doc.containsKey("inactivity_sleep")) inactivitySleep = doc["inactivity_sleep"];
-    if (doc.containsKey("slideshow_interval")) delayMs = doc["slideshow_interval"].as<unsigned long>() * 1000;
-    if (doc.containsKey("random_mode")) randomMode = doc["random_mode"];
-    if (doc.containsKey("show_filename")) showFilename = doc["show_filename"];
-    if (doc.containsKey("bypass_opt")) bypassOptimization = doc["bypass_opt"];
-    if (doc.containsKey("boot_cache")) bootFromCache = doc["boot_cache"];
+    if (!doc["auto_brightness"].isNull()) autoBright = doc["auto_brightness"];
+    if (!doc["inactivity_sleep"].isNull()) inactivitySleep = doc["inactivity_sleep"];
+    if (!doc["slideshow_interval"].isNull()) delayMs = doc["slideshow_interval"].as<unsigned long>() * 1000;
+    if (!doc["random_mode"].isNull()) randomMode = doc["random_mode"];
+    if (!doc["show_filename"].isNull()) showFilename = doc["show_filename"];
+    if (!doc["bypass_opt"].isNull()) bypassOptimization = doc["bypass_opt"];
+    if (!doc["boot_cache"].isNull()) bootFromCache = doc["boot_cache"];
     
-    if (doc.containsKey("led_enabled")) isLedEnabled = doc["led_enabled"];
-    if (doc.containsKey("led_brightness")) {
+    if (!doc["led_enabled"].isNull()) isLedEnabled = doc["led_enabled"];
+    if (!doc["led_brightness"].isNull()) {
         int pct = doc["led_brightness"];
         ledBrightness = (pct * 255) / 100;
     }
     
-    if (doc.containsKey("wifi_enabled")) isWifiEnabled = doc["wifi_enabled"];
-    if (doc.containsKey("api_server_enabled")) prefs.putBool("api_srv", doc["api_server_enabled"]);
-    if (doc.containsKey("mqtt_enabled")) isMqttEnabled = doc["mqtt_enabled"];
+    if (!doc["wifi_enabled"].isNull()) isWifiEnabled = doc["wifi_enabled"];
+    if (!doc["api_server_enabled"].isNull()) prefs.putBool("api_srv", doc["api_server_enabled"]);
+    if (!doc["mqtt_enabled"].isNull()) isMqttEnabled = doc["mqtt_enabled"];
     
-    if (doc.containsKey("mqtt_server")) prefs.putString("mqtt_server", doc["mqtt_server"].as<String>());
-    if (doc.containsKey("mqtt_port")) prefs.putInt("mqtt_port", doc["mqtt_port"]);
-    if (doc.containsKey("mqtt_user")) prefs.putString("mqtt_user", doc["mqtt_user"].as<String>());
-    if (doc.containsKey("mqtt_password")) prefs.putString("mqtt_pass", doc["mqtt_password"].as<String>());
-    if (doc.containsKey("ap_password")) prefs.putString("ap_pass", doc["ap_password"].as<String>());
-    if (doc.containsKey("mqtt_base_topic")) {
+    if (!doc["mqtt_server"].isNull()) prefs.putString("mqtt_server", doc["mqtt_server"].as<String>());
+    if (!doc["mqtt_port"].isNull()) prefs.putInt("mqtt_port", doc["mqtt_port"]);
+    if (!doc["mqtt_user"].isNull()) prefs.putString("mqtt_user", doc["mqtt_user"].as<String>());
+    if (!doc["mqtt_password"].isNull()) prefs.putString("mqtt_pass", doc["mqtt_password"].as<String>());
+    if (!doc["ap_password"].isNull()) prefs.putString("ap_pass", doc["ap_password"].as<String>());
+    if (!doc["mqtt_base_topic"].isNull()) {
         String topic = doc["mqtt_base_topic"].as<String>();
         if (topic.length() > 0 && !topic.endsWith("/")) {
             topic += "/";
@@ -1165,11 +1165,11 @@ void WifiManager::handleApiConfigPost() {
         prefs.putString("mqtt_topic", topic);
     }
 
-    if (doc.containsKey("static_ip_enabled")) prefs.putBool("static_ip_en", doc["static_ip_enabled"]);
-    if (doc.containsKey("static_ip")) prefs.putString("static_ip", doc["static_ip"].as<String>());
-    if (doc.containsKey("static_gateway")) prefs.putString("static_gw", doc["static_gateway"].as<String>());
-    if (doc.containsKey("static_subnet")) prefs.putString("static_sn", doc["static_subnet"].as<String>());
-    if (doc.containsKey("static_dns")) prefs.putString("static_dns", doc["static_dns"].as<String>());
+    if (!doc["static_ip_enabled"].isNull()) prefs.putBool("static_ip_en", doc["static_ip_enabled"]);
+    if (!doc["static_ip"].isNull()) prefs.putString("static_ip", doc["static_ip"].as<String>());
+    if (!doc["static_gateway"].isNull()) prefs.putString("static_gw", doc["static_gateway"].as<String>());
+    if (!doc["static_subnet"].isNull()) prefs.putString("static_sn", doc["static_subnet"].as<String>());
+    if (!doc["static_dns"].isNull()) prefs.putString("static_dns", doc["static_dns"].as<String>());
     
     HardwareLogic::saveSettings(prefs, brightness, autoBright, delayMs, randomMode, showFilename, inactivitySleep, themeFlavor, screenOrientation, ledBrightness, isLedEnabled, isWifiEnabled, isMqttEnabled, wifiSSID, wifiPassword, bypassOptimization, bootFromCache);
     
