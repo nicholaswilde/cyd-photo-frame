@@ -1111,6 +1111,18 @@ void LVGLManager::showNoPhotosWarning() {
     lv_obj_set_style_text_align(lbl_inst, LV_TEXT_ALIGN_CENTER, 0);
     lv_obj_align(lbl_inst, LV_ALIGN_TOP_MID, 0, 80);
 
+    lv_obj_t * btn_settings = lv_btn_create(warn_screen);
+    lv_obj_align(btn_settings, LV_ALIGN_BOTTOM_MID, 0, -30);
+    lv_obj_set_style_bg_color(btn_settings, get_lv_color(getCatppuccinFlavor(currentThemeFlavor).surface1), 0);
+    
+    lv_obj_t * lbl_btn = lv_label_create(btn_settings);
+    lv_label_set_text(lbl_btn, "⚙️ Settings");
+    lv_obj_set_style_text_color(lbl_btn, get_lv_color(getCatppuccinFlavor(currentThemeFlavor).text), 0);
+    
+    lv_obj_add_event_cb(btn_settings, [](lv_event_t * e) {
+        LVGLManager::showSettings();
+    }, LV_EVENT_CLICKED, NULL);
+
     lv_scr_load(warn_screen);
     lv_task_handler();
 #endif

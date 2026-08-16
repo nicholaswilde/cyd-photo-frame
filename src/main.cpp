@@ -1390,6 +1390,12 @@ void setup() {
     while(true) {
       LVGLManager::handle();
       if (isWifiEnabled) wifiManager->update();
+      if (pendingExitSettings) {
+        pendingExitSettings = false;
+        LVGLManager::hideSettings();
+        // Redraw the warning screen since hideSettings replaces the screen with a blank one
+        LVGLManager::showNoPhotosWarning();
+      }
       delay(10);
     }
   }
