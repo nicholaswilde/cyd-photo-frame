@@ -34,6 +34,8 @@ A digital photo frame for the ESP32 Cheap Yellow Device (CYD)
 - **Touch Navigation Zones:** Easily navigate images and access settings by tapping designated screen areas.
 - **On-Screen Feedback Banners:** Displays a temporary top toast notification banner to confirm touch zone settings changes on-screen (e.g. brightness, interval, random mode, etc.) before auto-restoring the photo.
 - **Settings Storage Management:** Clear the on-device photo cache directly from the Settings menu with an interactive confirmation prompt and visual progress bar tracking cache folder deletion.
+- **Interactive Warning Screens:** Displays informative warning screens (such as "No Photos Found") equipped with a direct **⚙️ Settings** button to adjust device settings or configure Wi-Fi without rebooting.
+- **REST API & Web Server Controls:** Read and update full device configurations via `/api/config` JSON endpoints, with the ability to toggle API server access on or off in the Settings panel.
 - **MQTT & Home Assistant Auto-Discovery:** Full integration with Home Assistant via MQTT Discovery, exposing controls for LCD backlight, auto-brightness, random mode, filename banner overlay, inactivity sleep, bypass optimization, boot from cache, slideshow interval, theme flavor, screen orientation, playback controls (next, previous, pause/resume), and diagnostics (Wi-Fi RSSI, IP, MAC address, uptime, free heap, current image filename, and total images).
 
 ## :world_map: Touch Navigation Zones

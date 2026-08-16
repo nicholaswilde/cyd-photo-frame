@@ -1113,7 +1113,7 @@ void LVGLManager::showNoPhotosWarning() {
 
     lv_obj_t * btn_settings = lv_btn_create(warn_screen);
     lv_obj_align(btn_settings, LV_ALIGN_BOTTOM_MID, 0, -30);
-    lv_obj_set_style_bg_color(btn_settings, get_lv_color(getCatppuccinFlavor(currentThemeFlavor).surface1), 0);
+    lv_obj_set_style_bg_color(btn_settings, get_lv_color(getCatppuccinFlavor(currentThemeFlavor).mantle), 0);
     
     lv_obj_t * lbl_btn = lv_label_create(btn_settings);
     lv_label_set_text(lbl_btn, "⚙️ Settings");
