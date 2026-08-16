@@ -451,8 +451,10 @@ input[type="file"] { display: none; }
 </head>
 <body>
 <div class="card">
-    <h2 style="margin-bottom: 5px;">CYD Photo Frame</h2>
-    <p style="text-align: center; color: #a6adc8; margin-top: 0; margin-bottom: 20px; font-size: 14px;">Version %APP_VERSION%</p>
+<div class="header">
+    <h1>CYD Photo Frame</h1>
+    <p class="version">Version %APP_VERSION%</p>
+</div>
     <p style="color: #a6adc8; font-size: 14px; margin-bottom: 20px; text-align: center;">Upload images or videos to display.</p>
 <div class="drop-zone" id="dropZone">
     <p>Drag & Drop images here<br>or click to browse</p>
@@ -1027,7 +1029,7 @@ void WifiManager::handleApiConfigGet() {
     
     HardwareLogic::loadSettings(prefs, brightness, autoBright, delayMs, randomMode, showFilename, inactivitySleep, themeFlavor, screenOrientation, ledBrightness, isLedEnabled, isWifiEnabled, isMqttEnabled, wifiSSID, wifiPassword, bypassOptimization, bootFromCache);
     
-    DynamicJsonDocument doc(2048);
+    JsonDocument doc;
     
     doc["brightness"] = (brightness * 100) / 255;
     doc["auto_brightness"] = autoBright;
@@ -1097,7 +1099,7 @@ void WifiManager::handleApiConfigPost() {
         return;
     }
     
-    DynamicJsonDocument doc(2048);
+    JsonDocument doc;
     DeserializationError error = deserializeJson(doc, server->arg("plain"));
     if (error) {
         server->send(400, "text/plain", "Invalid JSON");
