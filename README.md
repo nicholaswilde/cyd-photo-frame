@@ -151,6 +151,50 @@ curl http://<CYD_DEVICE_IP>/screenshot -o screenshot.bmp
 task screenshots
 ```
 
+### REST API Settings Management
+
+You can read and update the device configuration via the `/api/config` JSON REST API endpoint.
+
+**GET `/api/config`**
+
+Example response:
+```json
+{
+  "brightness": 50,
+  "auto_brightness": true,
+  "slideshow_interval": 15,
+  "random_mode": false,
+  "show_filename": true,
+  "inactivity_sleep": false,
+  "theme_flavor": 0,
+  "screen_orientation": 0,
+  "led_brightness": 10,
+  "led_enabled": true,
+  "wifi_enabled": true,
+  "api_server_enabled": true,
+  "mqtt_enabled": false,
+  "wifi_ssid": "Your_SSID",
+  "wifi_password": "Your_Password",
+  "bypass_opt": false,
+  "boot_cache": false,
+  "mqtt_server": "",
+  "mqtt_port": 1883,
+  "mqtt_user": "",
+  "mqtt_password": "",
+  "ap_password": "",
+  "mqtt_base_topic": "cyd/photo_frame/",
+  "static_ip_enabled": false,
+  "static_ip": "",
+  "static_gateway": "",
+  "static_subnet": "",
+  "static_dns": ""
+}
+```
+
+**POST `/api/config`**
+
+Send a JSON payload with any combination of the fields above to update the configuration. The device will apply the settings and return `{"status":"ok"}`.
+
 ### Serial Commands
 
 If the CYD is plugged into your computer via USB:

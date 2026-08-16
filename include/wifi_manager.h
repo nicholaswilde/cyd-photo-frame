@@ -35,6 +35,8 @@ private:
     void handleDashboard();
     void handleSettings();
     void handleSettingsSave();
+    void handleApiConfigGet();
+    void handleApiConfigPost();
 
     std::string _ssid;
     std::string _password;
