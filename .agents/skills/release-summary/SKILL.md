@@ -42,7 +42,7 @@ This skill retrieves the git commit logs for a specified range (or defaults to t
 
 4. **Add Changelog Comparison Link:**
    - At the bottom of the summary, add a comparison link:
-     `**Full Changelog**: https://github.com/nicholaswilde/cyd-weather-station/compare/<url_range>`
+     `**Full Changelog**: https://github.com/nicholaswilde/cyd-photo-frame/compare/<url_range>`
      where `<url_range>` is the range with `..` replaced by `...` (e.g., `v0.1.2...v0.1.3` or `HEAD`).
 
 5. **Update Draft Release via GitHub CLI:**

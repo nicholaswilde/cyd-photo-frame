@@ -7,7 +7,7 @@ description: Runs the full validation suite (static analysis and unit tests) and
 Runs the full validation suite (static analysis and unit tests) and autonomously fixes failures.
 
 ## Description
-This skill ensures the `cyd-weather-station` codebase conforms to static code analysis, linting, quality, and testing standards. It actively detects violations and applies automatic or surgical corrections.
+This skill ensures the `cyd-photo-frame` codebase conforms to static code analysis, linting, quality, and testing standards. It actively detects violations and applies automatic or surgical corrections.
 
 ## Protocol
 
