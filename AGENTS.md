@@ -19,3 +19,24 @@
   ```bash
   rtk gh issue list | cat
   ```
+
+## Issue Creation
+- When asked to create an issue, use your best guess to determine if it is a new feature or a bug fix.
+- Prefix the issue title with `[feat]: <description>` or `[bug]: <description>`.
+- Add the `enhancement` or `bug` label to the issue accordingly using the `--label` flag with the `gh` command.
+
+## Issue Resolution & Testing
+- When addressing or fixing GitHub issues, **always** create corresponding regression tests along with the issue implementations or fixes to prevent future regressions.
+
+## Adding Settings Checklist
+- Whenever adding a new setting or configuration option to the application, ensure it is consistently added across all integration points:
+  1. **Default Config / Secrets**: Add default definitions to `include/config.h` or `include/secrets.h.example`.
+  2. **Settings Web Page**: Add the input field, label, and form submission handler in `src/web_server.cpp` (or web settings page).
+  3. **On-Device Settings UI**: Add the UI control (toggle, slider, dropdown) in `src/ui.cpp` and support bi-directional synchronization in `ui_sync_toggles()`.
+  4. **MQTT Integration**: Add Home Assistant auto-discovery entity payload, state topic publishing, and command subscription/handling in `src/mqtt_manager.cpp` and `src/main.cpp`.
+  5. **REST API Endpoint & Docs**: Add reading and updating logic for the new setting in `/api/config` GET/POST handlers (in `src/wifi_manager.cpp`) and update the example JSON response in `README.md`.
+
+## Home Assistant MQTT Discovery Rules
+- **Component Strictness**: Home Assistant is extremely strict with MQTT auto-discovery payloads. For example, if you define a `number` component without a `device_class`, it will fail silently if you provide an incompatible `unit_of_measurement` (such as `%`).
+- **Validation Guidelines**: When making changes to MQTT Discovery payloads, be sure to omit `unit_of_measurement` unless it is explicitly paired with a documented HA `device_class` that requires it.
+- **Testing**: Use the `.agents/skills/mqtt-testing/test_mqtt.sh` script to capture and validate that the discovery payloads successfully publish and do not violate Home Assistant constraints.

@@ -279,10 +279,11 @@ uv run scripts/prepare_images.py -i ~/Photos -o /mnt/sdcard --raw
 | `--width` | 320 / 240 | Override target width (ignored when `--orientation both`) |
 | `--height` | 240 / 320 | Override target height (ignored when `--orientation both`) |
 | `--fill` | off | Crop to fill instead of fitting with black bars |
-| `--raw` | off | Pre-generate raw RGB565 files directly into `/cache/` for instant boot slideshow |
+| `--raw` | off | Pre-generate raw RGB565 files into `/cache/` alongside optimized JPEGs in `--output` |
 
 > [!TIP]
-> When using `--orientation both`, images are written into `landscape/` and `portrait/` subdirectories so you can copy only the set that matches your device's orientation setting. When `--raw` is active, a `cache/` directory containing the raw RGB565 files is automatically created within each output directory.
+> - **File Structure**: By default, optimized `.jpg` files are placed directly in `--output` (the SD card root). When `--raw` is enabled, the script creates a `cache/` subfolder in `--output` containing matching pre-rendered `<filename>_<width>x<height>.raw` files.
+> - **Orientation Subdirectories**: When using `--orientation both`, images are written into `landscape/` and `portrait/` subdirectories. If `--raw` is also passed, a `cache/` folder is placed inside each orientation subdirectory.
 
 ## :computer: Development
 
