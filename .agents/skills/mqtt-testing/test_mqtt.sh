@@ -104,6 +104,40 @@ else
     exit 1
 fi
 
+echo -e "\n⏳ [3/4] Testing photo frame specific entities (LED & Playback)..."
+
+# Test LED Light
+echo "Testing LED Light toggle..."
+rm -f /tmp/mqtt_test_led.txt
+mosquitto_sub -h "$MQTT_SERVER" -p "$MQTT_PORT" $AUTH_ARGS -t "${MQTT_BASE}settings/led_light" -C 1 -W 5 > /tmp/mqtt_test_led.txt &
+SUB_PID=$!
+sleep 1
+mosquitto_pub -h "$MQTT_SERVER" -p "$MQTT_PORT" $AUTH_ARGS -t "${MQTT_BASE}command/led_light" -m "ON"
+wait $SUB_PID || true
+RESULT=$(cat /tmp/mqtt_test_led.txt || echo "error")
+if [ "$RESULT" = "ON" ]; then
+    echo "✅ Success! Device acknowledged LED Light ON."
+else
+    echo "❌ Failed LED Light test. Got: '$RESULT'"
+    exit 1
+fi
+
+# Test Playback State
+echo "Testing Playback toggle..."
+rm -f /tmp/mqtt_test_play.txt
+mosquitto_sub -h "$MQTT_SERVER" -p "$MQTT_PORT" $AUTH_ARGS -t "${MQTT_BASE}state/playback_state" -C 1 -W 5 > /tmp/mqtt_test_play.txt &
+SUB_PID=$!
+sleep 1
+mosquitto_pub -h "$MQTT_SERVER" -p "$MQTT_PORT" $AUTH_ARGS -t "${MQTT_BASE}command/toggle_play" -m "TOGGLE"
+wait $SUB_PID || true
+RESULT=$(cat /tmp/mqtt_test_play.txt || echo "error")
+if [ "$RESULT" = "PAUSED" ] || [ "$RESULT" = "PLAYING" ]; then
+    echo "✅ Success! Device acknowledged Playback State toggle. State: $RESULT"
+else
+    echo "❌ Failed Playback toggle test. Got: '$RESULT'"
+    exit 1
+fi
+
 echo -e "\n⏳ [3/3] Validating Home Assistant Discovery Payloads..."
 # Trigger a device reconnect to force discovery payload publish
 echo "Triggering MQTT reconnect to capture discovery payloads..."

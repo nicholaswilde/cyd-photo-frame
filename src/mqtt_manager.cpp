@@ -105,6 +105,9 @@ void MqttManager::onMqttConnect(bool sessionPresent) {
     subscribe("command/next_image", 0);
     subscribe("command/prev_image", 0);
     subscribe("command/toggle_play", 0);
+    subscribe("command/led_light", 0);
+    subscribe("command/led_brightness", 0);
+    subscribe("command/clear_cache", 0);
 }
 
 void MqttManager::publishHADiscovery() {
@@ -204,6 +207,32 @@ void MqttManager::publishHADiscovery() {
     _mqttClient.publish(("homeassistant/select/" + deviceId + "/slideshow_interval/config").c_str(), 0, true, updPayload.c_str());
     // Clear out the old number entity if it still exists in HA's retained MQTT cache
     _mqttClient.publish(("homeassistant/number/" + deviceId + "/slideshow_interval/config").c_str(), 0, true, "");
+    vTaskDelay(pdMS_TO_TICKS(50));
+
+    // Current Image (Sensor)
+    String curImgPayload = "{\"name\":\"Current Image\",\"state_topic\":\"" + _baseTopic + "state/current_image\",\"icon\":\"mdi:image\",\"unique_id\":\"" + deviceId + "_cur_img\"," + deviceJson + "}";
+    _mqttClient.publish(("homeassistant/sensor/" + deviceId + "/current_image/config").c_str(), 0, true, curImgPayload.c_str());
+    vTaskDelay(pdMS_TO_TICKS(50));
+
+    // Playback State (Binary Sensor)
+    String playStatePayload = "{\"name\":\"Playback State\",\"state_topic\":\"" + _baseTopic + "state/playback_state\",\"payload_on\":\"PLAYING\",\"payload_off\":\"PAUSED\",\"unique_id\":\"" + deviceId + "_play_state\"," + deviceJson + "}";
+    _mqttClient.publish(("homeassistant/binary_sensor/" + deviceId + "/playback_state/config").c_str(), 0, true, playStatePayload.c_str());
+    vTaskDelay(pdMS_TO_TICKS(50));
+
+    // Clear Cache (Button)
+    String clrCachePayload = "{\"name\":\"Clear Cache\",\"command_topic\":\"" + _baseTopic + "command/clear_cache\",\"payload_press\":\"CLEAR\",\"icon\":\"mdi:delete-sweep\",\"unique_id\":\"" + deviceId + "_clear_cache\"," + deviceJson + "}";
+    _mqttClient.publish(("homeassistant/button/" + deviceId + "/clear_cache/config").c_str(), 0, true, clrCachePayload.c_str());
+    vTaskDelay(pdMS_TO_TICKS(50));
+
+    // LED Light (Switch)
+    String ledLightPayload = "{\"name\":\"LED Light\",\"state_topic\":\"" + _baseTopic + "settings/led_light\",\"command_topic\":\"" + _baseTopic + "command/led_light\",\"payload_on\":\"ON\",\"payload_off\":\"OFF\",\"icon\":\"mdi:led-on\",\"unique_id\":\"" + deviceId + "_led_light\"," + deviceJson + "}";
+    _mqttClient.publish(("homeassistant/switch/" + deviceId + "/led_light/config").c_str(), 0, true, ledLightPayload.c_str());
+    vTaskDelay(pdMS_TO_TICKS(50));
+
+    // LED Brightness (Number)
+    String ledBrightPayload = "{\"name\":\"LED Brightness\",\"state_topic\":\"" + _baseTopic + "settings/led_brightness\",\"command_topic\":\"" + _baseTopic + "command/led_brightness\",\"min\":0,\"max\":255,\"entity_category\":\"config\",\"icon\":\"mdi:brightness-6\",\"unique_id\":\"" + deviceId + "_led_bright\"," + deviceJson + "}";
+    _mqttClient.publish(("homeassistant/number/" + deviceId + "/led_brightness/config").c_str(), 0, true, ledBrightPayload.c_str());
+    vTaskDelay(pdMS_TO_TICKS(50));
 }
 
 void MqttManager::onMqttDisconnect(AsyncMqttClientDisconnectReason reason) {

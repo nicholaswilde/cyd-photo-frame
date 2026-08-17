@@ -61,6 +61,11 @@ tasks:
     cmds:
       - pio test -e native
 
+  test:mqtt:
+    desc: Run MQTT integration tests
+    cmds:
+      - bash .agents/skills/mqtt-testing/test_mqtt.sh
+
   check:
     desc: Run static code analysis / linting
     cmds:

@@ -100,6 +100,8 @@ void emitMqttSettings() {
     mqttManager->publish("settings/bypass_optimization", bypassOptimization ? "ON" : "OFF", true);
     mqttManager->publish("settings/boot_from_cache", bootFromCache ? "ON" : "OFF", true);
     mqttManager->publish("settings/api_server_enabled", isApiEnabled ? "ON" : "OFF", true);
+    mqttManager->publish("settings/led_light", isLedEnabled ? "ON" : "OFF", true);
+    mqttManager->publish("settings/led_brightness", String(currentLedBrightness).c_str(), true);
     mqttManager->publish("settings/slideshow_interval", (String(slideshowTimer.getInterval() / 1000) + "s").c_str(), true);
     
     const char* themes[] = {"Mocha", "Macchiato", "Frappe", "Latte"};
@@ -125,6 +127,10 @@ void emitMqttImageState(const char* filename, size_t index, size_t total) {
     char buffer[256];
     serializeJson(doc, buffer);
     mqttManager->publish("state/image", buffer, true);
+
+    String cleanFilename = String(filename);
+    if (cleanFilename.startsWith("/")) cleanFilename = cleanFilename.substring(1);
+    mqttManager->publish("state/current_image", cleanFilename.c_str(), true);
   }
 }
 
@@ -209,6 +215,21 @@ void handleMqttMessage(const String& topic, const String& payload) {
   } else if (topic.endsWith("command/toggle_play")) {
     bool isPaused = !slideshowTimer.isPaused();
     slideshowTimer.setPaused(isPaused);
+    if (isMqttEnabled && mqttManager != nullptr && mqttManager->isConnected()) {
+      mqttManager->publish("state/playback_state", isPaused ? "PAUSED" : "PLAYING", true);
+    }
+  } else if (topic.endsWith("command/led_light")) {
+    isLedEnabled = (payload == "ON");
+    prefs.putBool("led_on", isLedEnabled);
+    led.setEnabled(isLedEnabled);
+    settingsChanged = true;
+  } else if (topic.endsWith("command/led_brightness")) {
+    currentLedBrightness = payload.toInt();
+    prefs.putUChar("led_b", currentLedBrightness);
+    led.setBrightness(currentLedBrightness);
+    settingsChanged = true;
+  } else if (topic.endsWith("command/clear_cache")) {
+    handleClearCache();
   }
 
   prefs.end();
