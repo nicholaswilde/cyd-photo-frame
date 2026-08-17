@@ -264,6 +264,9 @@ MQTT can be configured either dynamically via the web settings portal (`http://<
 When MQTT is enabled:
 - **Home Assistant Auto-Discovery:** Devices register automatically under the prefix `homeassistant/` with entities for LCD Brightness, Auto Brightness, Random Mode, Show Filename, Inactivity Sleep, Bypass Optimization, Boot from Cache, Slideshow Interval, Theme Flavor, Screen Orientation, Playback controls (Next, Previous, Pause/Play), and Restart.
 - **Sensors & Diagnostics:** Reports device connection status, uptime, free heap memory, Wi-Fi RSSI, IP, MAC address, firmware version, current photo filename, and total images count.
+- **Decoupled Publishing Cadence:**
+  - **Dynamic Diagnostics & Telemetry:** Sensor and diagnostic topics (`system/uptime`, `system/free_heap`, `system/wifi_rssi`, `system/ip`, `system/version`, `system/mac`, and `state/image`) publish every 60 seconds.
+  - **Operational Settings:** Device settings topics (`settings/brightness`, `settings/auto_brightness`, `settings/random_mode`, `settings/show_filename`, `settings/inactivity_sleep`, `settings/bypass_optimization`, `settings/boot_from_cache`, `settings/api_server_enabled`, `settings/slideshow_interval`, `settings/theme`, `settings/screen_orientation`) publish on a 10-minute heartbeat interval, or immediately when modified.
 - **State & Command Topics:** Default base topic is `cyd/photo_frame/` (e.g. `cyd/photo_frame/state/image`, `cyd/photo_frame/command/slideshow_interval`, `cyd/photo_frame/command/theme`, etc.).
 
 #### Build & Upload
