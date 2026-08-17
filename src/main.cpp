@@ -74,6 +74,7 @@ MqttManager* mqttManager = nullptr;
 #include <ArduinoJson.h>
 
 unsigned long lastDiagnosticPublishMs = 0;
+bool force_mqtt_publish = false;
 
 extern Preferences prefs;
 extern int currentBrightness;
@@ -1752,10 +1753,11 @@ void showPreviousImage() {
 void publishDiagnostics() {
   if (isMqttEnabled && mqttManager != nullptr && mqttManager->isConnected()) {
     unsigned long now = millis();
-    if (now - lastDiagnosticPublishMs > 60000 || lastDiagnosticPublishMs == 0) { // publish every 60 seconds
+    
+    // System Diagnostics (every 60 seconds)
+    if (now - lastDiagnosticPublishMs > 60000 || lastDiagnosticPublishMs == 0) { 
       lastDiagnosticPublishMs = now == 0 ? 1 : now; // Avoid staying at 0
       
-      // System Diagnostics
       mqttManager->publish("system/uptime", String(now / 1000).c_str(), true);
       mqttManager->publish("system/free_heap", String(ESP.getFreeHeap()).c_str(), true);
       mqttManager->publish("system/wifi_rssi", String(WiFi.RSSI()).c_str(), true);
@@ -1763,41 +1765,18 @@ void publishDiagnostics() {
       mqttManager->publish("system/version", APP_VERSION, true);
       mqttManager->publish("system/mac", WiFi.macAddress().c_str(), true);
 
-      // Operational Settings
-      mqttManager->publish("settings/brightness", String(currentBrightness).c_str(), true);
-      mqttManager->publish("settings/auto_brightness", isAutoBrightness ? "ON" : "OFF", true);
-      mqttManager->publish("settings/random_mode", isRandomMode ? "ON" : "OFF", true);
-      mqttManager->publish("settings/show_filename", showFilename ? "ON" : "OFF", true);
-      mqttManager->publish("settings/inactivity_sleep", isInactivitySleep ? "ON" : "OFF", true);
-      mqttManager->publish("settings/bypass_optimization", bypassOptimization ? "ON" : "OFF", true);
-      mqttManager->publish("settings/boot_from_cache", bootFromCache ? "ON" : "OFF", true);
-      mqttManager->publish("settings/api_server_enabled", isApiEnabled ? "ON" : "OFF", true);
-      mqttManager->publish("settings/slideshow_interval", String(slideshowTimer.getInterval()).c_str(), true);
-      
-      String themeStr = "";
-      switch (currentThemeFlavor) {
-        case 0: themeStr = "Mocha"; break;
-        case 1: themeStr = "Macchiato"; break;
-        case 2: themeStr = "Frappe"; break;
-        case 3: themeStr = "Latte"; break;
-        default: themeStr = "Mocha";
-      }
-      mqttManager->publish("settings/theme", themeStr.c_str(), true);
-      
-      String orientStr = "";
-      switch (currentOrientation) {
-        case 0: orientStr = "Portrait Rev"; break;
-        case 1: orientStr = "Landscape"; break;
-        case 2: orientStr = "Portrait"; break;
-        case 3: orientStr = "Landscape Rev"; break;
-        default: orientStr = "Landscape";
-      }
-      mqttManager->publish("settings/screen_orientation", orientStr.c_str(), true);
-      
       // Image State
       if (fileCache.size() > 0) {
         emitMqttImageState(fileCache.getCurrent().c_str(), fileCache.getIndex() + 1, fileCache.size());
       }
+    }
+
+    // Operational Settings (every 10 minutes)
+    static unsigned long lastMqttSettingsPublishMs = 0;
+    if (force_mqtt_publish || now - lastMqttSettingsPublishMs > 600000 || lastMqttSettingsPublishMs == 0) {
+      force_mqtt_publish = false;
+      lastMqttSettingsPublishMs = now == 0 ? 1 : now;
+      emitMqttSettings();
     }
   }
 }
