@@ -26,7 +26,7 @@ A digital photo frame for the ESP32 Cheap Yellow Device (CYD)
 - **Catppuccin Theme Flavors:** Fully dynamic Settings panel and slideshow background borders in Mocha, Macchiato, Frappé, or Latte.
 - **Auto & Percentage-Based Brightness:** Easily control LCD backlight and onboard RGB LED brightness using percentage scales (10–100% for LCD, 0–100% for LED) across web and on-device UI, with optional room LDR light sensor auto-adjustment.
 - **Wi-Fi & Captive Portal Manager:** Toggleable Wi-Fi support with automated Access Point fallback (`cyd-photo-frame-<mac>`) and Captive Portal configuration webpage (`192.168.4.1`) for setting network credentials. Includes dynamic connection status icon in the Settings panel header which opens a detailed Wi-Fi Info modal (SSID, IP, MAC address, RSSI) when tapped.
-- **Remote HTTP File Upload:** Access a beautiful Catppuccin-themed webpage at `http://<device-ip>/upload` to manage files wirelessly! Supports drag-and-drop, multi-file sequential upload queues, queue removal, and on-demand device restarting to immediately render new photos.
+- **Remote HTTP File Upload:** Access a beautiful Catppuccin-themed webpage at `http://<device-ip>/upload` to manage files wirelessly! Supports drag-and-drop, multi-file sequential upload queues, queue removal, and on-demand device restarting to immediately render new photos. When uploading while on the "No Photos" screen, the device displays an active on-screen upload progress bar and status indicator without interrupting slideshow playback.
 - **Over-The-Air (OTA) Firmware Updates:** Flash new firmware wirelessly directly from your browser at `http://<device-ip>/update` or via the web dashboard.
 - **Dynamic Multi-Device Support:** Auto-detects device hardware targets (`ESP32-2432S028R` 2.8" or `ESP32-3248S035C` 3.5") across web interface headers and footers.
 - **Unified Screen Design:** Consistent header typography, Catppuccin color palette, and structured vertical label layout across all system screens (Settings, Optimization, Wi-Fi Setup, SD Card Errors, Warnings, and confirmation modals).
@@ -109,7 +109,7 @@ The CYD Photo Frame hosts a built-in web server to allow wireless media manageme
 3. You will be greeted with a beautiful Catppuccin-themed drag-and-drop interface.
 4. **Drag & Drop** multiple image files into the dashed area, or click to open your file browser.
 5. The files are added to a **pending queue**. You can review the selected files and click the **"X"** button to remove any unwanted files.
-6. Click **Upload All** to begin a sequential background upload directly to the device's SD Card.
+6. Click **Upload All** to begin a sequential background upload directly to the device's SD Card. (If the device is currently on the "No Photos" screen, it will display a live progress bar tracking each file upload in real time.)
 7. Once all uploads show as `Done` and the queue is finished, a **Restart Device** button will automatically appear. Click it to remotely reboot the frame, which forces it to rescan the SD card and instantly include your new photos in the slideshow!
 
 ## :arrows_counterclockwise: Over-The-Air (OTA) Firmware Updates

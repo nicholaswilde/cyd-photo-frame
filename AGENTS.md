@@ -40,3 +40,7 @@
 - **Component Strictness**: Home Assistant is extremely strict with MQTT auto-discovery payloads. For example, if you define a `number` component without a `device_class`, it will fail silently if you provide an incompatible `unit_of_measurement` (such as `%`).
 - **Validation Guidelines**: When making changes to MQTT Discovery payloads, be sure to omit `unit_of_measurement` unless it is explicitly paired with a documented HA `device_class` that requires it.
 - **Testing**: Use the `.agents/skills/mqtt-testing/test_mqtt.sh` script to capture and validate that the discovery payloads successfully publish and do not violate Home Assistant constraints.
+
+## UI & Theme Design
+- **Catppuccin Colors**: When styling UI elements with `getCatppuccinFlavor()`, be aware that the `CatppuccinColors` struct does not define all standard Catppuccin color steps (e.g., `surface0`, `surface1`, `surface2` do not exist).
+- Whenever you might instinctually use a `surface*` color for a background, use the `mantle` (or `base`/`crust`) color property instead.
