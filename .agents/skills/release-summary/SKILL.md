@@ -11,18 +11,29 @@ This skill retrieves the git commit logs for a specified range (or defaults to t
 
 ## Protocol
 
-1. **Determine the Git Log Range:**
-   - Check if a `[range]` argument (e.g., `v0.1.2..v0.1.3` or `HEAD`) is provided.
-   - If no range is specified, execute git commands to detect the latest two tags:
-     - Run `git tag --sort=-v:refname | head -n 2`
-     - Extract `LATEST` (the first line) and `PREVIOUS` (the second line).
-     - If `PREVIOUS` is empty (only one tag or no tags), default `range` to `HEAD`.
-     - Otherwise, set `range` to `PREVIOUS..LATEST`.
+1. **Check for Previous Draft Releases:**
+   - Run `rtk gh release list | cat` to inspect current releases and draft statuses.
+   - Detect if there are older draft releases (other than the current target draft release `LATEST`).
+   - If an older draft release exists (e.g., `PREVIOUS_DRAFT`):
+     - Prompt the user asking if they want to delete `PREVIOUS_DRAFT` and automatically incorporate its changes into `LATEST`'s release summary.
+     - If confirmed:
+       - Delete the older draft release: `rtk gh release delete <PREVIOUS_DRAFT> -y | cat`
+       - Set the base tag for the git log range to the last *published* (non-draft) release tag instead of `PREVIOUS_DRAFT`.
 
-2. **Retrieve Git Log Entries:**
+2. **Determine the Git Log Range:**
+   - Check if a `[range]` argument (e.g., `v0.1.2..v0.1.3` or `HEAD`) is explicitly provided.
+   - If no range is specified:
+     - If previous drafts were incorporated in Step 1, set `range` to `<LAST_PUBLISHED>..<LATEST>`.
+     - Otherwise, execute git commands to detect the latest two tags:
+       - Run `git tag --sort=-v:refname | head -n 2`
+       - Extract `LATEST` (the first line) and `PREVIOUS` (the second line).
+       - If `PREVIOUS` is empty (only one tag or no tags), default `range` to `HEAD`.
+       - Otherwise, set `range` to `PREVIOUS..LATEST`.
+
+3. **Retrieve Git Log Entries:**
    - Run `git log --pretty=format:"- %s" <range>` where `<range>` is the determined range.
 
-3. **Generate and Format the Release Summary:**
+4. **Generate and Format the Release Summary:**
    - Categorize the commit messages into the following markdown sections (using `###` for headers):
      - ### 🚀 **New Features** (for commits starting with `feat`)
      - ### 🐛 **Bug Fixes** (for commits starting with `fix`)
@@ -40,12 +51,12 @@ This skill retrieves the git commit logs for a specified range (or defaults to t
      - Do not include git commit hashes.
      - Maintain a direct, professional, and technical tone.
 
-4. **Add Changelog Comparison Link:**
+5. **Add Changelog Comparison Link:**
    - At the bottom of the summary, add a comparison link:
      `**Full Changelog**: https://github.com/nicholaswilde/cyd-photo-frame/compare/<url_range>`
      where `<url_range>` is the range with `..` replaced by `...` (e.g., `v0.1.2...v0.1.3` or `HEAD`).
 
-5. **Update Draft Release via GitHub CLI:**
+6. **Update Draft Release via GitHub CLI:**
    - Save the generated markdown summary to a temporary file (e.g., `release_notes.md`).
    - Run the GitHub CLI to edit the existing draft release using the `LATEST` tag and the generated notes:
      `rtk gh release edit <LATEST> --draft -F release_notes.md | cat`
