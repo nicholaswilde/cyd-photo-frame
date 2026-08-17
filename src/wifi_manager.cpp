@@ -411,6 +411,7 @@ void WifiManager::handleNotFound() {
 }
 
 static File _uploadFile;
+static size_t _uploadExpectedSize = 0;
 
 const char uploadHtml[] PROGMEM = R"rawliteral(
 <!DOCTYPE html>
@@ -558,7 +559,7 @@ async function processQueue() {
     formData.append('f', item.file);
     
     try {
-        let res = await fetch('/upload', { method: 'POST', body: formData });
+        let res = await fetch('/upload?size=' + item.file.size, { method: 'POST', body: formData });
         if (res.ok) {
             statusEl.textContent = 'Done';
             statusEl.className = 'file-status success';
@@ -664,6 +665,7 @@ void WifiManager::startScreenshotServer() {
         WebServer* s = (WebServer*)_webServer;
         HTTPUpload& upload = s->upload();
         if (upload.status == UPLOAD_FILE_START) {
+            _uploadExpectedSize = s->hasArg("size") ? s->arg("size").toInt() : 0;
             String filename = upload.filename;
             if (!filename.startsWith("/")) filename = "/" + filename;
             Serial.printf("[Upload] Start: %s\n", filename.c_str());
@@ -678,6 +680,9 @@ void WifiManager::startScreenshotServer() {
                     Serial.printf("[Upload] ERROR: Wrote %u bytes, but expected %u\n", written, upload.currentSize);
                 } else {
                     Serial.printf("[Upload] Wrote chunk of %u bytes\n", upload.currentSize);
+                    if (_uploadExpectedSize > 0) {
+                        LVGLManager::updateUploadProgress(upload.totalSize, _uploadExpectedSize);
+                    }
                 }
             } else {
                 Serial.println("[Upload] ERROR: Cannot write chunk, file is not open");

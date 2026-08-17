@@ -20,6 +20,8 @@ public:
 
     static void showSDError();
     static void showNoPhotosWarning();
+    static bool isOnNoPhotosScreen();
+    static void updateUploadProgress(size_t current, size_t total);
     static void showLoadingSlideshowScreen(const char* message, bool isError = false);
     static void hideLoadingSlideshowScreen();
     static void showOptimizationScreen();

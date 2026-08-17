@@ -72,6 +72,9 @@ static lv_obj_t* dd_orient_ptr = nullptr;
 static lv_obj_t* settings_wifi_icon = nullptr;
 static lv_obj_t* ap_screen = nullptr;
 static lv_obj_t* loading_slideshow_screen = nullptr;
+static lv_obj_t* no_photos_screen = nullptr;
+static lv_obj_t* no_photos_upload_bar = nullptr;
+static lv_obj_t* no_photos_upload_lbl = nullptr;
 
 static void my_touchpad_read(lv_indev_drv_t *indev_driver, lv_indev_data_t *data) {
     if (currentState != STATE_SETTINGS && ap_screen == nullptr) {
@@ -1090,41 +1093,93 @@ void LVGLManager::showSDError() {
 
 void LVGLManager::showNoPhotosWarning() {
 #if !defined(NATIVE_TEST)
-    lv_obj_t * warn_screen = lv_obj_create(NULL);
-    lv_obj_set_style_bg_color(warn_screen, get_lv_color(getCatppuccinFlavor(currentThemeFlavor).base), 0);
-    lv_obj_set_style_bg_opa(warn_screen, LV_OPA_COVER, 0);
+    if (no_photos_screen == nullptr) {
+        no_photos_screen = lv_obj_create(NULL);
+        lv_obj_set_style_bg_color(no_photos_screen, get_lv_color(getCatppuccinFlavor(currentThemeFlavor).base), 0);
+        lv_obj_set_style_bg_opa(no_photos_screen, LV_OPA_COVER, 0);
 
-    lv_obj_t * lbl_title = lv_label_create(warn_screen);
-    lv_label_set_text(lbl_title, "CYD Photo Frame");
-    lv_obj_set_style_text_font(lbl_title, &lv_font_montserrat_20, 0);
-    lv_obj_set_style_text_color(lbl_title, get_lv_color(getCatppuccinFlavor(currentThemeFlavor).text), 0);
-    lv_obj_align(lbl_title, LV_ALIGN_TOP_MID, 0, 15);
+        lv_obj_t * lbl_title = lv_label_create(no_photos_screen);
+        lv_label_set_text(lbl_title, "CYD Photo Frame");
+        lv_obj_set_style_text_font(lbl_title, &lv_font_montserrat_20, 0);
+        lv_obj_set_style_text_color(lbl_title, get_lv_color(getCatppuccinFlavor(currentThemeFlavor).text), 0);
+        lv_obj_align(lbl_title, LV_ALIGN_TOP_MID, 0, 15);
 
-    lv_obj_t * lbl_err = lv_label_create(warn_screen);
-    lv_label_set_text(lbl_err, "NO PHOTOS FOUND");
-    lv_obj_set_style_text_color(lbl_err, get_lv_color(getCatppuccinFlavor(currentThemeFlavor).yellow), 0);
-    lv_obj_align(lbl_err, LV_ALIGN_TOP_MID, 0, 50);
+        lv_obj_t * lbl_err = lv_label_create(no_photos_screen);
+        lv_label_set_text(lbl_err, "NO PHOTOS FOUND");
+        lv_obj_set_style_text_color(lbl_err, get_lv_color(getCatppuccinFlavor(currentThemeFlavor).yellow), 0);
+        lv_obj_align(lbl_err, LV_ALIGN_TOP_MID, 0, 50);
 
-    lv_obj_t * lbl_inst = lv_label_create(warn_screen);
-    lv_label_set_text(lbl_inst, "Add JPEGs to SD card\nand reboot device.");
-    lv_obj_set_style_text_color(lbl_inst, get_lv_color(getCatppuccinFlavor(currentThemeFlavor).text), 0);
-    lv_obj_set_style_text_align(lbl_inst, LV_TEXT_ALIGN_CENTER, 0);
-    lv_obj_align(lbl_inst, LV_ALIGN_TOP_MID, 0, 80);
+        lv_obj_t * lbl_inst = lv_label_create(no_photos_screen);
+        lv_label_set_text(lbl_inst, "Add JPEGs to SD card\nor upload via web.");
+        lv_obj_set_style_text_color(lbl_inst, get_lv_color(getCatppuccinFlavor(currentThemeFlavor).text), 0);
+        lv_obj_set_style_text_align(lbl_inst, LV_TEXT_ALIGN_CENTER, 0);
+        lv_obj_align(lbl_inst, LV_ALIGN_TOP_MID, 0, 80);
 
-    lv_obj_t * btn_settings = lv_btn_create(warn_screen);
-    lv_obj_align(btn_settings, LV_ALIGN_BOTTOM_MID, 0, -30);
-    lv_obj_set_style_bg_color(btn_settings, get_lv_color(getCatppuccinFlavor(currentThemeFlavor).mantle), 0);
+        no_photos_upload_bar = lv_bar_create(no_photos_screen);
+        lv_obj_set_size(no_photos_upload_bar, 200, 20);
+        lv_obj_align(no_photos_upload_bar, LV_ALIGN_CENTER, 0, 30);
+        lv_bar_set_range(no_photos_upload_bar, 0, 100);
+        lv_bar_set_value(no_photos_upload_bar, 0, LV_ANIM_OFF);
+        lv_obj_add_flag(no_photos_upload_bar, LV_OBJ_FLAG_HIDDEN); // Hidden by default
+        
+        lv_obj_set_style_bg_color(no_photos_upload_bar, get_lv_color(getCatppuccinFlavor(currentThemeFlavor).surface0), LV_PART_MAIN);
+        lv_obj_set_style_bg_color(no_photos_upload_bar, get_lv_color(getCatppuccinFlavor(currentThemeFlavor).green), LV_PART_INDICATOR);
+
+        no_photos_upload_lbl = lv_label_create(no_photos_screen);
+        lv_label_set_text(no_photos_upload_lbl, "0%");
+        lv_obj_set_style_text_color(no_photos_upload_lbl, get_lv_color(getCatppuccinFlavor(currentThemeFlavor).text), 0);
+        lv_obj_align_to(no_photos_upload_lbl, no_photos_upload_bar, LV_ALIGN_OUT_BOTTOM_MID, 0, 5);
+        lv_obj_add_flag(no_photos_upload_lbl, LV_OBJ_FLAG_HIDDEN);
+
+        lv_obj_t * btn_settings = lv_btn_create(no_photos_screen);
+        lv_obj_align(btn_settings, LV_ALIGN_BOTTOM_MID, 0, -30);
+        lv_obj_set_style_bg_color(btn_settings, get_lv_color(getCatppuccinFlavor(currentThemeFlavor).mantle), 0);
+        
+        lv_obj_t * lbl_btn = lv_label_create(btn_settings);
+        lv_label_set_text(lbl_btn, "⚙️ Settings");
+        lv_obj_set_style_text_color(lbl_btn, get_lv_color(getCatppuccinFlavor(currentThemeFlavor).text), 0);
+        lv_obj_add_event_cb(btn_settings, [](lv_event_t * e) {
+            showSettings();
+        }, LV_EVENT_CLICKED, NULL);
+    }
     
-    lv_obj_t * lbl_btn = lv_label_create(btn_settings);
-    lv_label_set_text(lbl_btn, "⚙️ Settings");
-    lv_obj_set_style_text_color(lbl_btn, get_lv_color(getCatppuccinFlavor(currentThemeFlavor).text), 0);
-    
-    lv_obj_add_event_cb(btn_settings, [](lv_event_t * e) {
-        LVGLManager::showSettings();
-    }, LV_EVENT_CLICKED, NULL);
+    if (no_photos_upload_bar) lv_obj_add_flag(no_photos_upload_bar, LV_OBJ_FLAG_HIDDEN);
+    if (no_photos_upload_lbl) lv_obj_add_flag(no_photos_upload_lbl, LV_OBJ_FLAG_HIDDEN);
 
-    lv_scr_load(warn_screen);
+    lv_scr_load(no_photos_screen);
     lv_task_handler();
+#endif
+}
+
+bool LVGLManager::isOnNoPhotosScreen() {
+#if !defined(NATIVE_TEST)
+    return lv_scr_act() != nullptr && lv_scr_act() == no_photos_screen;
+#else
+    return false;
+#endif
+}
+
+void LVGLManager::updateUploadProgress(size_t current, size_t total) {
+#if !defined(NATIVE_TEST)
+    if (isOnNoPhotosScreen() && no_photos_upload_bar != nullptr) {
+        lv_obj_clear_flag(no_photos_upload_bar, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_clear_flag(no_photos_upload_lbl, LV_OBJ_FLAG_HIDDEN);
+        
+        int percent = 0;
+        if (total > 0) {
+            percent = (current * 100) / total;
+            if (percent > 100) percent = 100;
+        }
+        
+        lv_bar_set_value(no_photos_upload_bar, percent, LV_ANIM_ON);
+        lv_label_set_text_fmt(no_photos_upload_lbl, "Uploading... %d%%", percent);
+        
+        if (current >= total && total > 0) {
+            lv_label_set_text(no_photos_upload_lbl, "Upload Complete!");
+        }
+        
+        lv_task_handler();
+    }
 #endif
 }
 

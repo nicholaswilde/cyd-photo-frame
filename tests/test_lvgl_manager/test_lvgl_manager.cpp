@@ -30,10 +30,19 @@ void test_lvgl_manager_callbacks_and_screens(void) {
     TEST_ASSERT_TRUE(LVGLManager::isInitialized());
 }
 
+void test_lvgl_manager_upload_progress(void) {
+    LVGLManager::init(320, 240);
+    TEST_ASSERT_FALSE(LVGLManager::isOnNoPhotosScreen());
+    LVGLManager::updateUploadProgress(50, 100);
+    LVGLManager::updateUploadProgress(100, 100);
+    TEST_ASSERT_TRUE(LVGLManager::isInitialized());
+}
+
 int main(int argc, char **argv) {
     UNITY_BEGIN();
     RUN_TEST(test_lvgl_manager_initial_state);
     RUN_TEST(test_lvgl_manager_init);
     RUN_TEST(test_lvgl_manager_callbacks_and_screens);
+    RUN_TEST(test_lvgl_manager_upload_progress);
     return UNITY_END();
 }
