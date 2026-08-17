@@ -1122,7 +1122,7 @@ void LVGLManager::showNoPhotosWarning() {
         lv_bar_set_value(no_photos_upload_bar, 0, LV_ANIM_OFF);
         lv_obj_add_flag(no_photos_upload_bar, LV_OBJ_FLAG_HIDDEN); // Hidden by default
         
-        lv_obj_set_style_bg_color(no_photos_upload_bar, get_lv_color(getCatppuccinFlavor(currentThemeFlavor).surface0), LV_PART_MAIN);
+        lv_obj_set_style_bg_color(no_photos_upload_bar, get_lv_color(getCatppuccinFlavor(currentThemeFlavor).mantle), LV_PART_MAIN);
         lv_obj_set_style_bg_color(no_photos_upload_bar, get_lv_color(getCatppuccinFlavor(currentThemeFlavor).green), LV_PART_INDICATOR);
 
         no_photos_upload_lbl = lv_label_create(no_photos_screen);
